@@ -1,0 +1,11 @@
+# Quản lý Vue.js cache và build
+/dist/
+*.log
+
+# Quản lý Vue.js specific files
+*.local
+*.bak
+
+# Cấu hình cụ thể của một số IDE khác
+.vscode/*
+.idea/*

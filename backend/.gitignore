@@ -1,0 +1,12 @@
+# Quản lý Node.js/Express build và logs
+npm-debug.log
+yarn-debug.log
+
+# Thư mục chứa tệp tạm hoặc tệp cấu hình của backend
+logs/
+*.pid
+*.seed
+
+# Các tệp môi trường (nếu có)
+.env
+.env.local

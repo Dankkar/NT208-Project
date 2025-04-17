@@ -1,0 +1,39 @@
+# Node modules (tương thích cho cả backend và frontend)
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Hệ thống tạm thời của hệ điều hành
+.DS_Store
+Thumbs.db
+
+# Các tệp cấu hình editor (Visual Studio Code, Sublime, IntelliJ...)
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Thư mục build và dist
+dist/
+build/
+
+# Thư mục hoặc tệp tạm thời
+tmp/
+temp/
+
+# Các tệp môi trường
+.env
+.env.local
+.env.*.local
+
+# Các tệp của hệ thống package
+package-lock.json
+yarn.lock
+
+# Các tệp của IDE nếu sử dụng
+*.swp
+*.swo
