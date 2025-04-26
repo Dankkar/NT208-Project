@@ -38,7 +38,7 @@ router.post(
 );
 
 // Dat lai mat khau
-router.post(
+router.put(
     '/reset-password',
     [
         check('token', 'Token khong duoc de trong').notEmpty(),
