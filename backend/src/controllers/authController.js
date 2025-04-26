@@ -54,6 +54,45 @@ exports.register = async (req, res) => {
   }
 };
 
+//APi Đang Nhap
+exports.login = async (req, res) => {
+  try {
+    const { EmailIn, password } = req.body;
+
+    const pool = await poolPromise();
+    const result = await pool.request()
+      .input('EmailIn', sql.NVarChar, EmailIn)
+      .query(`SELECT MaKH, Email, MatKhauHash FROM dbo.NguoiDung WHERE Email = @EmailIn`);
+
+    if (result.recordset.length === 0) {
+      return res.status(400).json({ message: 'Tài khoản không tồn tại.' });
+    }
+
+    const user = result.recordset[0];
+
+    const isPasswordValid = await bcrypt.compare(password, user.MatKhauHash);
+
+    if (!isPasswordValid) {
+      return res.status(400).json({ message: 'Mật khẩu không đúng.' });
+    }
+
+    const token = jwt.sign(
+      { MaKH: user.MaKH, Email : user.Email },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    res.status(200).json({ token });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Lỗi server.' });
+  }
+};
+
+
+
+
 //API quen mat khau
 exports.forgotPassword = async (req, res) => {
   const {Email} = req.body;

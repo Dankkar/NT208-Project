@@ -23,6 +23,23 @@ router.post(
     register
 );
 
+// Dang nhap 
+router.post(
+    '/login',
+    [
+        check('Email', 'Email không hợp lệ').isEmail(),
+        check('MatKhau', 'Mật khẩu không được để trống').notEmpty()
+    ],
+    (req, res, next) => {
+        const errs = validationResult(req);
+        if(!errs.isEmpty()) return res.status(400).json({ errors: errs.array() });
+        next();
+    },
+    login
+);
+
+
+
 // Quen mat khau
 router.post(
     '/forgot-password',
