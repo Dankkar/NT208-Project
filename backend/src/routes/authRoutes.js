@@ -1,7 +1,7 @@
 //backend/src/routes/authRoutes.js
 const express = require('express');
 const {check, validationResult} = require('express-validator');
-const {register, forgotPassword, resetPassword} = require('../controllers/authController');
+const {register, login, forgotPassword, resetPassword} = require('../controllers/authController');
 
 const router = express.Router();
 
