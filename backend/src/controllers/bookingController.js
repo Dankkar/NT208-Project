@@ -3,6 +3,43 @@
 const sql = require('mssql');
 const db = require('../database/db');
 
+//Kiem tra phong trong cua tung loai phong
+exports.getAvailableRoomTypes = async (req, res) => {
+    try {
+        const { NgayNhanPhong, NgayTraPhong } = req.query;
+
+        if (!NgayNhanPhong || !NgayTraPhong) {
+            return res.status(400).json({ error: "Vui lòng cung cấp ngày nhận phòng và ngày trả phòng" });
+        }
+
+        const pool = await sql.connect(db);
+
+        const result = await pool.request()
+            .input('NgayNhanPhong', sql.Date, NgayNhanPhong)
+            .input('NgayTraPhong', sql.Date, NgayTraPhong)
+            .query(`
+                SELECT lp.MaLoaiPhong, lp.TenLoaiPhong, lp.Gia, COUNT(*) AS SoPhongTrong
+                FROM Phong p
+                JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM Booking b
+                    WHERE b.MaPhong = p.MaPhong
+                    AND b.TrangThaiBooking != N'Đã hủy'
+                    AND (
+                        b.NgayNhanPhong <= @NgayTraPhong
+                        AND b.NgayTraPhong >= @NgayNhanPhong
+                    )
+                )
+                GROUP BY lp.MaLoaiPhong, lp.TenLoaiPhong, lp.Gia
+            `);
+
+        res.json(result.recordset);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Lỗi hệ thống" });
+    }
+};
+
 // Tao don dat phong
 exports.createBooking = async (req, res) => {
     try{

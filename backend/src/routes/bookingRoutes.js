@@ -10,6 +10,8 @@ const {
     getBookingsByUser
 } = require('../controllers/bookingController');
 
+
+router.post('/check-available-rooms',getAvailableRoomTypes )
 router.post('/', createBooking)
 router.get('/user/:MaKH', getBookingsByUser);
 router.get('/:MaDat', getBookingById);
