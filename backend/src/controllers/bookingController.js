@@ -2,6 +2,7 @@
 
 const sql = require('mssql');
 const db = require('../database/db');
+const { sendReviewRequestEmail } = require('../utils/emailService');
 
 //Kiem tra phong trong cua tung loai phong
 exports.getAvailableRoomTypes = async (req, res) => {
@@ -92,6 +93,51 @@ exports.createBooking = async (req, res) => {
     }
 };
 
+//Gửi email đánh giá sau khi trả phòng
+
+exports.checkoutBooking = async (req, res) => {
+    try {
+        const { MaDat } = req.params;
+        const pool = await sql.connect(db);
+
+        // Cập nhật trạng thái
+        await pool.request()
+            .input('MaDat', sql.Int, MaDat)
+            .input('TrangThaiBooking', sql.NVarChar, 'Đã trả phòng')
+            .query(`
+                UPDATE Booking
+                SET TrangThaiBooking = @TrangThaiBooking
+                WHERE MaDat = @MaDat
+            `);
+
+        // Lấy thông tin booking + email người dùng
+        const result = await pool.request()
+            .input('MaDat', sql.Int, MaDat)
+            .query(`
+                SELECT b.NgayNhanPhong, b.NgayTraPhong, ks.TenKS AS hotelName, nd.Email
+                FROM Booking b 
+                JOIN KhachSan ks ON b.MaKS = ks.MaKS
+                JOIN NguoiDung nd ON b.MaKH = nd.MaKH
+                WHERE b.MaDat = @MaDat
+            `);
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ error: "Không tìm thấy đơn đặt phòng" });
+        }
+        const info = result.recordset[0];
+        const reviewLink = `https://your-domain.com/review/${MaDat}`; // Tùy chỉnh
+        try {
+            await sendReviewRequestEmail(info.Email, info, reviewLink);
+        } catch (emailErr) {
+            console.error("Gửi email thất bại:", emailErr);
+            // Không throw để không ảnh hưởng người dùng
+        }
+
+        res.json({ message: "Check-out thành công và đã gửi email mời đánh giá!" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Lỗi hệ thống" });
+    }
+};
 // Xem chi tiet don
 exports.getBookingById = async (req, res) => {
     try{
