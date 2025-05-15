@@ -6,8 +6,9 @@ const {
     login, 
     forgotPassword, 
     resetPassword, 
-    logout
+    logout,
 } = require('../controllers/authController');
+const {authenticateToken, isAdmin} = require('../middlewares/auth');
 
 const router = express.Router();
 
@@ -88,5 +89,7 @@ router.put(
 );
 
 router.post('/logout', logout);
+
+
 
 module.exports = router;

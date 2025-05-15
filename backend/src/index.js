@@ -9,7 +9,7 @@ const app = express();
 const cors = require('cors');
 const cookieParser = require('cookie-parser');  
 app.use(cors({
-  origin: 'http://localhost:5000', // hoặc domain FE thật
+  origin: 'http://localhost:5000', // Sửa lại cho đúng với FE thật
   credentials: true               // ✅ Cho phép gửi cookie
 }));
 app.use(cookieParser());          // ✅ Đặt TRƯỚC các route cần đọc cookie

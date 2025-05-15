@@ -317,12 +317,20 @@ exports.cancelBooking = async (req, res) => {
     }
 };
 
-// Xem don theo MaKH
+// Xem don dat phong theo MaKH
 exports.getBookingByUser = async (req, res) => {
     try{
-        const { MaKH } = req.params;
-        if (!MaKH || isNaN(Number(MaKH))) {
+        const requestedMaKH = parseInt(req.params.MaKH);
+        const currentUser = req.user;
+        if (!requestedMaKH || isNaN(Number(requestedMaKH))) {
             return res.status(400).json({ error: 'MaKH không hợp lệ' });
+        }
+        if(currentUser.role !== 'QuanLyKS' && currentUser.role !== 'Admin')
+        {
+            if(currentUser.MaKH !== requestedMaKH)
+            {
+                return res.status(403).json({ error: 'Bạn không có quyền truy cập vào đơn đặt phòng của người khác'});
+            }
         }
         const pool = await poolPromise;
 
@@ -404,5 +412,28 @@ exports.sendBookingConfirmation = async (req, res) => {
             success: false,
             message: error.message
         });
+    }
+};
+//API: Admin xem toan bo don dat phong
+exports.getAllBookings = async (req, res) => {
+    try {
+        const pool = await poolPromise;
+
+        const result = await pool.request().query(`
+        SELECT 
+            b.MaDat, b.NgayDat, b.NgayNhanPhong, b.NgayTraPhong, 
+            b.TrangThaiBooking, b.TongTienDuKien,
+            ks.TenKS, p.SoPhong, nd.HoTen AS TenKhachHang, nd.Email, nd.SDT
+        FROM Booking b
+        JOIN KhachSan ks ON b.MaKS = ks.MaKS
+        JOIN Phong p ON b.MaPhong = p.MaPhong
+        JOIN NguoiDung nd ON b.MaKH = nd.MaKH
+        ORDER BY b.NgayDat DESC
+        `);
+        res.json({success: true, data: result.recordset});
+    }
+    catch (err) {
+        console.error('Lỗi getAllBookings:', err);
+        res.status(500).json({error: 'Lỗi server'});
     }
 };
