@@ -3,7 +3,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { poolPromise, sql } = require('../database/db');
 const { sendResetEmail } = require('../utils/emailService');
-
+const {OAuth2Client} = require('google-auth-library');
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const schema = 'dbo';
 
 // API Dang ki
@@ -256,4 +257,71 @@ async function readFakeUsers() {
 // Ghi users vào file
 async function writeFakeUsers(users) {
   await fs.writeFile(fakeDbPath, JSON.stringify(users, null, 2));
+}
+
+exports.googleLogin = async (req, res) => {
+  const { token } = req.body;
+
+  try 
+  {
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const email = payload.email;
+    const name = payload.name;
+    
+    const pool = await poolPromise;
+
+    //Kiem tra email da ton tai
+    const userResult = await pool.request()
+      .input('Email', sql.NVarChar, email)
+      .query(`SELECT MaKH FROM ${schema}.NguoiDung WHERE Email = @Email`);
+
+      let MaKH, role;
+
+      if(userResult.recordset.length === 0)
+      {
+        const insertResult = await pool.request()
+          .input('LoaiUser', sql.NVarChar, 'KhachHang')
+          .input('HoTen', sql.NVarChar, name)
+          .input('Email', sql.NVarChar, email)
+          .input('MatKhauHash', sql.NVarChar, '')
+          .query(`
+            INSERT INTO NguoiDung (LoaiUser, HoTen, Email, MatKhauHash)
+            VALUES (@LoaiUser, @HoTen, @Email, @MatKhauHash);
+            SELECT SCOPE_IDENTITY() AS MaKH;
+          `);
+
+          MaKH = insertResult.recordset[0].MaKH;
+          role = 'KhachHang';
+      }
+      else
+      {
+        MaKH = userResult.recordset[0].MaKH;
+        role = userResult.recordset[0].LoaiUser;
+      }
+
+      const jwttoken = jwt.sign(
+        {MaKH, Email: email, role},
+        process.env.JWT_SECRET,
+        {expiresIn: '1h'}
+      );
+
+      res.cookie('access_token', jwtToken, {
+        httpOnly: true,
+        secure: false,
+        sameSite: 'strict',
+        maxAge: 1 * 60 * 60 * 1000,
+      });
+
+    res.status(200).json({ message: 'Đăng nhập thành công' });
+  }
+  catch(err)
+  {
+    console.error('AuthController.googleLogin error:', err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
 }

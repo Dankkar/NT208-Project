@@ -7,6 +7,7 @@ const {
     forgotPassword, 
     resetPassword, 
     logout,
+    googleLogin
 } = require('../controllers/authController');
 const {authenticateToken, isAdmin} = require('../middlewares/auth');
 
@@ -89,6 +90,7 @@ router.put(
 );
 
 router.post('/logout', logout);
+router.post('/auth/google', googleLogin);
 
 
 
