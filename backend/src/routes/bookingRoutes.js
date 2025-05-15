@@ -2,15 +2,14 @@
 
 const express = require('express');
 const router = express.Router();
-
-const {
+const { 
+    getAvailableRoomTypes,
     createBooking,
     getBookingById,
     cancelBooking,
-    getBookingsByUser,
+    getBookingByUser,
     calculatePrice,
-    sendBookingConfirmation,
-    getAvailableRoomTypes
+    sendBookingConfirmation
 } = require('../controllers/bookingController');
 const { authenticateToken } = require('../middlewares/auth');
 
@@ -26,28 +25,28 @@ router.post('/check-available-rooms', getAvailableRoomTypes);
  * @desc    Tạo đơn đặt phòng mới
  * @access  Private
  */
-router.post('/', createBooking);
+router.post('/', authenticateToken, createBooking);
 
 /**
  * @route   GET /api/bookings/user/:MaKH
  * @desc    Lấy danh sách đơn đặt phòng của một khách hàng
  * @access  Private
  */
-router.get('/user/:MaKH', getBookingsByUser);
+router.get('/user/:MaKH', authenticateToken, getBookingByUser);
 
 /**
  * @route   GET /api/bookings/:MaDat
  * @desc    Lấy chi tiết một đơn đặt phòng
  * @access  Private
  */
-router.get('/:MaDat', getBookingById);
+router.get('/:MaDat', authenticateToken, getBookingById);
 
 /**
  * @route   PUT /api/bookings/:MaDat/cancel
  * @desc    Hủy đơn đặt phòng
  * @access  Private
  */
-router.put('/:MaDat/cancel', cancelBooking);
+router.put('/:MaDat/cancel', authenticateToken, cancelBooking);
 
 /**
  * @route   POST /api/bookings/calculate-price

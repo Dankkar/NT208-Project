@@ -1,19 +1,29 @@
 //backend/src/index.js
 
 require('dotenv').config();
+
+
+
 const express = require('express');
+const app = express();
+
+//middleware for cookies
+const cors = require('cors');
+const cookieParser = require('cookie-parser');  
+app.use(cors({
+  origin: 'http://localhost:5173', // hoặc domain FE thật
+  credentials: true               // ✅ Cho phép gửi cookie
+}));
+app.use(cookieParser());          // ✅ Đặt TRƯỚC các route cần đọc cookie
+app.use(express.json());          // ✅ Đọc JSON body
+//Logging
+app.use((req, res, next) => {
+  console.log(`→ ${req.method} ${req.url}`);
+  next();
+});
+//Mount routes
 const authRoutes = require('./routes/authRoutes');
 const bookingRoutes = require('./routes/bookingRoutes')
-
-const app = express();
-app.use(express.json());
-app.use((req, res, next) => {
-    console.log(`→ ${req.method} ${req.url}`);
-    next();
-  });
-  
-
-//Mount routes
 app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
 
