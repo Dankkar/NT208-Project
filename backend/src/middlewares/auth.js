@@ -1,3 +1,4 @@
+// backend/src/middlewares/auth.js
 const jwt = require('jsonwebtoken');
 
 /**
@@ -7,21 +8,18 @@ const jwt = require('jsonwebtoken');
  * @param {Function} next - Next middleware function
  */
 const authenticateToken = (req, res, next) => {
-    // Lấy token từ header
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    const token = req.cookies?.access_token;
 
     if (!token) {
         return res.status(401).json({ 
             success: false,
-            message: 'Không tìm thấy token xác thực' 
+            message: 'Không tìm thấy token xác thực trong cookie' 
         });
     }
 
     try {
-        // Xác thực token
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = decoded; // Lưu thông tin user vào request
+        req.user = decoded;
         next();
     } catch (error) {
         return res.status(403).json({ 

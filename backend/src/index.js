@@ -2,8 +2,6 @@
 
 require('dotenv').config();
 
-
-
 const express = require('express');
 const app = express();
 
@@ -11,7 +9,7 @@ const app = express();
 const cors = require('cors');
 const cookieParser = require('cookie-parser');  
 app.use(cors({
-  origin: 'http://localhost:5173', // hoặc domain FE thật
+  origin: 'http://localhost:5000', // hoặc domain FE thật
   credentials: true               // ✅ Cho phép gửi cookie
 }));
 app.use(cookieParser());          // ✅ Đặt TRƯỚC các route cần đọc cookie
@@ -26,6 +24,7 @@ const authRoutes = require('./routes/authRoutes');
 const bookingRoutes = require('./routes/bookingRoutes')
 app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
