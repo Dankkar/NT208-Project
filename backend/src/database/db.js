@@ -1,5 +1,6 @@
 //backend/src/database/db.js
 require('dotenv').config();
+
 const sql = require('mssql');
 
 const config = {
@@ -12,6 +13,7 @@ const config = {
         trustServerCertificate: true 
     }
 };
+
 
 const poolPromise = new sql.ConnectionPool(config)
     .connect()

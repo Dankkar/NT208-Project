@@ -9,47 +9,97 @@ const schema = 'dbo';
 // API Dang ki
 exports.register = async (req, res) => {
   // 1. Lấy dữ liệu từ body
-  const { HoTen, Email, MatKhau } = req.body;
+  const { 
+    HoTen, 
+    Email, 
+    MatKhau,
+    SDT,
+    NgaySinh,
+    GioiTinh,
+    CCCD
+  } = req.body;
 
   try {
     const pool = await poolPromise;
 
-    // 2. Kiểm tra email đã tồn tại
-    const exists = await pool.request()
-      .input('Email', sql.NVarChar, Email)
-      .query(`SELECT MaKH FROM ${schema}.NguoiDung WHERE Email = @Email`);
+    // Kiểm tra email đã tồn tại
+    const emailExists = await pool.request()
+      .input('Email', sql.NVarChar, Email.toLowerCase())
+      .query(`SELECT MaKH FROM ${schema}.NguoiDung WHERE LOWER(Email) = LOWER(@Email)`);
 
-    if (exists.recordset.length > 0) {
+    if (emailExists.recordset.length > 0) {
       return res.status(400).json({ msg: 'Email đã tồn tại' });
     }
 
-    // 3. Mã hóa mật khẩu
-    const hash = await bcrypt.hash(MatKhau, 10);
+    // Kiểm tra SDT đã tồn tại
+    const phoneExists = await pool.request()
+      .input('SDT', sql.NVarChar, SDT)
+      .query(`SELECT MaKH FROM ${schema}.NguoiDung WHERE SDT = @SDT`);
 
-    // 4. Thêm người dùng mới
+    if (phoneExists.recordset.length > 0) {
+      return res.status(400).json({ msg: 'Số điện thoại đã tồn tại' });
+    }
+
+    // Kiểm tra CCCD đã tồn tại
+    const cccdExists = await pool.request()
+      .input('CCCD', sql.NVarChar, CCCD)
+      .query(`SELECT MaKH FROM ${schema}.NguoiDung WHERE CCCD = @CCCD`);
+
+    if (cccdExists.recordset.length > 0) {
+      return res.status(400).json({ msg: 'CCCD đã tồn tại' });
+    }
+
+    // Mã hóa mật khẩu
+    const hashedPassword = await bcrypt.hash(MatKhau, 10);
+
+    // Thêm người dùng mới
     const insertResult = await pool.request()
-      .input('LoaiUser',   sql.NVarChar, 'KhachHang')
-      .input('HoTen',      sql.NVarChar, HoTen)
-      .input('Email',      sql.NVarChar, Email)
-      .input('MatKhauHash',sql.NVarChar, hash)
+      .input('LoaiUser', sql.NVarChar, 'KhachHang')
+      .input('HoTen', sql.NVarChar, HoTen)
+      .input('Email', sql.NVarChar, Email.toLowerCase())
+      .input('SDT', sql.NVarChar, SDT)
+      .input('MatKhauHash', sql.NVarChar, hashedPassword)
+      .input('NgaySinh', sql.Date, NgaySinh || null)
+      .input('GioiTinh', sql.NVarChar, GioiTinh || null)
+      .input('CCCD', sql.NVarChar, CCCD)
       .query(`
-        INSERT INTO ${schema}.NguoiDung (LoaiUser, HoTen, Email, MatKhauHash)
-        VALUES (@LoaiUser, @HoTen, @Email, @MatKhauHash);
+        INSERT INTO ${schema}.NguoiDung (
+          LoaiUser, HoTen, Email, SDT, MatKhauHash, 
+          NgaySinh, GioiTinh, CCCD
+        )
+        VALUES (
+          @LoaiUser, @HoTen, @Email, @SDT, @MatKhauHash,
+          @NgaySinh, @GioiTinh, @CCCD
+        );
         SELECT SCOPE_IDENTITY() AS MaKH;
       `);
 
     const MaKH = insertResult.recordset[0].MaKH;
 
-    // 5. Tạo JWT
+    // Tạo JWT
     const token = jwt.sign(
-      { MaKH, Email },
+      { MaKH, Email: Email.toLowerCase() },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
 
-    res.status(201).json({ token });
+    res.status(201).json({ 
+      message: 'Đăng ký thành công',
+      token,
+      user: {
+        MaKH,
+        HoTen,
+        Email: Email.toLowerCase(),
+        SDT,
+        NgaySinh,
+        GioiTinh
+      }
+    });
   } catch (err) {
     console.error('AuthController.register error:', err);
+    if (err.number === 2627) {
+      return res.status(400).json({ msg: 'Thông tin đã tồn tại trong hệ thống' });
+    }
     res.status(500).json({ msg: 'Lỗi server' });
   }
 };
@@ -57,12 +107,12 @@ exports.register = async (req, res) => {
 //APi Đang Nhap
 exports.login = async (req, res) => {
   try {
-    const { EmailIn, password } = req.body;
+    const { Email, MatKhau } = req.body;
 
-    const pool = await poolPromise();
+    const pool = await poolPromise;
     const result = await pool.request()
-      .input('EmailIn', sql.NVarChar, EmailIn)
-      .query(`SELECT MaKH, Email, MatKhauHash FROM dbo.NguoiDung WHERE Email = @EmailIn`);
+      .input('Email', sql.NVarChar, Email)
+      .query(`SELECT MaKH, Email, MatKhauHash FROM dbo.NguoiDung WHERE Email = @Email`);
 
     if (result.recordset.length === 0) {
       return res.status(400).json({ message: 'Tài khoản không tồn tại.' });
@@ -70,7 +120,7 @@ exports.login = async (req, res) => {
 
     const user = result.recordset[0];
 
-    const isPasswordValid = await bcrypt.compare(password, user.MatKhauHash);
+    const isPasswordValid = await bcrypt.compare(MatKhau, user.MatKhauHash);
 
     if (!isPasswordValid) {
       return res.status(400).json({ message: 'Mật khẩu không đúng.' });
@@ -81,8 +131,14 @@ exports.login = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
+    res.cookie('access_token', token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'strict',
+      maxAge: 1 * 60 * 60 * 1000,
+    });
 
-    res.status(200).json({ token });
+    res.status(200).json({ message: 'Đăng nhập thành công' });
 
   } catch (error) {
     console.error(error);
@@ -122,7 +178,7 @@ exports.forgotPassword = async (req, res) => {
     await pool.request()
       .input('MaKH', sql.Int, MaKH)
       .input('ResetToken', sql.NVarChar, token)
-      .input('ResetTokenExpire', sql.DateTime. expireDate)
+      .input('ResetTokenExpire', sql.DateTime, expireDate)
       .query(`UPDATE ${schema}.NguoiDung SET ResetToken = @ResetToken, ResetTokenExpire = @ResetTokenExpire WHERE MaKH = @MaKH`);
 
 
@@ -148,7 +204,7 @@ exports.resetPassword = async (req, res) => {
 
     const userResult = await pool.request()
       .input('MaKH', sql.Int, decoded.MaKH)
-      .query(`SELECT ResetToken, RestTokenExpire FROM ${schema}.NguoiDung WHERE MaKH = @MaKH`);
+      .query(`SELECT ResetToken, ResetTokenExpire FROM ${schema}.NguoiDung WHERE MaKH = @MaKH`);
 
     if(userResult.recordset.length === 0){
       return res.status(404).json({ msg: "User khong ton tai"});
@@ -175,6 +231,14 @@ exports.resetPassword = async (req, res) => {
     console.error('AuthController.resetPassword error:', err);
     res.status(400).json({  msg: 'Token loi hoac da het han '});
   }
+}
+exports.logout = (req, res) => {
+  res.clearCookie('access_token', {
+    httpOnly: true,
+    secure: false,
+    sameSite: 'Strict'
+  });
+res.status(200).json({ message: 'Đăng xuất thành công' });
 }
 
 
