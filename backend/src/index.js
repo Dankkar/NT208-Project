@@ -22,9 +22,12 @@ app.use((req, res, next) => {
 //Mount routes
 const authRoutes = require('./routes/authRoutes');
 const bookingRoutes = require('./routes/bookingRoutes')
+const hotelRoutes = require('./routes/hotelRoutes');
+const roomTypeRoutes = require('./routes/roomTypeRoutes');
 app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
-
+app.use('/api/hotels', hotelRoutes);
+app.use('/api/roomTypes', roomTypeRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
