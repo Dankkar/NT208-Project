@@ -113,7 +113,7 @@ exports.login = async (req, res) => {
     const pool = await poolPromise;
     const result = await pool.request()
       .input('Email', sql.NVarChar, Email)
-      .query(`SELECT MaKH, Email, MatKhauHash FROM dbo.NguoiDung WHERE Email = @Email`);
+      .query(`SELECT MaKH, Email, MatKhauHash FROM NguoiDung WHERE Email = @Email`);
 
     if (result.recordset.length === 0) {
       return res.status(400).json({ message: 'Tài khoản không tồn tại.' });
@@ -242,22 +242,28 @@ exports.logout = (req, res) => {
 res.status(200).json({ message: 'Đăng xuất thành công' });
 }
 
+exports.deleteUser = async (req, res) => {
+  const { MaKH } = req.params;
+  const currentUser = req.user;
+  if (!MaKH || isNaN(MaKH))
+  {
+    res.status(400).json({ message: 'MaKH khong hop le' });
+  }
+  if(currentUser.role !== 'QuanLyKS' && currentUser.role !== 'Admin')
+  {
+    if(currentUser.MaKH !== MaKH)
+    {
+      return res.status(403).json({ message: 'Bạn không có quyền xóa tài khoản của người khác' });
+    }
+  }
+  const pool = await poolPromise;
 
-// Test fakeUser
-const fs = require('fs').promises;
-const path = require('path');
-const fakeDbPath = path.join(__dirname, '../database/fakeUsers.json');
-
-// Đọc users từ file
-async function readFakeUsers() {
-  const data = await fs.readFile(fakeDbPath, 'utf-8');
-  return JSON.parse(data);
+  const result = await pool.request()
+    .input('MaKH', sql.Int, MaKH)
+    .query(`DELETE FROM NguoiDung WHERE MaKH = @MaKH`);
+  res.status(200).json({ message: 'Xóa tài khoản thành công' });
 }
 
-// Ghi users vào file
-async function writeFakeUsers(users) {
-  await fs.writeFile(fakeDbPath, JSON.stringify(users, null, 2));
-}
 
 exports.googleLogin = async (req, res) => {
   const { token } = req.body;
@@ -321,7 +327,7 @@ exports.googleLogin = async (req, res) => {
   }
   catch(err)
   {
-    console.error('AuthController.googleLogin error:', err);
+    console.error('GoogleLogin error:', err);
     res.status(500).json({ message: 'Lỗi server' });
   }
 }
