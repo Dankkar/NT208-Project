@@ -2,7 +2,9 @@
 
 const sql = require('mssql');
 const db = require('../database/db');
-const { sendReviewRequestEmail } = require('../utils/emailService');
+const { sendReviewRequestEmail, sendBookingConfirmation } = require('../utils/emailService');
+const PriceCalculationService = require('../services/priceCalculationService');
+const EmailService = require('../services/emailService');
 
 //Kiem tra phong trong cua tung loai phong
 exports.getAvailableRoomTypes = async (req, res) => {
@@ -230,5 +232,68 @@ exports.getBookingByUser = async (req, res) => {
     }
     catch(err){
         res.status(500).json({ error: "Loi he thong"});
+    }
+};
+
+/**
+ * API tính giá đặt phòng
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+exports.calculatePrice = async (req, res) => {
+    try {
+        const bookingDetails = req.body;
+        
+        // Validate input
+        if (!bookingDetails.basePrice || !bookingDetails.checkIn || !bookingDetails.checkOut) {
+            return res.status(400).json({
+                success: false,
+                message: 'Thiếu thông tin cần thiết'
+            });
+        }
+
+        const priceDetails = PriceCalculationService.calculateTotalPrice(bookingDetails);
+        
+        res.json({
+            success: true,
+            data: priceDetails
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+/**
+ * API gửi email xác nhận đặt phòng
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+exports.sendBookingConfirmation = async (req, res) => {
+    try {
+        const bookingInfo = req.body;
+        
+        // Validate input
+        if (!bookingInfo.guestEmail || !bookingInfo.guestName || !bookingInfo.roomNumber) {
+            return res.status(400).json({
+                success: false,
+                message: 'Thiếu thông tin cần thiết'
+            });
+        }
+
+        const result = await sendBookingConfirmation(bookingInfo);
+        
+        res.json({
+            success: true,
+            message: 'Email xác nhận đã được gửi thành công',
+            data: result
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
