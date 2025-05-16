@@ -10,7 +10,7 @@ const config = {
     options: {
         encrypt: true,
         trustServerCertificate: true 
-    }
+    },
 };
 
 const poolPromise = new sql.ConnectionPool(config)
