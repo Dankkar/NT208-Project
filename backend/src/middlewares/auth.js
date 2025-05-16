@@ -36,7 +36,7 @@ const authenticateToken = (req, res, next) => {
  * @param {Function} next - Next middleware function
  */
 const isAdmin = (req, res, next) => {
-    if (req.user && req.user.role === 'admin') {
+    if (req.user && req.user.role === 'Admin') {
         next();
     } else {
         res.status(403).json({ 
@@ -53,7 +53,7 @@ const isAdmin = (req, res, next) => {
  * @param {Function} next - Next middleware function
  */
 const isStaff = (req, res, next) => {
-    if (req.user && (req.user.role === 'staff' || req.user.role === 'admin')) {
+    if (req.user && (req.user.role === 'QuanLyKS' || req.user.role === 'Admin')) {
         next();
     } else {
         res.status(403).json({ 
