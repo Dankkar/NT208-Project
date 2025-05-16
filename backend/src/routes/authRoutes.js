@@ -6,8 +6,10 @@ const {
     login, 
     forgotPassword, 
     resetPassword, 
-    logout
+    logout,
+    googleLogin
 } = require('../controllers/authController');
+const {authenticateToken, isAdmin} = require('../middlewares/auth');
 
 const router = express.Router();
 
@@ -88,5 +90,8 @@ router.put(
 );
 
 router.post('/logout', logout);
+router.post('/auth/google', googleLogin);
+
+
 
 module.exports = router;

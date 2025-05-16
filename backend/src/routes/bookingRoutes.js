@@ -9,9 +9,10 @@ const {
     cancelBooking,
     getBookingByUser,
     calculatePrice,
-    sendBookingConfirmation
+    sendBookingConfirmation,
+    getAllBookings
 } = require('../controllers/bookingController');
-const { authenticateToken } = require('../middlewares/auth');
+const { authenticateToken, isAdmin } = require('../middlewares/auth');
 
 /**
  * @route   POST /api/bookings/rooms/available
@@ -61,5 +62,7 @@ router.get('/:MaDat/price', authenticateToken, calculatePrice);
  * @access  Private
  */
 router.post('/:MaDat/confirmations', authenticateToken, sendBookingConfirmation);
+
+router.get('/admin', authenticateToken, isAdmin, getAllBookings);
 
 module.exports = router;

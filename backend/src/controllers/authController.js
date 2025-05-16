@@ -3,7 +3,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { poolPromise, sql } = require('../database/db');
 const { sendResetEmail } = require('../utils/emailService');
-
+const {OAuth2Client} = require('google-auth-library');
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const schema = 'dbo';
 
 // API Dang ki
@@ -112,7 +113,7 @@ exports.login = async (req, res) => {
     const pool = await poolPromise;
     const result = await pool.request()
       .input('Email', sql.NVarChar, Email)
-      .query(`SELECT MaKH, Email, MatKhauHash FROM dbo.NguoiDung WHERE Email = @Email`);
+      .query(`SELECT MaKH, Email, MatKhauHash FROM NguoiDung WHERE Email = @Email`);
 
     if (result.recordset.length === 0) {
       return res.status(400).json({ message: 'Tài khoản không tồn tại.' });
@@ -127,7 +128,7 @@ exports.login = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { MaKH: user.MaKH, Email : user.Email },
+      { MaKH: user.MaKH, Email : user.Email, role: user.LoaiUser },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
@@ -228,5 +229,92 @@ exports.logout = (req, res) => {
 res.status(200).json({ message: 'Đăng xuất thành công' });
 }
 
+exports.deleteUser = async (req, res) => {
+  const { MaKH } = req.params;
+  const currentUser = req.user;
+  if (!MaKH || isNaN(MaKH))
+  {
+    res.status(400).json({ message: 'MaKH khong hop le' });
+  }
+  if(currentUser.role !== 'QuanLyKS' && currentUser.role !== 'Admin')
+  {
+    if(currentUser.MaKH !== MaKH)
+    {
+      return res.status(403).json({ message: 'Bạn không có quyền xóa tài khoản của người khác' });
+    }
+  }
+  const pool = await poolPromise;
+
+  const result = await pool.request()
+    .input('MaKH', sql.Int, MaKH)
+    .query(`DELETE FROM NguoiDung WHERE MaKH = @MaKH`);
+  res.status(200).json({ message: 'Xóa tài khoản thành công' });
+}
 
 
+exports.googleLogin = async (req, res) => {
+  const { token } = req.body;
+
+  try 
+  {
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const email = payload.email;
+    const name = payload.name;
+    
+    const pool = await poolPromise;
+
+    //Kiem tra email da ton tai
+    const userResult = await pool.request()
+      .input('Email', sql.NVarChar, email)
+      .query(`SELECT MaKH FROM ${schema}.NguoiDung WHERE Email = @Email`);
+
+      let MaKH, role;
+
+      if(userResult.recordset.length === 0)
+      {
+        const insertResult = await pool.request()
+          .input('LoaiUser', sql.NVarChar, 'KhachHang')
+          .input('HoTen', sql.NVarChar, name)
+          .input('Email', sql.NVarChar, email)
+          .input('MatKhauHash', sql.NVarChar, '')
+          .query(`
+            INSERT INTO NguoiDung (LoaiUser, HoTen, Email, MatKhauHash)
+            VALUES (@LoaiUser, @HoTen, @Email, @MatKhauHash);
+            SELECT SCOPE_IDENTITY() AS MaKH;
+          `);
+
+          MaKH = insertResult.recordset[0].MaKH;
+          role = 'KhachHang';
+      }
+      else
+      {
+        MaKH = userResult.recordset[0].MaKH;
+        role = userResult.recordset[0].LoaiUser;
+      }
+
+      const jwttoken = jwt.sign(
+        {MaKH, Email: email, role},
+        process.env.JWT_SECRET,
+        {expiresIn: '1h'}
+      );
+
+      res.cookie('access_token', jwtToken, {
+        httpOnly: true,
+        secure: false,
+        sameSite: 'strict',
+        maxAge: 1 * 60 * 60 * 1000,
+      });
+
+    res.status(200).json({ message: 'Đăng nhập thành công' });
+  }
+  catch(err)
+  {
+    console.error('GoogleLogin error:', err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+}
