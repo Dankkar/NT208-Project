@@ -11,16 +11,6 @@
     <div class="form-card">
       <!-- Title -->
       <h2 class="form-title">Create your account</h2>
-
-      <!-- Google button -->
-      <button 
-        @click="signUpWithGoogle" 
-        class="btn-google mb-4"
-      >
-        <i class="bi bi-google me-2"></i>
-        Sign up with Google
-      </button>
-
       <!-- Divider -->
       <div class="divider mb-4">
         <span class="line"></span>

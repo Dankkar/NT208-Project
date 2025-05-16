@@ -11,13 +11,13 @@
       <h2 class="form-title">Sign in to CHILLCHILL</h2>
 
       <!-- Google Button -->
-      <button
-        @click="signInWithGoogle"
-        class="btn btn-google mb-4"
-      >
-        <i class="bi bi-google me-2"></i>
-        Sign in with Google
-      </button>
+       <GoogleLogin :callback="signInWithGoogle" class="w-100">
+          <button class="btn btn-google mb-4 w-1">
+            <i class="bi bi-google me-2"></i>
+              Sign in with Google
+          </button>
+      </GoogleLogin>
+    
 
       <!-- Divider -->
       <div class="divider mb-4">
@@ -75,7 +75,9 @@ import { useRouter } from 'vue-router'
 const email = ref('')
 const password = ref('')
 const router = useRouter()
-function signInWithGoogle() { /* OAuth */ }
+function signInWithGoogle() { 
+  console.log("Handle the login")
+ }
 function login() { /* API */ router.push('/homepage') }
 </script>
 
