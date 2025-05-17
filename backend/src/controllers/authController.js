@@ -113,7 +113,7 @@ exports.login = async (req, res) => {
     const pool = await poolPromise;
     const result = await pool.request()
       .input('Email', sql.NVarChar, Email)
-      .query(`SELECT MaKH, Email, MatKhauHash FROM NguoiDung WHERE Email = @Email`);
+      .query(`SELECT MaKH, Email, MatKhauHash, LoaiUser FROM NguoiDung WHERE Email = @Email`);
 
     if (result.recordset.length === 0) {
       return res.status(400).json({ message: 'Tài khoản không tồn tại.' });
