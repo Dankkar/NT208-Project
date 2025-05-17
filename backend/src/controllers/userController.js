@@ -39,7 +39,7 @@ exports.getAllUsers = async (req, res) => {
 
 //Cap nhat thong tin user
 exports.updateUser = async (req, res) => {
-    const MaKH = req.user.user.MaKH;
+    const MaKH = req.params.MaKH;
     const { HoTen, Email, SDT, CCCD, NgaySinh, GioiTinh } = req.body;
     try {
         const pool = await poolPromise;
@@ -66,6 +66,39 @@ exports.updateUser = async (req, res) => {
         });
     }
 };
+exports.updateUserByAdmin = async (req, res) => {
+    const user = req.user;
+    const MaKH = req.params.MaKH;
+    const { HoTen, Email, SDT, CCCD, NgaySinh, GioiTinh } = req.body;
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .input('MaKH', sql.Int, MaKH)
+            .input('HoTen', sql.NVarChar, HoTen)
+            .input('Email', sql.NVarChar, Email)
+            .input('SDT', sql.NVarChar, SDT)
+            .input('CCCD', sql.NVarChar, CCCD)
+            .input('NgaySinh', sql.Date, NgaySinh)
+            .input('GioiTinh', sql.NVarChar, GioiTinh)
+            .input('LoaiUser', sql.NVarChar, user.LoaiUser)
+            .query(`
+                UPDATE NguoiDung
+                SET HoTen = @HoTen, Email = @Email, SDT = @SDT, CCCD = @CCCD, NgaySinh = @NgaySinh, GioiTinh = @GioiTinh, LoaiUser = @LoaiUser
+                WHERE MaKH = @MaKH
+            `);
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy người dùng để cập nhật' });
+        }
+        res.json.status(200).json({
+            message: 'Cập nhật thông tin người dùng thành công'
+        });
+    } catch (error) {
+        console.error('Lỗi khi cập nhật thông tin người dùng:', error);
+        res.status(500).json({
+            message: 'Lỗi server'
+        });
+    }
+}
 
 //Xoa user
 exports.deleteUser = async (req, res) => {

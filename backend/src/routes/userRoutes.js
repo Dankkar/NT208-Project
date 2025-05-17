@@ -18,6 +18,9 @@ router.get('/', authenticateToken, isAdmin, getAllUsers);
 //PUT /api/users/me
 router.put('/me', authenticateToken, updateUser);
 
+//PUT /api/users/:MaKH
+router.put('/:MaKH', authenticateToken, isAdmin, updateUserByAdmin);
+
 //DELETE /api/users/:MaKH
 router.delete('/:MaKH', authenticateToken, isAdmin, deleteUser);
 
