@@ -15,11 +15,11 @@ const {
 const { authenticateToken, isAdmin } = require('../middlewares/auth');
 
 /**
- * @route   POST /api/bookings/check-available-rooms
+ * @route   POST /api/bookings/rooms/available
  * @desc    Kiểm tra phòng trống theo loại phòng và ngày
  * @access  Public
  */
-router.post('/check-available-rooms', getAvailableRoomTypes);
+router.post('/rooms/available', getAvailableRoomTypes);
 
 /**
  * @route   POST /api/bookings
@@ -43,25 +43,25 @@ router.get('/user/:MaKH', authenticateToken, getBookingByUser);
 router.get('/:MaDat', authenticateToken, getBookingById);
 
 /**
- * @route   PUT /api/bookings/:MaDat/cancel
- * @desc    Hủy đơn đặt phòng
+ * @route   PUT /api/bookings/:MaDat
+ * @desc    Cập nhật trạng thái đơn đặt phòng (hủy đơn)
  * @access  Private
  */
-router.put('/:MaDat/cancel', authenticateToken, cancelBooking);
+router.put('/:MaDat', authenticateToken, cancelBooking);
 
 /**
- * @route   POST /api/bookings/calculate-price
+ * @route   GET /api/bookings/:MaDat/price
  * @desc    Tính giá đặt phòng (bao gồm phòng, dịch vụ và ưu đãi)
  * @access  Private
  */
-router.post('/calculate-price', authenticateToken, calculatePrice);
+router.get('/:MaDat/price', authenticateToken, calculatePrice);
 
 /**
- * @route   POST /api/bookings/send-confirmation
+ * @route   POST /api/bookings/:MaDat/confirmations
  * @desc    Gửi email xác nhận đặt phòng
  * @access  Private
  */
-router.post('/send-confirmation', authenticateToken, sendBookingConfirmation);
+router.post('/:MaDat/confirmations', authenticateToken, sendBookingConfirmation);
 
 router.get('/admin', authenticateToken, isAdmin, getAllBookings);
 

@@ -173,16 +173,6 @@ exports.forgotPassword = async (req, res) => {
       {expiresIn: '15m'}
     );
 
-    const expireDate = new Date(Date.now() + 15 * 60 * 1000);
-
-    // Luu token va thoi gian het han vao DB
-    await pool.request()
-      .input('MaKH', sql.Int, MaKH)
-      .input('ResetToken', sql.NVarChar, token)
-      .input('ResetTokenExpire', sql.DateTime, expireDate)
-      .query(`UPDATE ${schema}.NguoiDung SET ResetToken = @ResetToken, ResetTokenExpire = @ResetTokenExpire WHERE MaKH = @MaKH`);
-
-
     // Gui email chua link reset
     const resetLink = `${process.env.CLIENT_URL}/reset-password?token=${token}`;
     await sendResetEmail(Email, resetLink);
@@ -203,28 +193,23 @@ exports.resetPassword = async (req, res) => {
 
     const pool = await poolPromise;
 
+    // Verify user exists
     const userResult = await pool.request()
       .input('MaKH', sql.Int, decoded.MaKH)
-      .query(`SELECT ResetToken, ResetTokenExpire FROM ${schema}.NguoiDung WHERE MaKH = @MaKH`);
+      .query(`SELECT MaKH FROM ${schema}.NguoiDung WHERE MaKH = @MaKH`);
 
     if(userResult.recordset.length === 0){
       return res.status(404).json({ msg: "User khong ton tai"});
     }
 
-    const { ResetToken, ResetTokenExpire } = userResult.recordset[0];
-
-    if(ResetToken !== token || new Date(ResetTokenExpire) < new Date()){
-      return res.status(400).json({ msg: "Token khong hop le hoac da het han"});
-    }
-
     // Ma hoa mat khau moi
     const hasedPassword = await bcrypt.hash(newPassword, 10);
 
-    // Cap nhat mat khau va xoa reset token
+    // Cap nhat mat khau
     await pool.request()
       .input('MaKH', sql.Int, decoded.MaKH)
       .input('MatKhauHash', sql.NVarChar, hasedPassword)
-      .query(`UPDATE ${schema}.NguoiDung SET MatKhauHash = @MatKhauHash, ResetToken = NULL, ResetTokenExpire = NULL WHERE MaKH = @MaKH`);
+      .query(`UPDATE ${schema}.NguoiDung SET MatKhauHash = @MatKhauHash WHERE MaKH = @MaKH`);
     
     res.json({ msg: 'Dat lai mat khau thanh cong'});
   }
@@ -233,6 +218,8 @@ exports.resetPassword = async (req, res) => {
     res.status(400).json({  msg: 'Token loi hoac da het han '});
   }
 }
+
+// Dang xuat
 exports.logout = (req, res) => {
   res.clearCookie('access_token', {
     httpOnly: true,
