@@ -6,7 +6,7 @@ const { sendReviewRequestEmail, sendBookingConfirmation } = require('../utils/em
 const PriceCalculationService = require('../services/priceCalculationService');
 const EmailService = require('../services/emailService');
 
-//Kiem tra phong trong cua tung loai phong
+// Kiem tra phong trong cua tung loai phong
 exports.getAvailableRoomTypes = async (req, res) => {
     try {
         const { NgayNhanPhong, NgayTraPhong } = req.body;
