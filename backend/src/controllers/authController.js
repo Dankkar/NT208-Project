@@ -79,10 +79,16 @@ exports.register = async (req, res) => {
 
     // Tạo JWT
     const token = jwt.sign(
-      { MaKH, Email: Email.toLowerCase() },
+      { MaKH, Email: Email.toLowerCase(), role: 'KhachHang' },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
+    res.cookie('access_token', token, {
+      httpOnly: true,
+      secure: false, // đổi thành true nếu dùng HTTPS
+      sameSite: 'strict',
+      maxAge: 1 * 60 * 60 * 1000 // 1 giờ
+    });
 
     res.status(201).json({ 
       message: 'Đăng ký thành công',
@@ -93,7 +99,8 @@ exports.register = async (req, res) => {
         Email: Email.toLowerCase(),
         SDT,
         NgaySinh,
-        GioiTinh
+        GioiTinh,
+        role: 'KhachHang'
       }
     });
   } catch (err) {
