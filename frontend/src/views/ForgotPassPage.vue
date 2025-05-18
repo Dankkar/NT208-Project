@@ -19,6 +19,11 @@
         <span class="line"></span>
       </div>
 
+      <!-- Alert messages -->
+      <div v-if="alertMessage" :class="['alert', alertType]" role="alert">
+        {{ alertMessage }}
+      </div>
+
       <!-- Reset form -->
       <form @submit.prevent="sendResetLink">
         <div class="mb-5">
@@ -28,13 +33,23 @@
             v-model="email"
             type="email"
             class="underline-input"
+            :class="{ 'is-invalid': emailError }"
             placeholder="Enter your email"
             required
+            @input="validateEmail"
           />
+          <div v-if="emailError" class="invalid-feedback">
+            {{ emailError }}
+          </div>
         </div>
 
-        <button type="submit" class="btn-login w-100 mb-3">
-          Send reset link
+        <button 
+          type="submit" 
+          class="btn-login w-100 mb-3"
+          :disabled="isLoading || !!emailError"
+        >
+          <span v-if="isLoading" class="spinner-border spinner-border-sm me-2" role="status"></span>
+          {{ isLoading ? 'Sending...' : 'Send reset link' }}
         </button>
       </form>
 
@@ -48,18 +63,54 @@
 </template>
 
 <script setup>
+import axios from 'axios'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 const email = ref('')
+const emailError = ref('')
+const isLoading = ref(false)
+const alertMessage = ref('')
+const alertType = ref('')
 const router = useRouter()
 
-function sendResetLink() {
-  // TODO: gọi API gửi email reset
-  console.log('Sending reset link to', email.value)
-  // Có thể hiển thị thông báo thành công rồi tự động quay về login sau 3s:
-  alert('If that email exists, you’ll receive a reset link shortly.')
-  router.push('/')
+function validateEmail() {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!email.value) {
+    emailError.value = 'Email is required'
+  } else if (!emailRegex.test(email.value)) {
+    emailError.value = 'Please enter a valid email address'
+  } else {
+    emailError.value = ''
+  }
+}
+
+function showAlert(message, type = 'info') {
+  alertMessage.value = message
+  alertType.value = `alert-${type}`
+  setTimeout(() => {
+    alertMessage.value = ''
+  }, 5000)
+}
+
+async function sendResetLink() {
+  if (emailError.value) return
+  
+  isLoading.value = true
+  try {
+    await axios.post('http://localhost:5000/api/auth/forgot-password',
+      { Email: email.value }
+    )
+    showAlert('If that email exists, you\'ll receive a reset link shortly.', 'success')
+    setTimeout(() => {
+      router.push('/login')
+    }, 3000)
+  } catch (error) {
+    const message = error.response?.data?.msg || 'Failed to send reset link. Please try again.'
+    showAlert(message, 'danger')
+  } finally {
+    isLoading.value = false
+  }
 }
 </script>
 
@@ -126,6 +177,9 @@ function sendResetLink() {
   outline: none;
   border-bottom-color: #888;
 }
+.underline-input.is-invalid {
+  border-bottom-color: #dc3545;
+}
 
 /* send button (reuse .btn-login) */
 .btn-login {
@@ -140,8 +194,12 @@ function sendResetLink() {
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
   cursor: pointer;
 }
-.btn-login:hover {
+.btn-login:hover:not(:disabled) {
   opacity: 0.9;
+}
+.btn-login:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 /* footer link */
@@ -156,5 +214,28 @@ function sendResetLink() {
 }
 .card-footer a:hover {
   text-decoration: underline;
+}
+
+/* Alert styles */
+.alert {
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+.alert-info {
+  background-color: #cce5ff;
+  border: 1px solid #b8daff;
+  color: #004085;
+}
+.alert-success {
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+  color: #155724;
+}
+.alert-danger {
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
 }
 </style>

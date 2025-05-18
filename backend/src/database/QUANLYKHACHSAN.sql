@@ -96,10 +96,11 @@ CREATE TABLE Booking (
     SoLuongKhach INT DEFAULT 1 CHECK(SoLuongKhach > 0), -- Số lượng khách
     YeuCauDacBiet NVARCHAR(MAX),                 -- Yêu cầu thêm
     TongTienDuKien DECIMAL(18, 2),               -- Tổng tiền dự kiến (có thể tính toán lại khi checkout)
-    TrangThaiBooking NVARCHAR(50) DEFAULT N'Chờ xác nhận', -- Trạng thái (Chờ xác nhận, Đã xác nhận, Đã nhận phòng, Đã trả phòng, Đã hủy, No-show)
+    TrangThaiBooking NVARCHAR(50) DEFAULT N'Đã xác nhận', -- Trạng thái ( Đã xác nhận, Đã nhận phòng, Đã trả phòng, Đã hủy, Tạm Giữ)
     NgayHuy DATETIME2 NULL,                      -- Ngày hủy (nếu có)
     LyDoHuy NVARCHAR(255) NULL,                  -- Lý do hủy
     TienHoanTra DECIMAL(18, 2) NULL,             -- Số tiền hoàn lại khi hủy (nếu có)
+    ThoiGianGiuCho DATETIME2 NULL,               -- Thời gian giữ chỗ
 
     CONSTRAINT FK_Booking_NguoiDung FOREIGN KEY (MaKH) REFERENCES NguoiDung(MaKH), -- Không nên CASCADE delete user
     CONSTRAINT FK_Booking_KhachSan FOREIGN KEY (MaKS) REFERENCES KhachSan(MaKS),  -- Không nên CASCADE delete KS
