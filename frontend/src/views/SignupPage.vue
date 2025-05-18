@@ -20,7 +20,6 @@
       <!-- Divider -->
       <div class="divider mb-4">
         <span class="line"></span>
-        <small>or sign up with email</small>
         <span class="line"></span>
       </div>
 
