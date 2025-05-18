@@ -47,10 +47,10 @@ exports.getAvailableRoomTypes = async (req, res) => {
 exports.createBooking = async (req, res) => {
     try{
         const{
-            MaKH, MaKS, MaPhong, NgayNhanPhong, NgayTraPhong,
+        MaKS, MaPhong, NgayNhanPhong, NgayTraPhong,
             SoLuongKhach, YeuCauDacBiet, services, promotionCode
         } = req.body;
-
+        const MaKH = req.user.MaKH;
         const pool = await poolPromise;
 
         // Lấy giá phòng từ LoaiPhong
@@ -150,7 +150,7 @@ exports.createBooking = async (req, res) => {
                 .input('SoLuongKhach', sql.Int, SoLuongKhach)
                 .input('YeuCauDacBiet', sql.NVarChar, YeuCauDacBiet || '')
                 .input('TongTienDuKien', sql.Decimal(18, 2), TongTienDuKien)
-                .input('TrangThaiBooking', sql.NVarChar, 'Cho xac nhan')
+                .input('TrangThaiBooking', sql.NVarChar, 'Đã xác nhận')
                 .query(`
                     INSERT INTO Booking
                     (MaKH, MaKS, MaPhong, NgayDat, NgayNhanPhong, NgayTraPhong, SoLuongKhach, YeuCauDacBiet, TongTienDuKien, TrangThaiBooking)
