@@ -1,5 +1,4 @@
 <template>
-      <!-- HEADER -->
     <header class="navbar navbar-expand-lg navbar-light bg-transparent position-absolute w-100 px-4">
       <button class="btn btn-link p-0 d-flex text-decoration-none align-items-center text-light">
         <i class="bi bi-list fs-2 me-2"></i>
