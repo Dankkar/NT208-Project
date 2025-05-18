@@ -1,4 +1,4 @@
-<!-- src/views/HomePage.vue -->
+  <!-- src/views/HomePage.vue -->
 <template>
   <div class="home-page">
     <!-- HEADER -->
@@ -87,7 +87,7 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, computed, onMounted, onUnmounted } from 'vue'
 import Hotel1 from '@/assets/mountain.jpg'
 import Hotel2 from '@/assets/mountain.jpg'
 import Hotel3 from '@/assets/mountain.jpg'
@@ -109,6 +109,35 @@ const featured = ref([
   { id: 2, name: 'Beachside Hotel',       location: 'Maldives',          price: '$320', image: Hotel2 },
   { id: 3, name: 'City Lights Inn',       location: 'New York, USA',     price: '$180', image: Hotel3 }
 ])
+
+// SLIDER state
+const slides = [Hotel1, Hotel2, Hotel3]
+const current = ref(0)
+
+// chuyển slide tự động mỗi 5s
+let timer = null
+onMounted(() => {
+  timer = setInterval(() => {
+    current.value = (current.value + 1) % slides.length
+  }, 5000)
+})
+onUnmounted(() => clearInterval(timer))
+
+// tính style cho hero
+const heroStyle = computed(() => ({
+  backgroundImage: `url(${slides[current.value]})`,
+  backgroundSize:    'cover',
+  backgroundPosition:'center',
+  transition:        'background-image 0.8s ease-in-out'
+}))
+
+// prev/next handlers
+function prev() {
+  current.value = (current.value - 1 + slides.length) % slides.length
+}
+function next() {
+  current.value = (current.value + 1) % slides.length
+}
 </script>
 
 <style scoped>
