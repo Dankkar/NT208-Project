@@ -21,8 +21,10 @@ CREATE TABLE KhachSan (
     MaKS INT PRIMARY KEY IDENTITY(1,1),         -- Mã Khách sạn (PK)
     TenKS NVARCHAR(150) NOT NULL,               -- Tên khách sạn
     DiaChi NVARCHAR(255) NOT NULL,              -- Địa chỉ
-	HangSao DECIMAL(2,1),						-- Đánh giá số sao
-	LoaiHinh NVARCHAR(100),						-- Loại hình: Khách Sạn, Resort,..
+    Latitude DECIMAL(10, 8) NULL,               -- Vĩ độ cho Google Maps
+    Longitude DECIMAL(11, 8) NULL,              -- Kinh độ cho Google Maps
+    HangSao DECIMAL(2,1),                       -- Đánh giá số sao
+    LoaiHinh NVARCHAR(100),                     -- Loại hình: Khách Sạn, Resort,..
     MoTaCoSoVatChat NVARCHAR(MAX),              -- Mô tả cơ sở vật chất
     QuyDinh NVARCHAR(MAX),                      -- Quy định khách sạn
     MoTaChung NVARCHAR(MAX),                    -- Mô tả chung
