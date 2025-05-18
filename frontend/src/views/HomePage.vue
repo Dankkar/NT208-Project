@@ -1,10 +1,8 @@
 <!-- src/views/HomePage.vue -->
 <template>
   <div class="home-page">
-    <Navbar/>
-
-
-    <!-- HERO + SEARCH -->
+    <NavbarLogin style="position: fixed !important;" />
+    <!-- HERO + SEARCH -->  
     <section class="hero position-relative text-center text-white d-flex align-items-center">
       <div class="overlay"></div>
       <div class="container">
@@ -33,7 +31,7 @@
     </section>
 
     <!-- FEATURED -->
-    <section class="featured py-5">
+    <!-- <section class="featured py-5">
       <div class="container">
         <h2 class="mb-4">Featured Properties</h2>
         <div class="row">
@@ -49,7 +47,8 @@
           </div>
         </div>
       </div>
-    </section>
+    </section> -->
+    <Feature/>
 
     <!-- Post -->
         <Post title="Title" text="This is some text"/>
@@ -59,9 +58,11 @@
 </template>
 
 <script setup>
-import Navbar from '../components/Navbar-login.vue'
+import NavbarLogin from '../components/Navbar-login.vue'
 import Post from '../components/Post.vue'
 import Footer from '../components/Footer.vue'
+import Feature from '../components/Feature.vue'
+
 import { reactive, ref } from 'vue'
 import Hotel1 from '@/assets/mountain.jpg'
 import Hotel2 from '@/assets/mountain.jpg'
