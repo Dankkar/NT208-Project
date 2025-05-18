@@ -1,7 +1,6 @@
 // backend/src/controllers/bookingController.js
 
-const sql = require('mssql');
-const { poolPromise } = require('../database/db');
+const { poolPromise, sql } = require('../database/db');
 const { sendReviewRequestEmail, sendBookingConfirmation } = require('../utils/emailService');
 const PriceCalculationService = require('../services/priceCalculationService');
 const EmailService = require('../services/emailService');
@@ -31,6 +30,10 @@ exports.getAvailableRoomTypes = async (req, res) => {
                     AND (
                         b.NgayNhanPhong <= @NgayTraPhong
                         AND b.NgayTraPhong >= @NgayNhanPhong
+                    )
+                    AND (
+                        b.TrangThaiBooking != N'Tạm Giữ'
+                        OR DATEDIFF(MINUTE, b.ThoiGianGiuCho, GETDATE()) <= 15
                     )
                 )
                 GROUP BY lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo
@@ -434,6 +437,46 @@ exports.getAllBookings = async (req, res) => {
     }
     catch (err) {
         console.error('Lỗi getAllBookings:', err);
+        res.status(500).json({error: 'Lỗi server'});
+    }
+};
+
+//API Hold booking
+exports.holdBooking = async (req, res) => {
+    try {
+        const {
+            MaKH, MaKS, MaPhong,
+            NgayNhanPhong, NgayTraPhong,
+            SoLuongKhach, YeuCauDacBiet,
+            TongTienDuKien
+        } = req.body;
+
+        const pool = await poolPromise;
+
+        const result = await pool.request()
+            .input('MaKH', sql.Int, MaKH)
+            .input('MaKS', sql.Int, MaKS)
+            .input('MaPhong', sql.Int, MaPhong)
+            .input('NgayNhanPhong', sql.Date, NgayNhanPhong)
+            .input('NgayTraPhong', sql.Date, NgayTraPhong)
+            .input('SoLuongKhach', sql.Int, SoLuongKhach)
+            .input('YeuCauDacBiet', sql.NVarChar, YeuCauDacBiet || '')
+            .input('TongTienDuKien', sql.Decimal(18, 2), TongTienDuKien)
+            .input('TrangThaiBooking', sql.NVarChar, 'Tạm giữ')
+            .query(`
+                INSERT INTO Booking
+                (MaKH, MaKS, MaPhong, NgayNhanPhong, NgayTraPhong, SoLuongKhach, YeuCauDacBiet, TongTienDuKien, TrangThaiBooking)
+                OUTPUT INSERTED.MaDat
+                VALUES
+                (@MaKH, @MaKS, @MaPhong, @NgayNhanPhong, @NgayTraPhong, @SoLuongKhach, @YeuCauDacBiet, @TongTienDuKien, @TrangThaiBooking)
+            `);
+
+        const MaDat = result.recordset[0].MaDat;
+
+        res.status(201).json({success: true, MaDat});
+    }
+    catch(err){
+        console.error('Lỗi holdBooking:', err);
         res.status(500).json({error: 'Lỗi server'});
     }
 };

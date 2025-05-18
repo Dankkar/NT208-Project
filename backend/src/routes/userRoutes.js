@@ -4,6 +4,7 @@ const {
     getCurrentUser,
     getAllUsers,
     updateUser,
+    updateUserByAdmin,
     deleteUser
 } = require('../controllers/userController');
 

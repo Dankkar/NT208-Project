@@ -1,11 +1,13 @@
 const poolPromise = require('../database/db');
+const sql = require('mssql');
 
 //Lay thong tin user hien tai (dua vao JWT)
-const getCurrentUser = async (req, res) => {
+exports.getCurrentUser = async (req, res) => {
     try {
         const MaKH = req.user.MaKH;
         const pool = await poolPromise;
         const result = await pool.request()
+            .input('MaKH', sql.Int, MaKH)
             .query(`SELECT MaKH, HoTen, Email, SDT, CCCD, NgaySinh, GioiTinh FROM NguoiDung WHERE MaKH = @MaKH`);
         if (result.recordset.length === 0) {
             return res.status(404).json({
@@ -39,7 +41,7 @@ exports.getAllUsers = async (req, res) => {
 
 //Cap nhat thong tin user
 exports.updateUser = async (req, res) => {
-    const MaKH = req.params.MaKH;
+    const MaKH = req.user.MaKH;
     const { HoTen, Email, SDT, CCCD, NgaySinh, GioiTinh } = req.body;
     try {
         const pool = await poolPromise;
@@ -56,7 +58,7 @@ exports.updateUser = async (req, res) => {
                 SET HoTen = @HoTen, Email = @Email, SDT = @SDT, CCCD = @CCCD, NgaySinh = @NgaySinh, GioiTinh = @GioiTinh
                 WHERE MaKH = @MaKH
             `);
-        res.json.status(200).json({
+        res.status(200).json({
             message: 'Cập nhật thông tin người dùng thành công'
         });
     } catch (error) {
@@ -66,6 +68,7 @@ exports.updateUser = async (req, res) => {
         });
     }
 };
+
 exports.updateUserByAdmin = async (req, res) => {
     const user = req.user;
     const MaKH = req.params.MaKH;
@@ -89,7 +92,7 @@ exports.updateUserByAdmin = async (req, res) => {
         if (result.rowsAffected[0] === 0) {
             return res.status(404).json({ message: 'Không tìm thấy người dùng để cập nhật' });
         }
-        res.json.status(200).json({
+        res.status(200).json({
             message: 'Cập nhật thông tin người dùng thành công'
         });
     } catch (error) {
@@ -98,7 +101,7 @@ exports.updateUserByAdmin = async (req, res) => {
             message: 'Lỗi server'
         });
     }
-}
+};
 
 //Xoa user
 exports.deleteUser = async (req, res) => {
@@ -113,7 +116,7 @@ exports.deleteUser = async (req, res) => {
         if (result.rowsAffected[0] === 0) {
             return res.status(404).json({ message: 'Không tìm thấy người dùng' });
         }
-        res.json.status(200).json({
+        res.status(200).json({
             message: 'Xóa người dùng thành công'
         });
     } catch (error) {
