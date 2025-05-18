@@ -154,13 +154,12 @@ exports.login = async (req, res) => {
   }
 };
 
-
-
-
 //API quen mat khau
 exports.forgotPassword = async (req, res) => {
   const {Email} = req.body;
   try{
+
+
     const pool = await poolPromise;
 
     // Kiem tra email ton tai
@@ -222,7 +221,7 @@ exports.resetPassword = async (req, res) => {
   }
   catch(err){
     console.error('AuthController.resetPassword error:', err);
-    res.status(400).json({  msg: 'Token loi hoac da het han '});
+    res.status(400).json({  message: 'Token loi hoac da het han'});
   }
 }
 
@@ -258,10 +257,9 @@ exports.deleteUser = async (req, res) => {
   res.status(200).json({ message: 'Xóa tài khoản thành công' });
 }
 
-
 exports.googleLogin = async (req, res) => {
   const { token } = req.body;
-
+  console.log('GoogleLogin token:', token);
   try 
   {
     const ticket = await client.verifyIdToken({
@@ -304,7 +302,7 @@ exports.googleLogin = async (req, res) => {
         role = userResult.recordset[0].LoaiUser;
       }
 
-      const jwttoken = jwt.sign(
+      const jwtToken = jwt.sign(
         {MaKH, Email: email, role},
         process.env.JWT_SECRET,
         {expiresIn: '1h'}
@@ -316,7 +314,7 @@ exports.googleLogin = async (req, res) => {
         sameSite: 'strict',
         maxAge: 1 * 60 * 60 * 1000,
       });
-
+    console.log('GoogleLogin success:', email);
     res.status(200).json({ message: 'Đăng nhập thành công' });
   }
   catch(err)

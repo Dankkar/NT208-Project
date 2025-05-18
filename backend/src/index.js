@@ -9,7 +9,7 @@ const app = express();
 const cors = require('cors');
 const cookieParser = require('cookie-parser');  
 app.use(cors({
-  origin: 'http://localhost:5000', // Sửa lại cho đúng với FE thật
+  origin: 'http://localhost:3000', // Sửa lại cho đúng với FE thật
   credentials: true               // ✅ Cho phép gửi cookie
 }));
 app.use(express.urlencoded({ extended: true })); // ✅ Đọc URL-encoded body

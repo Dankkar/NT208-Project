@@ -16,31 +16,31 @@ const router = express.Router();
 // Dang ky
 router.post(
     '/register',
-    [
-        check('HoTen', 'Họ tên không được để trống').notEmpty(),
-        check('Email', 'Email không hợp lệ').isEmail(),
-        check('MatKhau', 'Mật khẩu tối thiểu 8 ký tự').isLength({ min: 8 }),
-        check('SDT', 'Số điện thoại không hợp lệ')
-            .matches(/^(84|0[3|5|7|8|9])+([0-9]{8})\b/)
-            .withMessage('Số điện thoại phải đúng định dạng Việt Nam'),
-        check('CCCD', 'CCCD không hợp lệ')
-            .matches(/^[0-9]{12}$/)
-            .withMessage('CCCD phải có 12 chữ số'),
-        check('NgaySinh', 'Ngày sinh không hợp lệ')
-            .optional()
-            .isDate()
-            .withMessage('Ngày sinh phải đúng định dạng YYYY-MM-DD'),
-        check('GioiTinh', 'Giới tính không hợp lệ')
-            .optional()
-            .isIn(['Nam', 'Nữ', 'Khác'])
-            .withMessage('Giới tính phải là Nam, Nữ hoặc Khác')
-    ],
-    (req, res, next) => {
-        const errs = validationResult(req);
-        if(!errs.isEmpty())
-            return res.status(400).json({errors: errs.array()});
-        next();
-    },
+    // [
+    //     check('HoTen', 'Họ tên không được để trống').notEmpty(),
+    //     check('Email', 'Email không hợp lệ').isEmail(),
+    //     check('MatKhau', 'Mật khẩu tối thiểu 8 ký tự').isLength({ min: 8 }),
+    //     check('SDT', 'Số điện thoại không hợp lệ')
+    //         .matches(/^(84|0[3|5|7|8|9])+([0-9]{8})\b/)
+    //         .withMessage('Số điện thoại phải đúng định dạng Việt Nam'),
+    //     check('CCCD', 'CCCD không hợp lệ')
+    //         .matches(/^[0-9]{12}$/)
+    //         .withMessage('CCCD phải có 12 chữ số'),
+    //     check('NgaySinh', 'Ngày sinh không hợp lệ')
+    //         .optional()
+    //         .isDate()
+    //         .withMessage('Ngày sinh phải đúng định dạng YYYY-MM-DD'),
+    //     check('GioiTinh', 'Giới tính không hợp lệ')
+    //         .optional()
+    //         .isIn(['Nam', 'Nữ', 'Khác'])
+    //         .withMessage('Giới tính phải là Nam, Nữ hoặc Khác')
+    // ],
+    // (req, res, next) => {
+    //     const errs = validationResult(req);
+    //     if(!errs.isEmpty())
+    //         return res.status(400).json({errors: errs.array()});
+    //     next();
+    // },
     register
 );
 
@@ -90,7 +90,7 @@ router.put(
 );
 
 router.post('/logout', logout);
-router.post('/auth/google', googleLogin);
+router.post('/google', googleLogin);
 
 
 

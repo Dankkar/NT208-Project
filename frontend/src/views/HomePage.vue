@@ -1,7 +1,7 @@
 <!-- src/views/HomePage.vue -->
 <template>
   <div class="home-page">
-    <Navbar/>
+    <Navbarlogin/>
 
 
     <!-- HERO + SEARCH -->
@@ -59,7 +59,7 @@
 </template>
 
 <script setup>
-import Navbar from '../components/Navbar-login.vue'
+import Navbarlogin from '../components/Navbar-login.vue'
 import Post from '../components/Post.vue'
 import Footer from '../components/Footer.vue'
 import { reactive, ref } from 'vue'
