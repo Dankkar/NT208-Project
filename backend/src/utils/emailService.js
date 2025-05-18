@@ -58,3 +58,24 @@ exports.sendBookingConfirmation = async (booking) => {
         throw new Error(`Lỗi khi gửi email: ${error.message}`);
     }
 };
+
+exports.sendNewBookingToManager = async (managerEmail, hotelName, maDat) => {
+    const mailOptions = {
+        from: `"Hotel Booking" <${process.env.SMTP_USER}>`,
+        to: managerEmail,
+        subject: `Đơn đặt phòng mới tại ${hotelName}`,
+        html: `
+            <h2>Thông báo đơn đặt phòng mới</h2>
+            <p>Khách vừa hoàn tất thanh toán và đặt phòng tại <strong>${hotelName}</strong>.</p>
+            <p>Mã đơn đặt phòng: <strong>#${maDat}</strong></p>
+            <p>Vui lòng truy cập dashboard để xác nhận và chuẩn bị phòng.</p>
+        `
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log(`Đã gửi thông báo cho quản lý khách sạn: ${managerEmail}`);
+    } catch (error) {
+        console.error('Lỗi khi gửi email cho quản lý:', error);
+    }
+};
