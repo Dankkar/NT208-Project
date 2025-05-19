@@ -26,26 +26,16 @@ const bookingRoutes = require('./routes/bookingRoutes')
 const hotelRoutes = require('./routes/hotelRoutes');
 const roomTypeRoutes = require('./routes/roomTypeRoutes');
 const adminRoutes = require('./routes/adminRoutes');
-<<<<<<< HEAD
-const userRoutes = require('./routes/userRoutes');
-const paymentRoutes = require('./routes/paymentRoutes');
-=======
 const mapRoutes = require('./routes/mapRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
->>>>>>> develop
 
 app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/hotels', hotelRoutes);
 app.use('/api/roomTypes', roomTypeRoutes);
 app.use('/api/admin', adminRoutes);
-<<<<<<< HEAD
-app.use('/api/users', userRoutes);
-app.use('/api/payments', paymentRoutes);
-=======
 app.use('/api/maps', mapRoutes);
 app.use('/api/reviews', reviewRoutes);
->>>>>>> develop
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
