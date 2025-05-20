@@ -1,6 +1,6 @@
 const express = require('express');
-const router = express.router();
-const { authenticateToken, isAdmin, isStaff } = require('../middleware/auth');
+const router = express.Router();
+const { authenticateToken, isAdmin, isStaff } = require('../middlewares/auth');
 const {
     getAllServices,
     getServiceById,
