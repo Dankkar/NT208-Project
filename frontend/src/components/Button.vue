@@ -36,7 +36,6 @@ const props = defineProps({
   textColor:   { type: String,  default: '#fff' },
   fontSize:    { type: String,  default: '16px' },
   colorHover:  { type: String,  default: 'black' },
-  bgHover: {type: String, default: 'white'},
 })
 </script>
 

@@ -1,4 +1,4 @@
-const {poolPromise} = require('../database/db');
+const {poolPromise, sql} = require('../database/db');
 
 exports.createHotel = async (req, res) => {
     const {
@@ -175,6 +175,37 @@ exports.getHotelsByNguoiQuanLy = async (req, res) => {
     {
         console.error('Lỗi getHotelByNguoiQuanLy:', err);
         res.status(500).json({error: 'Lỗi server'});
+    }
+};
+
+// Lấy danh sách khách sạn nổi bật
+exports.getFeaturedHotels = async (req, res) => {
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request().query(`
+            SELECT TOP 6
+                ks.MaKS,
+                ks.TenKS,
+                ks.DiaChi,
+                ks.HangSao,
+                MIN(lp.GiaCoSo) as GiaThapNhat
+            FROM KhachSan ks
+            LEFT JOIN Phong p ON ks.MaKS = p.MaKS
+            LEFT JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
+            GROUP BY ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao
+            ORDER BY ks.HangSao DESC
+        `);
+
+        res.json({
+            success: true,
+            data: result.recordset
+        });
+    } catch (error) {
+        console.error('Lỗi getFeaturedHotels:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi server khi lấy danh sách khách sạn nổi bật'
+        });
     }
 };
 

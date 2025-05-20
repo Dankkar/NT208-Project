@@ -151,10 +151,10 @@ async function signup() {
       HoTen: email.value.split('@')[0], // hoặc lấy từ input tên nếu có
       Email: email.value,
       MatKhau: password.value,
-      SDT: '0123456789', // hoặc lấy từ input nếu có
+      SDT: '0123456798', // hoặc lấy từ input nếu có
       NgaySinh: null,    // hoặc lấy từ input nếu có
       GioiTinh: null,    // hoặc lấy từ input nếu có
-      CCCD: '123456789012' // hoặc lấy từ input nếu có
+      CCCD: '123456789312' // hoặc lấy từ input nếu có
     }, {
       withCredentials: true
     })

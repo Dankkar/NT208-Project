@@ -1,10 +1,10 @@
-const poolPromise = require('../database/db');
-const sql = require('mssql');
+const { poolPromise, sql } = require('../database/db');
 
 //Lay thong tin user hien tai (dua vao JWT)
 exports.getCurrentUser = async (req, res) => {
     try {
         const MaKH = req.user.MaKH;
+        console.log('MaKH:', req.user);
         const pool = await poolPromise;
         const result = await pool.request()
             .input('MaKH', sql.Int, MaKH)

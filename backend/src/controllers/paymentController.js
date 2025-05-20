@@ -188,3 +188,133 @@ exports.vnpayIpn = async (req, res) => {
         res.status(400).json({ RspCode: '97', Message: 'Checksum sai' });
     }
 };
+
+exports.getPaymentHistory = async (req, res) => {
+    try {
+        const { MaKH } = req.params;
+        const pool = await poolPromise;
+        
+        const result = await pool.request()
+            .input('MaKH', sql.Int, MaKH)
+            .query(`
+                SELECT 
+                    hd.MaHD,
+                    hd.NgayLapHD,
+                    hd.TongTienThanhToan as SoTien,
+                    hd.TrangThaiThanhToan as TrangThai,
+                    hd.HinhThucTT as PhuongThucThanhToan,
+                    hd.NgayThanhToan,
+                    b.MaDat,
+                    ks.TenKS,
+                    p.SoPhong,
+                    lp.TenLoaiPhong
+                FROM HoaDon hd
+                JOIN Booking b ON hd.MaDat = b.MaDat
+                JOIN KhachSan ks ON b.MaKS = ks.MaKS
+                JOIN Phong p ON b.MaPhong = p.MaPhong
+                JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
+                WHERE hd.MaKH = @MaKH
+                ORDER BY hd.NgayLapHD DESC
+            `);
+
+        res.json({
+            success: true,
+            data: result.recordset
+        });
+    } catch (error) {
+        console.error('Error fetching payment history:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi server'
+        });
+    }
+};
+
+exports.getPaymentDetails = async (req, res) => {
+    try {
+        const { MaHD } = req.params;
+        
+        // Validate MaHD parameter
+        if (!MaHD || isNaN(parseInt(MaHD))) {
+            return res.status(400).json({
+                success: false,
+                message: 'Mã hóa đơn không hợp lệ'
+            });
+        }
+
+        const pool = await poolPromise;
+        
+        // First get the invoice details
+        const result = await pool.request()
+            .input('MaHD', sql.Int, parseInt(MaHD))
+            .query(`
+                SELECT 
+                    hd.*,
+                    b.MaDat,
+                    b.NgayNhanPhong,
+                    b.NgayTraPhong,
+                    b.SoLuongKhach,
+                    ks.TenKS,
+                    p.SoPhong,
+                    lp.TenLoaiPhong,
+                    chg.TenCauHinh as CauHinhGiuong,
+                    chg.SoGiuongDoi,
+                    chg.SoGiuongDon,
+                    nd.HoTen as TenKhachHang,
+                    nd.Email,
+                    nd.SDT,
+                    km.MaCodeKM,
+                    km.TenKM,
+                    km.LoaiKM,
+                    km.GiaTriKM
+                FROM HoaDon hd
+                JOIN Booking b ON hd.MaDat = b.MaDat
+                JOIN KhachSan ks ON b.MaKS = ks.MaKS
+                JOIN Phong p ON b.MaPhong = p.MaPhong
+                JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
+                JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
+                JOIN NguoiDung nd ON hd.MaKH = nd.MaKH
+                LEFT JOIN KhuyenMai km ON hd.MaKM = km.MaKM
+                WHERE hd.MaHD = @MaHD
+            `);
+
+        if (result.recordset.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Không tìm thấy thông tin thanh toán'
+            });
+        }
+
+        const invoiceData = result.recordset[0];
+
+        // Only query for services if we have a valid MaDat
+        let serviceData = [];
+        if (invoiceData.MaDat) {
+            const serviceResult = await pool.request()
+                .input('MaDat', sql.Int, parseInt(invoiceData.MaDat))
+                .query(`
+                    SELECT 
+                        sdv.*,
+                        ldv.TenLoaiDV
+                    FROM SuDungDichVu sdv
+                    JOIN LoaiDichVu ldv ON sdv.MaLoaiDV = ldv.MaLoaiDV
+                    WHERE sdv.MaDat = @MaDat
+                `);
+            serviceData = serviceResult.recordset;
+        }
+
+        res.json({
+            success: true,
+            data: {
+                ...invoiceData,
+                services: serviceData
+            }
+        });
+    } catch (error) {
+        console.error('Error getting payment details:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi khi lấy thông tin thanh toán'
+        });
+    }
+};

@@ -34,15 +34,65 @@
 </template>
 
 <script setup>
-  import Button from './Button.vue';
-  import MenuButton from './MenuButton.vue';
+import { ref, onMounted, onUnmounted } from 'vue'
+import Button from './Button.vue'
+import MenuButton from './MenuButton.vue'
+const showBg = ref(false)
+const props = defineProps({
+  bgFixed: { type: Boolean, default: false }
+})
+
+const isMobile = ref(false)
+const checkMobile = () => {
+  isMobile.value = window.innerWidth < 992
+}
+const baseItems = [
+  'Stay', 'Shop', 'Dine', 'See & Do'
+]
+const fullItems = [
+  'Stay', 
+  'Shop', 
+  'Dine', 
+  'See & Do',
+  'Ratings',
+  'Room Booking',
+  'My Account',
+  'Reserve'
+]
+
+const handleScroll = () => {
+  const heroHeight = window.innerHeight * 0.2 // hoặc 0.6 nếu hero thấp hơn
+  showBg.value = window.scrollY > heroHeight
+  console.log('showBg.value', showBg.value)
+}
+
+onMounted(() => {
+  checkMobile()
+  window.addEventListener('scroll', handleScroll)
+  window.addEventListener('resize', checkMobile)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
+  window.removeEventListener('resize', checkMobile)
+})
 </script>
-  
+
 <style scoped>
+<<<<<<< HEAD
 .btn-hover-text:hover {
   color: black !important;
   }
   /* Ẩn caret mặc định được Bootstrap tự thêm */
+=======
+header.navbar {
+  transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.7s;
+}
+.nav-link, .navbar-toggler {
+  transition: color 0.4s;
+}
+/* Ẩn caret mặc định được Bootstrap tự thêm */
+>>>>>>> 3e14644b0a3bbea3cfaf0a6b0709301848ee26b6
 .nav-link.dropdown-toggle::after {
   display: none !important;
 }

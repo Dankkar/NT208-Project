@@ -34,26 +34,29 @@
    <section class="featured py-5">
       <div class="container">
         <h2 class="mb-4">Featured Properties</h2>
-        <div class="row">
-          <div class="col-md-4" v-for="hotel in featured" :key="hotel.id">
-            <div class="card mb-4 shadow-sm">
-              <img :src="hotel.image" class="card-img-top" :alt="hotel.name" />
-              <div class="card-body">
-                <h5 class="card-title">{{ hotel.name }}</h5>
-                <p class="card-text text-muted">{{ hotel.location }}</p>
-                <p class="fw-bold">{{ hotel.price }}/night</p>
-              </div>
-            </div>
+        <div v-if="loading" class="text-center">
+          <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
           </div>
+        </div>
+        <div v-else-if="error" class="alert alert-danger">
+          {{ error }}
+        </div>
+        <div v-else>
+          <FeaturedCarousel :items="featuredHotels">
+            <template #default="{ item: hotel }">
+              <HotelCard :hotel="hotel" />
+            </template>
+          </FeaturedCarousel>
         </div>
       </div>
     </section>
     <Feature/>
 
     <!-- Post -->
-        <Post title="Title" text="This is some text"/>
+    <Post title="Title" text="This is some text"/>
     <!-- Footer -->
-     <Footer/>
+    <Footer/>
   </div>
 </template>
 
@@ -62,11 +65,9 @@ import { reactive, ref, computed, onMounted, onUnmounted } from 'vue'
 import NavbarLogin from '../components/Navbar-login.vue'
 import Post from '../components/Post.vue'
 import Footer from '../components/Footer.vue'
-import Feature from '../components/Feature.vue'
-
-import Hotel1 from '@/assets/mountain.jpg'
-import Hotel2 from '@/assets/mountain1.jpg'
-import Hotel3 from '@/assets/mountain2.jpg'
+import FeaturedCarousel from '../components/FeaturedCarousel.vue'
+import HotelCard from '../components/HotelCard.vue'
+import hotelService from '../services/hotelService'
 
 const search = reactive({
   location: '',
@@ -75,46 +76,38 @@ const search = reactive({
   guests: ''
 })
 
+const featuredHotels = ref([])
+const loading = ref(true)
+const error = ref(null)
+
 function onSearch() {
   console.log('Searching with', { ...search })
   // TODO: chuyển đến trang kết quả search
 }
 
-const featured = ref([
-  { id: 1, name: 'Grand Mountain Resort', location: 'Alps, Switzerland', price: '$250', image: Hotel1 },
-  { id: 2, name: 'Beachside Hotel',       location: 'Maldives',          price: '$320', image: Hotel2 },
-  { id: 3, name: 'City Lights Inn',       location: 'New York, USA',     price: '$180', image: Hotel3 }
-])
+function formatPrice(price) {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND'
+  }).format(price)
+}
 
-// SLIDER state
-const slides = [Hotel1, Hotel2, Hotel3]
-const current = ref(0)
+async function loadFeaturedHotels() {
+  try {
+    loading.value = true
+    const response = await hotelService.getFeaturedHotels()
+    featuredHotels.value = response.data
+  } catch (err) {
+    error.value = 'Không thể tải danh sách khách sạn. Vui lòng thử lại sau.'
+    console.error('Error loading featured hotels:', err)
+  } finally {
+    loading.value = false
+  }
+}
 
-// chuyển slide tự động mỗi 5s
-let timer = null
 onMounted(() => {
-  timer = setInterval(() => {
-    current.value = (current.value + 1) % slides.length
-  }, 5000)
+  loadFeaturedHotels()
 })
-onUnmounted(() => clearInterval(timer))
-
-// tính style cho hero
-const heroStyle = computed(() => ({
-  backgroundImage: `url(${slides[current.value]})`,
-  backgroundSize:    'cover',
-  backgroundPosition:'center',
-  transition:        'background-image 0.8s ease-in-out'
-}))
-
-// prev/next handlers
-function prev() {
-  current.value = (current.value - 1 + slides.length) % slides.length
-}
-
-function next() {
-  current.value = (current.value + 1) % slides.length
-}
 </script>
 
 <style scoped>
@@ -122,7 +115,7 @@ function next() {
 
 /* HERO */
 .hero {
-  height: 60vh;
+  height: 85vh;
   background: url('@/assets/mountain.jpg') no-repeat center/cover;
   position: relative;
 }
@@ -149,5 +142,9 @@ function next() {
 .home-page .navbar {
   position: absolute;
   z-index: 1000;
+}
+
+.rating {
+  font-size: 0.9rem;
 }
 </style>
