@@ -31,7 +31,7 @@
     </section>
 
     <!-- FEATURED -->
-    <!-- <section class="featured py-5">
+    <section class="featured py-5">
       <div class="container">
         <h2 class="mb-4">Featured Properties</h2>
         <div v-if="loading" class="text-center">
@@ -50,7 +50,7 @@
           </FeaturedCarousel>
         </div>
       </div>
-    </section> -->
+    </section> 
     <Feature/>
 
     <!-- Post -->
