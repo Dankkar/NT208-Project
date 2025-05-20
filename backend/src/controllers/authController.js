@@ -276,9 +276,9 @@ exports.googleLogin = async (req, res) => {
     //Kiem tra email da ton tai
     const userResult = await pool.request()
       .input('Email', sql.NVarChar, email)
-      .query(`SELECT MaKH FROM ${schema}.NguoiDung WHERE Email = @Email`);
+      .query(`SELECT MaKH, LoaiUser, HoTen FROM NguoiDung WHERE Email = @Email`);
 
-      let MaKH, role;
+      let MaKH, role, HoTen;
 
       if(userResult.recordset.length === 0)
       {
@@ -297,9 +297,11 @@ exports.googleLogin = async (req, res) => {
           role = 'KhachHang';
       }
       else
-      {
-        MaKH = userResult.recordset[0].MaKH;
-        role = userResult.recordset[0].LoaiUser;
+      { 
+        const user = userResult.recordset[0];
+        HoTen = user.Hoten;
+        MaKH = user.MaKH;
+        role = user.LoaiUser;
       }
 
       const jwtToken = jwt.sign(

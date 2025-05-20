@@ -1,6 +1,5 @@
 const { poolPromise, sql } = require('../database/db');
 
-
 //Lay thong tin user hien tai (dua vao JWT)
 exports.getCurrentUser = async (req, res) => {
     try {

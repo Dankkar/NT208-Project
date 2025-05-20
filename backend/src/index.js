@@ -26,19 +26,26 @@ const bookingRoutes = require('./routes/bookingRoutes')
 const hotelRoutes = require('./routes/hotelRoutes');
 const roomTypeRoutes = require('./routes/roomTypeRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const userRoutes = require('./routes/userRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
+const simplePaymentRoutes = require('./routes/simplePaymentRoutes');
 const mapRoutes = require('./routes/mapRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
-const userRoutes = require('./routes/userRoutes'); 
+const priceRoutes = require('./routes/priceRoutes');
+const serviceRoutes = require('./routes/serviceRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/hotels', hotelRoutes);
 app.use('/api/roomTypes', roomTypeRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/simple-payments', simplePaymentRoutes);
 app.use('/api/maps', mapRoutes);
 app.use('/api/reviews', reviewRoutes);
-app.use('/api/users', userRoutes);
-
+app.use('/api/prices', priceRoutes);
+app.use('/api/services', serviceRoutes);
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

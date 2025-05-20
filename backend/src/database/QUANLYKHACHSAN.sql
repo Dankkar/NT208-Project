@@ -45,18 +45,37 @@ CREATE TABLE LoaiPhong (
     CONSTRAINT FK_LoaiPhong_KhachSan FOREIGN KEY (MaKS) REFERENCES KhachSan(MaKS) ON DELETE CASCADE -- Nếu KS bị xóa, các loại phòng cũng bị xóa
 );
 
+-- Bảng Cấu Hình Giường (Bed Configuration)
+CREATE TABLE CauHinhGiuong (
+    MaCauHinhGiuong INT PRIMARY KEY IDENTITY(1,1),  -- Mã cấu hình giường (PK)
+    TenCauHinh NVARCHAR(100) NOT NULL,              -- Tên cấu hình (VD: "1 giường đôi", "1 giường đôi + 1 giường đơn")
+    SoGiuongDoi INT DEFAULT 0,                      -- Số lượng giường đôi
+    SoGiuongDon INT DEFAULT 0,                      -- Số lượng giường đơn
+    CONSTRAINT CK_CauHinhGiuong_SoGiuong CHECK (SoGiuongDoi >= 0 AND SoGiuongDon >= 0 AND (SoGiuongDoi + SoGiuongDon) > 0)
+);
+
 -- Bảng Phòng (Room) - Chỉ chứa thông tin phòng cụ thể
 CREATE TABLE Phong (
     MaPhong INT PRIMARY KEY IDENTITY(1,1),       -- Mã Phòng (PK)
     MaKS INT NOT NULL,                          -- Mã Khách sạn (FK)
     MaLoaiPhong INT NOT NULL,                   -- Mã Loại phòng (FK)
+    MaCauHinhGiuong INT NOT NULL,               -- Mã cấu hình giường (FK)
     SoPhong NVARCHAR(20) NOT NULL,              -- Số phòng (VD: '101', 'P205', C308, TVQ36)
     Tang INT NULL,                              -- Phòng ở tầng mấy (Optional)
     TrangThaiPhong NVARCHAR(50) DEFAULT N'Sẵn sàng', -- Trạng thái (Sẵn sàng, Đang ở, Đang dọn, Bảo trì)
-    CONSTRAINT FK_Phong_KhachSan FOREIGN KEY (MaKS) REFERENCES KhachSan(MaKS), -- Không CASCADE, nếu KS xóa thì cần xử lý phòng
-    CONSTRAINT FK_Phong_LoaiPhong FOREIGN KEY (MaLoaiPhong) REFERENCES LoaiPhong(MaLoaiPhong), -- Không CASCADE, nếu loại phòng xóa cần xử lý phòng
-    CONSTRAINT UQ_Phong_SoPhong_MaKS UNIQUE (MaKS, SoPhong) -- Số phòng là duy nhất trong một khách sạn
+    CONSTRAINT FK_Phong_KhachSan FOREIGN KEY (MaKS) REFERENCES KhachSan(MaKS),
+    CONSTRAINT FK_Phong_LoaiPhong FOREIGN KEY (MaLoaiPhong) REFERENCES LoaiPhong(MaLoaiPhong),
+    CONSTRAINT FK_Phong_CauHinhGiuong FOREIGN KEY (MaCauHinhGiuong) REFERENCES CauHinhGiuong(MaCauHinhGiuong),
+    CONSTRAINT UQ_Phong_SoPhong_MaKS UNIQUE (MaKS, SoPhong)
 );
+
+-- Insert some common bed configurations
+INSERT INTO CauHinhGiuong (TenCauHinh, SoGiuongDoi, SoGiuongDon) VALUES
+(N'1 giường đôi', 1, 0),
+(N'1 giường đơn', 0, 1),    
+(N'2 giường đơn', 0, 2),
+(N'1 giường đôi + 1 giường đơn', 1, 1),
+(N'2 giường đôi', 2, 0);
 
 -- Bảng Loại Dịch Vụ (ServiceType) - Đổi tên từ DICHVU và tách để đạt BCNF
 CREATE TABLE LoaiDichVu (
