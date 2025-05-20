@@ -3,14 +3,16 @@
   <div class="home-page">
     <!-- HEADER -->
     <header class="page-header d-flex justify-content-between align-items-center px-4">
-      <div class="d-flex align-items-center">
-        <i class="bi bi-list fs-2 me-2"></i>
-        <span class="fw-bold">MENU</span>
+      <MenuButton></MenuButton>
+      <div class="d-flex">
+        <router-link to="/login" style="margin-right: 8%; ">
+            <Button content="LOGIN" block bgHover="white" btnOutLine  ></Button>
+        </router-link>
+        <router-link to="/homepage" style="margin-right: 5%; ">
+            <Button content="RESERVE" block bgHover="white" btnOutLine ></Button>
+        </router-link>
       </div>
-      <div>
-        <router-link to="/login" class="btn btn-outline-light me-2">LOGIN</router-link>
-        <router-link to="/homepage" class="btn btn-outline-light">RESERVE</router-link>
-      </div>
+      
     </header>
 
     <!-- HERO -->
@@ -74,6 +76,8 @@
 
 <script setup>
 // không cần logic đặc biệt cho demo
+import Button from '../components/Button.vue';
+import MenuButton from '../components/MenuButton.vue';
 </script>
 
 <style scoped>
@@ -133,3 +137,5 @@
   text-decoration: underline;
 }
 </style>
+
+<Footer/>

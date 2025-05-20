@@ -1,11 +1,11 @@
 <template>
   <div>
     <!-- Nút gọi menu -->
-    <Button content="MENU" isMenu @click="show = !show" />
+    <Button content="MENU" isMenu btnLight btnLink @click="show = !show" />
 
     <!-- Teleport overlay -->
     <teleport to="body">
-      <transition name="slide">
+      <transition name="slide"> 
         <div
           v-if="show"
           class="overlay"
@@ -23,12 +23,9 @@
             </div>
             <ul class="list-unstyled mb-auto flex-grow-1">
               <li v-for="item in items" :key="item" class="mb-2">
-                <Button :content="item" block textColor="black" @click="handleMenuItemClick" />
+                <Button :content="item" block textColor="black" btnLight btnLink bgHover="#f0f0f0" @click="handleMenuItemClick" />
               </li>
             </ul>
-            <div>
-              <Button content="Log Out" block textColor="black" @click="handleMenuItemClick" />
-            </div>
           </nav>
         </div>
       </transition>

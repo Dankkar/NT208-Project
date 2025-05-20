@@ -31,7 +31,7 @@
     </section>
 
     <!-- FEATURED -->
-    <!-- <section class="featured py-5">
+   <section class="featured py-5">
       <div class="container">
         <h2 class="mb-4">Featured Properties</h2>
         <div class="row">
@@ -47,7 +47,7 @@
           </div>
         </div>
       </div>
-    </section> -->
+    </section>
     <Feature/>
 
     <!-- Post -->
@@ -64,10 +64,9 @@ import Post from '../components/Post.vue'
 import Footer from '../components/Footer.vue'
 import Feature from '../components/Feature.vue'
 
-import { reactive, ref } from 'vue'
 import Hotel1 from '@/assets/mountain.jpg'
-import Hotel2 from '@/assets/mountain.jpg'
-import Hotel3 from '@/assets/mountain.jpg'
+import Hotel2 from '@/assets/mountain1.jpg'
+import Hotel3 from '@/assets/mountain2.jpg'
 
 const search = reactive({
   location: '',
@@ -112,6 +111,7 @@ const heroStyle = computed(() => ({
 function prev() {
   current.value = (current.value - 1 + slides.length) % slides.length
 }
+
 function next() {
   current.value = (current.value + 1) % slides.length
 }
