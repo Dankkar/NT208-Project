@@ -1,12 +1,6 @@
 <template>
   <div class="login-page">
-      <!-- Header menu -->
-    <header class="position-absolute top-0 w-100 px-4 py-3 d-flex align-items-center">
-      <button class="btn btn-link p-0 d-flex text-decoration-none align-items-center text-light">
-        <i class="bi bi-list fs-2 me-2"></i>
-        <span class="fw-bold">MENU</span>
-      </button>
-    </header>
+   
   <div class="form-card">
       <h2 class="form-title">Sign in to CHILLCHILL</h2>
 
@@ -134,7 +128,7 @@ async function signInWithGoogle(response) {
       { withCredentials: true }
     )
     showAlert('Successfully signed in with Google', 'success')
-    router.push('/homepage')
+    router.push('/UserInfo')
   }
   catch (err) {
     showAlert(err.response?.data?.message || 'Google sign in failed', 'danger')
@@ -155,7 +149,7 @@ async function login() {
       withCredentials: true
     })
     showAlert('Successfully signed in', 'success')
-    router.push('/homepage')
+    router.push('/UserInfo')
   }
   catch (err) {
     showAlert(err.response?.data?.message || 'Sign in failed', 'danger')

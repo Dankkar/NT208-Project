@@ -4,6 +4,7 @@ import SignupPage from "../views/SignupPage.vue"
 import ForgotPassPage from "../views/ForgotPassPage.vue"
 import HomePage from "../views/HomePage.vue"
 import MenuButton from '../components/MenuButton.vue'
+import UserInfo from '../views/UserInfo.vue'
 
 const routes = [
   { path: '/login', name: 'Login', component: LoginPage },
@@ -11,6 +12,7 @@ const routes = [
   { path: '/forgotpass',name: 'Forgotpass', component: ForgotPassPage },
   { path: '/Homepage',name: 'Homepage', component: HomePage },
   {path: '/Menu', name: "Menu", component: MenuButton},
+  {path:'/UserInfo', name: "UserInfo", component: UserInfo},
 ]
 
 export default createRouter({

@@ -92,7 +92,7 @@ const featured = ref([
 
 /* HERO */
 .hero {
-  height: 60vh;
+  height: 85vh;
   background: url('@/assets/mountain.jpg') no-repeat center/cover;
   position: relative;
 }

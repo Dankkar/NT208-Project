@@ -25,7 +25,8 @@ defineProps({
   block:       { type: Boolean, default: false },   // bật full‑width nếu cần
   textColor:   { type: String,  default: '#fff' },
   fontSize:    { type: String,  default: '16px' },
-  colorHover:  { type: String,  default: 'black' }
+  colorHover:  { type: String,  default: 'black' },
+  
 })
 </script>
 
