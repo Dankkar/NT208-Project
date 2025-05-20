@@ -5,9 +5,15 @@ const axios = require('axios');
 // Get coordinates from address using Google Maps Geocoding API
 const getCoordinatesFromAddress = async (address) => {
     try {
+        // Format address for Vietnamese locations
+        const formattedAddress = `${address}, Can Tho, Vietnam`;
+        console.log('Formatted address:', formattedAddress);
+
         const response = await axios.get(
-            `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${process.env.GOOGLE_MAPS_API_KEY}`
+            `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(formattedAddress)}&key=${process.env.GOOGLE_MAPS_API_KEY}`
         );
+
+        console.log('Google Maps API Response:', response.data);
 
         if (response.data.status === 'OK') {
             const location = response.data.results[0].geometry.location;
@@ -15,10 +21,21 @@ const getCoordinatesFromAddress = async (address) => {
                 latitude: location.lat,
                 longitude: location.lng
             };
+        } else if (response.data.status === 'ZERO_RESULTS') {
+            throw new Error('Không tìm thấy địa chỉ này trên Google Maps');
+        } else if (response.data.status === 'OVER_QUERY_LIMIT') {
+            throw new Error('Đã vượt quá giới hạn truy vấn Google Maps API');
+        } else if (response.data.status === 'REQUEST_DENIED') {
+            throw new Error('API Key không hợp lệ hoặc bị từ chối');
+        } else {
+            throw new Error(`Lỗi Google Maps API: ${response.data.status}`);
         }
-        throw new Error('Không thể tìm thấy tọa độ cho địa chỉ này');
     } catch (error) {
-        console.error('Geocoding error:', error);
+        console.error('Geocoding error details:', {
+            message: error.message,
+            response: error.response?.data,
+            address: address
+        });
         throw error;
     }
 };

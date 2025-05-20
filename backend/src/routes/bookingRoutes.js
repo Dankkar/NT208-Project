@@ -11,7 +11,8 @@ const {
     calculatePrice,
     sendBookingConfirmation,
     getAllBookings,
-    holdBooking
+    holdBooking,
+    suggestAlternativeDates
 } = require('../controllers/bookingController');
 const { authenticateToken, isAdmin } = require('../middlewares/auth');
 
@@ -67,5 +68,12 @@ router.post('/:MaDat/confirmations', authenticateToken, sendBookingConfirmation)
 router.get('/admin', authenticateToken, isAdmin, getAllBookings);
 
 router.post('/hold', authenticateToken, holdBooking);
+
+/**
+ * @route   POST /api/bookings/suggest-dates
+ * @desc    Gợi ý các khoảng thời gian thay thế khi phòng không còn trống
+ * @access  Public
+ */
+router.post('/suggest-dates', suggestAlternativeDates);
 
 module.exports = router;

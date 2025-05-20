@@ -1,6 +1,4 @@
-const { poolPromise, sql} = require('../database/db');
-
-
+const { poolPromise, sql } = require('../database/db');
 
 exports.createRoomType = async (req, res) => {
     const { 

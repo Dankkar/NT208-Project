@@ -480,3 +480,102 @@ exports.holdBooking = async (req, res) => {
         res.status(500).json({error: 'Lỗi server'});
     }
 };
+
+/**
+ * Gợi ý các khoảng thời gian thay thế khi phòng không còn trống
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+exports.suggestAlternativeDates = async (req, res) => {
+    try {
+        const { NgayNhanPhong, NgayTraPhong, MaLoaiPhong } = req.body;
+
+        if (!NgayNhanPhong || !NgayTraPhong || !MaLoaiPhong) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Vui lòng cung cấp đầy đủ thông tin: NgayNhanPhong, NgayTraPhong, MaLoaiPhong' 
+            });
+        }
+
+        const pool = await poolPromise;
+
+        // Tìm các khoảng thời gian trống trước và sau khoảng thời gian yêu cầu
+        const result = await pool.request()
+            .input('NgayNhanPhong', sql.Date, NgayNhanPhong)
+            .input('NgayTraPhong', sql.Date, NgayTraPhong)
+            .input('MaLoaiPhong', sql.Int, MaLoaiPhong)
+            .query(`
+                WITH DateRange AS (
+                    SELECT 
+                        DATEADD(DAY, -7, @NgayNhanPhong) as StartDate,
+                        DATEADD(DAY, 7, @NgayTraPhong) as EndDate
+                ),
+                BookedDates AS (
+                    SELECT 
+                        b.NgayNhanPhong,
+                        b.NgayTraPhong
+                    FROM Booking b
+                    JOIN Phong p ON b.MaPhong = p.MaPhong
+                    WHERE p.MaLoaiPhong = @MaLoaiPhong
+                    AND b.TrangThaiBooking != N'Đã hủy'
+                    AND (
+                        b.TrangThaiBooking != N'Tạm Giữ'
+                        OR DATEDIFF(MINUTE, b.ThoiGianGiuCho, GETDATE()) <= 15
+                    )
+                ),
+                AvailableDates AS (
+                    SELECT 
+                        d.StartDate as CheckInDate,
+                        d.EndDate as CheckOutDate,
+                        CASE 
+                            WHEN d.StartDate < @NgayNhanPhong THEN 'before'
+                            ELSE 'after'
+                        END as Period
+                    FROM DateRange d
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM BookedDates b
+                        WHERE (
+                            b.NgayNhanPhong <= d.EndDate
+                            AND b.NgayTraPhong >= d.StartDate
+                        )
+                    )
+                )
+                SELECT 
+                    CheckInDate,
+                    CheckOutDate,
+                    Period,
+                    DATEDIFF(DAY, CheckInDate, CheckOutDate) as Duration
+                FROM AvailableDates
+                ORDER BY 
+                    CASE 
+                        WHEN Period = 'before' THEN 1
+                        ELSE 2
+                    END,
+                    ABS(DATEDIFF(DAY, CheckInDate, @NgayNhanPhong))
+            `);
+
+        const suggestions = result.recordset.map(date => ({
+            checkIn: date.CheckInDate,
+            checkOut: date.CheckOutDate,
+            period: date.Period,
+            duration: date.Duration
+        }));
+
+        res.json({
+            success: true,
+            data: {
+                originalDates: {
+                    checkIn: NgayNhanPhong,
+                    checkOut: NgayTraPhong
+                },
+                suggestions
+            }
+        });
+    } catch (err) {
+        console.error('Lỗi suggestAlternativeDates:', err);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Lỗi server khi tìm kiếm thời gian thay thế' 
+        });
+    }
+};
