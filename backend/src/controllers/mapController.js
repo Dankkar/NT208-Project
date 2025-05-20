@@ -5,16 +5,15 @@ const axios = require('axios');
 // Get coordinates from address using Google Maps Geocoding API
 const getCoordinatesFromAddress = async (address) => {
     try {
-        if (!process.env.GOOGLE_MAPS_API_KEY) {
-            throw new Error('Google Maps API key is not configured');
-        }
+        // Format address for Vietnamese locations
+        const formattedAddress = `${address}, Can Tho, Vietnam`;
+        console.log('Formatted address:', formattedAddress);
 
-        console.log('Geocoding address:', address);
-        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${process.env.GOOGLE_MAPS_API_KEY}`;
-        console.log('Requesting URL:', url);
+        const response = await axios.get(
+            `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(formattedAddress)}&key=${process.env.GOOGLE_MAPS_API_KEY}`
+        );
 
-        const response = await axios.get(url);
-        console.log('Geocoding response status:', response.data.status);
+        console.log('Google Maps API Response:', response.data);
 
         if (response.data.status === 'OK') {
             const location = response.data.results[0].geometry.location;
@@ -24,11 +23,11 @@ const getCoordinatesFromAddress = async (address) => {
                 longitude: location.lng
             };
         } else if (response.data.status === 'ZERO_RESULTS') {
-            throw new Error('Không tìm thấy địa chỉ này trên Google Maps. Vui lòng kiểm tra lại địa chỉ.');
+            throw new Error('Không tìm thấy địa chỉ này trên Google Maps');
         } else if (response.data.status === 'OVER_QUERY_LIMIT') {
             throw new Error('Đã vượt quá giới hạn truy vấn Google Maps API');
         } else if (response.data.status === 'REQUEST_DENIED') {
-            throw new Error('Google Maps API key không hợp lệ hoặc bị từ chối');
+            throw new Error('API Key không hợp lệ hoặc bị từ chối');
         } else {
             throw new Error(`Lỗi Google Maps API: ${response.data.status}`);
         }
@@ -36,7 +35,7 @@ const getCoordinatesFromAddress = async (address) => {
         console.error('Geocoding error details:', {
             message: error.message,
             response: error.response?.data,
-            status: error.response?.status
+            address: address
         });
         throw error;
     }
