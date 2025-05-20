@@ -48,6 +48,7 @@
       />
     </a>
     <ul class="dropdown-menu">
+      <li><router-link class="dropdown-item" to="/profile">Profile</router-link></li>
       <li><router-link class="dropdown-item" to="/login">Sign In</router-link></li>
       <li><router-link class="dropdown-item" to="/signup">Sign Up</router-link></li>
     </ul>
@@ -94,7 +95,7 @@ const fullItems = [
 ]
 
 const handleScroll = () => {
-  const heroHeight = window.innerHeight * 0.8 // hoặc 0.6 nếu hero thấp hơn
+  const heroHeight = window.innerHeight * 0.2 // hoặc 0.6 nếu hero thấp hơn
   showBg.value = window.scrollY > heroHeight
   console.log('showBg.value', showBg.value)
 }
@@ -113,7 +114,7 @@ onUnmounted(() => {
 
 <style scoped>
 header.navbar {
-  transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s;
+  transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.7s;
 }
 .nav-link, .navbar-toggler {
   transition: color 0.4s;

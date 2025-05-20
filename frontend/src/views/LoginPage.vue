@@ -128,7 +128,7 @@ async function signInWithGoogle(response) {
       { withCredentials: true }
     )
     showAlert('Successfully signed in with Google', 'success')
-    router.push('/UserInfo')
+    router.push('/homepage')
   }
   catch (err) {
     showAlert(err.response?.data?.message || 'Google sign in failed', 'danger')
@@ -149,7 +149,7 @@ async function login() {
       withCredentials: true
     })
     showAlert('Successfully signed in', 'success')
-    router.push('/UserInfo')
+    router.push('/homepage')
   }
   catch (err) {
     showAlert(err.response?.data?.message || 'Sign in failed', 'danger')
