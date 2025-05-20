@@ -28,6 +28,7 @@ const roomTypeRoutes = require('./routes/roomTypeRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const userRoutes = require('./routes/userRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const simplePaymentRoutes = require('./routes/simplePaymentRoutes');
 const mapRoutes = require('./routes/mapRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 
@@ -38,6 +39,7 @@ app.use('/api/roomTypes', roomTypeRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/simple-payments', simplePaymentRoutes);
 app.use('/api/maps', mapRoutes);
 app.use('/api/reviews', reviewRoutes);
 

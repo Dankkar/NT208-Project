@@ -12,16 +12,38 @@ const {
     sendBookingConfirmation,
     getAllBookings,
     holdBooking,
-    suggestAlternativeDates
+    suggestAlternativeDates,
+    searchAvailableRooms
 } = require('../controllers/bookingController');
 const { authenticateToken, isAdmin } = require('../middlewares/auth');
 
 /**
- * @route   POST /api/bookings/rooms/available
+ * @route   GET /api/bookings/search
  * @desc    Kiểm tra phòng trống theo loại phòng và ngày
  * @access  Public
  */
-router.post('/rooms/available', getAvailableRoomTypes);
+router.get('/search', searchAvailableRooms);
+
+/**
+ * @route   GET /api/bookings/rooms/available
+ * @desc    Kiểm tra phòng trống theo loại phòng và ngày
+ * @access  Public
+ */
+router.get('/rooms/available', getAvailableRoomTypes);
+
+/**
+ * @route   GET /api/bookings/admin
+ * @desc    Lấy danh sách đơn đặt phòng của tất cả khách hàng
+ * @access  Private
+ */
+router.get('/admin', authenticateToken, isAdmin, getAllBookings);
+
+/**
+ * @route   GET /api/bookings/user/:MaKH
+ * @desc    Lấy danh sách đơn đặt phòng của một khách hàng
+ * @access  Private
+ */
+router.get('/user/:MaKH', authenticateToken, getBookingByUser);
 
 /**
  * @route   POST /api/bookings
@@ -31,11 +53,11 @@ router.post('/rooms/available', getAvailableRoomTypes);
 router.post('/', authenticateToken, createBooking);
 
 /**
- * @route   GET /api/bookings/user/:MaKH
- * @desc    Lấy danh sách đơn đặt phòng của một khách hàng
+ * @route   POST /api/bookings/hold
+ * @desc    Đặt phòng và giữ chỗ
  * @access  Private
  */
-router.get('/user/:MaKH', authenticateToken, getBookingByUser);
+router.post('/hold', authenticateToken, holdBooking);
 
 /**
  * @route   GET /api/bookings/:MaDat
@@ -64,10 +86,6 @@ router.get('/:MaDat/price', authenticateToken, calculatePrice);
  * @access  Private
  */
 router.post('/:MaDat/confirmations', authenticateToken, sendBookingConfirmation);
-
-router.get('/admin', authenticateToken, isAdmin, getAllBookings);
-
-router.post('/hold', authenticateToken, holdBooking);
 
 /**
  * @route   POST /api/bookings/suggest-dates

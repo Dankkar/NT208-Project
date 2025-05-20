@@ -233,6 +233,15 @@ exports.getPaymentHistory = async (req, res) => {
 exports.getPaymentDetails = async (req, res) => {
     try {
         const { MaHD } = req.params;
+        
+        // Validate MaHD parameter
+        if (!MaHD || isNaN(parseInt(MaHD))) {
+            return res.status(400).json({
+                success: false,
+                message: 'Mã hóa đơn không hợp lệ'
+            });
+        }
+
         const pool = await poolPromise;
         
         // First get the invoice details
@@ -248,6 +257,9 @@ exports.getPaymentDetails = async (req, res) => {
                     ks.TenKS,
                     p.SoPhong,
                     lp.TenLoaiPhong,
+                    chg.TenCauHinh as CauHinhGiuong,
+                    chg.SoGiuongDoi,
+                    chg.SoGiuongDon,
                     nd.HoTen as TenKhachHang,
                     nd.Email,
                     nd.SDT,
@@ -260,6 +272,7 @@ exports.getPaymentDetails = async (req, res) => {
                 JOIN KhachSan ks ON b.MaKS = ks.MaKS
                 JOIN Phong p ON b.MaPhong = p.MaPhong
                 JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
+                JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
                 JOIN NguoiDung nd ON hd.MaKH = nd.MaKH
                 LEFT JOIN KhuyenMai km ON hd.MaKM = km.MaKM
                 WHERE hd.MaHD = @MaHD
@@ -276,39 +289,32 @@ exports.getPaymentDetails = async (req, res) => {
 
         // Only query for services if we have a valid MaDat
         let serviceData = [];
-        if (invoiceData.MaDat && !isNaN(invoiceData.MaDat)) {
-            try {
-                const serviceResult = await pool.request()
-                    .input('MaDat', sql.Int, parseInt(invoiceData.MaDat))
-                    .query(`
-                        SELECT 
-                            sdv.*,
-                            ldv.TenLoaiDV
-                        FROM SuDungDichVu sdv
-                        JOIN LoaiDichVu ldv ON sdv.MaLoaiDV = ldv.MaLoaiDV
-                        WHERE sdv.MaDat = @MaDat
-                    `);
-                serviceData = serviceResult.recordset;
-            } catch (serviceError) {
-                console.error('Error fetching services:', serviceError);
-                // Continue without services if there's an error
-            }
+        if (invoiceData.MaDat) {
+            const serviceResult = await pool.request()
+                .input('MaDat', sql.Int, parseInt(invoiceData.MaDat))
+                .query(`
+                    SELECT 
+                        sdv.*,
+                        ldv.TenLoaiDV
+                    FROM SuDungDichVu sdv
+                    JOIN LoaiDichVu ldv ON sdv.MaLoaiDV = ldv.MaLoaiDV
+                    WHERE sdv.MaDat = @MaDat
+                `);
+            serviceData = serviceResult.recordset;
         }
-
-        const paymentDetails = {
-            ...invoiceData,
-            dichVu: serviceData
-        };
 
         res.json({
             success: true,
-            data: paymentDetails
+            data: {
+                ...invoiceData,
+                services: serviceData
+            }
         });
     } catch (error) {
-        console.error('Error fetching payment details:', error);
+        console.error('Error getting payment details:', error);
         res.status(500).json({
             success: false,
-            message: 'Lỗi server'
+            message: 'Lỗi khi lấy thông tin thanh toán'
         });
     }
 };

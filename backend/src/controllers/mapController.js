@@ -17,6 +17,7 @@ const getCoordinatesFromAddress = async (address) => {
 
         if (response.data.status === 'OK') {
             const location = response.data.results[0].geometry.location;
+            console.log('Found coordinates:', location);
             return {
                 latitude: location.lat,
                 longitude: location.lng
@@ -44,6 +45,13 @@ const getCoordinatesFromAddress = async (address) => {
 exports.updateHotelCoordinates = async (req, res) => {
     const { MaKS } = req.params;
     const { DiaChi } = req.body;
+
+    if (!DiaChi) {
+        return res.status(400).json({
+            success: false,
+            message: 'Vui lòng cung cấp địa chỉ'
+        });
+    }
 
     try {
         // Get coordinates from address
@@ -89,15 +97,19 @@ exports.getNearbyHotels = async (req, res) => {
             .input('Longitude', sql.Decimal(11, 8), longitude)
             .input('Radius', sql.Float, radius)
             .query(`
-                SELECT 
-                    ks.*,
-                    (6371 * acos(cos(radians(@Latitude)) * cos(radians(Latitude)) * 
-                    cos(radians(Longitude) - radians(@Longitude)) + 
-                    sin(radians(@Latitude)) * sin(radians(Latitude)))) AS Distance
-                FROM KhachSan ks
-                WHERE Latitude IS NOT NULL 
-                AND Longitude IS NOT NULL
-                HAVING Distance <= @Radius
+                WITH HotelDistances AS (
+                    SELECT 
+                        ks.*,
+                        (6371 * acos(cos(radians(@Latitude)) * cos(radians(Latitude)) * 
+                        cos(radians(Longitude) - radians(@Longitude)) + 
+                        sin(radians(@Latitude)) * sin(radians(Latitude)))) AS Distance
+                    FROM KhachSan ks
+                    WHERE Latitude IS NOT NULL 
+                    AND Longitude IS NOT NULL
+                )
+                SELECT *
+                FROM HotelDistances
+                WHERE Distance <= @Radius
                 ORDER BY Distance
             `);
 
