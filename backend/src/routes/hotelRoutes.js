@@ -6,13 +6,16 @@ const {
     deleteHotel,
     getHotelsByNguoiQuanLy,
     getHotelById,
-    getAllHotels
+    getAllHotels,
+    getFeaturedHotels
 } = require('../controllers/hotelController');
 const {authenticateToken, isAdmin} = require('../middlewares/auth');
 
 const router = express.Router();
+//GET /featured
+router.get('/featured', getFeaturedHotels);
 //POST /hotels
-router.post('/hotels', authenticateToken, isAdmin,
+router.post('/', authenticateToken, isAdmin,
     [
         check('TenKS', 'Tên khách sạn không được để trống').notEmpty(),
         check('DiaChi', 'Địa chỉ không được để trống').notEmpty(),
@@ -23,17 +26,19 @@ router.post('/hotels', authenticateToken, isAdmin,
     ], createHotel);
 
 //PUT /hotels/:MaKS
-router.put('/hotels/:MaKS', authenticateToken, isAdmin, updateHotel);
+router.put('/:MaKS', authenticateToken, isAdmin, updateHotel);
 
 //DELETE /hotels/:MaKS
-router.delete('/hotels/:MaKS', authenticateToken, isAdmin, deleteHotel);
+router.delete('/:MaKS', authenticateToken, isAdmin, deleteHotel);
 
 //GET /hotels/:MaKS
-router.get('/hotels/:MaKS', authenticateToken, getHotelById);
+router.get('/:MaKS', authenticateToken, getHotelById);
 
 //GET /hotels/nguoi-quan-ly/:MaKH
-router.get('/hotels/nguoi-quan-ly/:MaKH', authenticateToken, isAdmin, getHotelsByNguoiQuanLy);
+router.get('/nguoi-quan-ly/:MaKH', authenticateToken, isAdmin, getHotelsByNguoiQuanLy);
 
 //GET /hotels
-router.get('/hotels', authenticateToken, getAllHotels);
+router.get('/', authenticateToken, getAllHotels);
+
+
 module.exports = router;

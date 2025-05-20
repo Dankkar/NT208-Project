@@ -3,7 +3,6 @@
   <div class="home-page">
     <Navbarlogin/>
 
-
     <!-- HERO + SEARCH -->
     <section class="hero position-relative text-center text-white d-flex align-items-center">
       <div class="overlay"></div>
@@ -36,25 +35,28 @@
     <section class="featured py-5">
       <div class="container">
         <h2 class="mb-4">Featured Properties</h2>
-        <div class="row">
-          <div class="col-md-4" v-for="hotel in featured" :key="hotel.id">
-            <div class="card mb-4 shadow-sm">
-              <img :src="hotel.image" class="card-img-top" :alt="hotel.name" />
-              <div class="card-body">
-                <h5 class="card-title">{{ hotel.name }}</h5>
-                <p class="card-text text-muted">{{ hotel.location }}</p>
-                <p class="fw-bold">{{ hotel.price }}/night</p>
-              </div>
-            </div>
+        <div v-if="loading" class="text-center">
+          <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
           </div>
+        </div>
+        <div v-else-if="error" class="alert alert-danger">
+          {{ error }}
+        </div>
+        <div v-else>
+          <FeaturedCarousel :items="featuredHotels">
+            <template #default="{ item: hotel }">
+              <HotelCard :hotel="hotel" />
+            </template>
+          </FeaturedCarousel>
         </div>
       </div>
     </section>
 
     <!-- Post -->
-        <Post title="Title" text="This is some text"/>
+    <Post title="Title" text="This is some text"/>
     <!-- Footer -->
-     <Footer/>
+    <Footer/>
   </div>
 </template>
 
@@ -62,10 +64,10 @@
 import Navbarlogin from '../components/Navbar-login.vue'
 import Post from '../components/Post.vue'
 import Footer from '../components/Footer.vue'
-import { reactive, ref } from 'vue'
-import Hotel1 from '@/assets/mountain.jpg'
-import Hotel2 from '@/assets/mountain.jpg'
-import Hotel3 from '@/assets/mountain.jpg'
+import FeaturedCarousel from '../components/FeaturedCarousel.vue'
+import HotelCard from '../components/HotelCard.vue'
+import { reactive, ref, onMounted } from 'vue'
+import hotelService from '../services/hotelService'
 
 const search = reactive({
   location: '',
@@ -74,16 +76,38 @@ const search = reactive({
   guests: ''
 })
 
+const featuredHotels = ref([])
+const loading = ref(true)
+const error = ref(null)
+
 function onSearch() {
   console.log('Searching with', { ...search })
   // TODO: chuyển đến trang kết quả search
 }
 
-const featured = ref([
-  { id: 1, name: 'Grand Mountain Resort', location: 'Alps, Switzerland', price: '$250', image: Hotel1 },
-  { id: 2, name: 'Beachside Hotel',       location: 'Maldives',          price: '$320', image: Hotel2 },
-  { id: 3, name: 'City Lights Inn',       location: 'New York, USA',     price: '$180', image: Hotel3 }
-])
+function formatPrice(price) {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND'
+  }).format(price)
+}
+
+async function loadFeaturedHotels() {
+  try {
+    loading.value = true
+    const response = await hotelService.getFeaturedHotels()
+    featuredHotels.value = response.data
+  } catch (err) {
+    error.value = 'Không thể tải danh sách khách sạn. Vui lòng thử lại sau.'
+    console.error('Error loading featured hotels:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  loadFeaturedHotels()
+})
 </script>
 
 <style scoped>
@@ -118,5 +142,9 @@ const featured = ref([
 .home-page .navbar {
   position: absolute;
   z-index: 1000;
+}
+
+.rating {
+  font-size: 0.9rem;
 }
 </style>
