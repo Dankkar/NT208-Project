@@ -79,7 +79,7 @@ exports.register = async (req, res) => {
 
     // Tạo JWT
     const token = jwt.sign(
-      { MaKH, Email: Email.toLowerCase(), role: 'KhachHang' },
+      { MaKH: MaKH, Email: Email.toLowerCase(), role: 'KhachHang' },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
@@ -175,7 +175,7 @@ exports.forgotPassword = async (req, res) => {
 
     // Tao token reset
     const token = jwt.sign(
-      {MaKH}, process.env.RESET_PASSWORD_SECRET,
+      {MaKH: MaKH}, process.env.RESET_PASSWORD_SECRET,
       {expiresIn: '15m'}
     );
 

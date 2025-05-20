@@ -4,6 +4,7 @@ const { poolPromise, sql } = require('../database/db');
 exports.getCurrentUser = async (req, res) => {
     try {
         const MaKH = req.user.MaKH;
+        console.log('MaKH:', req.user);
         const pool = await poolPromise;
         const result = await pool.request()
             .input('MaKH', sql.Int, MaKH)

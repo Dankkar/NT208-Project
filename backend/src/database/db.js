@@ -17,7 +17,7 @@ const config = {
 
 const poolPromise = new sql.ConnectionPool(config)
     .connect()
-    .then(pool => {
+    .then(pool => { 
         console.log('Kết nối SQL Server thành công đến database', config.database);
         return pool;
     })
