@@ -1,9 +1,8 @@
 <!-- src/views/HomePage.vue -->
 <template>
   <div class="home-page">
-    <Navbarlogin/>
-
-    <!-- HERO + SEARCH -->
+    <NavbarLogin style="position: fixed !important;" />
+    <!-- HERO + SEARCH -->  
     <section class="hero position-relative text-center text-white d-flex align-items-center">
       <div class="overlay"></div>
       <div class="container">
@@ -32,7 +31,7 @@
     </section>
 
     <!-- FEATURED -->
-    <section class="featured py-5">
+    <!-- <section class="featured py-5">
       <div class="container">
         <h2 class="mb-4">Featured Properties</h2>
         <div v-if="loading" class="text-center">
@@ -51,7 +50,8 @@
           </FeaturedCarousel>
         </div>
       </div>
-    </section>
+    </section> -->
+    <Feature/>
 
     <!-- Post -->
     <Post title="Title" text="This is some text"/>
@@ -61,7 +61,7 @@
 </template>
 
 <script setup>
-import Navbarlogin from '../components/Navbar-login.vue'
+import NavbarLogin from '../components/Navbar-login.vue'
 import Post from '../components/Post.vue'
 import Footer from '../components/Footer.vue'
 import FeaturedCarousel from '../components/FeaturedCarousel.vue'
