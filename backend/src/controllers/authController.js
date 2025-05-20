@@ -29,7 +29,10 @@ exports.register = async (req, res) => {
       .query(`SELECT MaKH FROM ${schema}.NguoiDung WHERE LOWER(Email) = LOWER(@Email)`);
 
     if (emailExists.recordset.length > 0) {
-      return res.status(400).json({ msg: 'Email đã tồn tại' });
+      return res.status(400).json({ 
+        success: false,
+        message: 'Email đã tồn tại'
+      });
     }
 
     // Kiểm tra SDT đã tồn tại
@@ -38,7 +41,10 @@ exports.register = async (req, res) => {
       .query(`SELECT MaKH FROM ${schema}.NguoiDung WHERE SDT = @SDT`);
 
     if (phoneExists.recordset.length > 0) {
-      return res.status(400).json({ msg: 'Số điện thoại đã tồn tại' });
+      return res.status(400).json({ 
+        success: false,
+        message: 'Số điện thoại đã tồn tại'
+      });
     }
 
     // Kiểm tra CCCD đã tồn tại
@@ -47,7 +53,10 @@ exports.register = async (req, res) => {
       .query(`SELECT MaKH FROM ${schema}.NguoiDung WHERE CCCD = @CCCD`);
 
     if (cccdExists.recordset.length > 0) {
-      return res.status(400).json({ msg: 'CCCD đã tồn tại' });
+      return res.status(400).json({ 
+        success: false,
+        message: 'CCCD đã tồn tại'
+      });
     }
 
     // Mã hóa mật khẩu
@@ -106,9 +115,15 @@ exports.register = async (req, res) => {
   } catch (err) {
     console.error('AuthController.register error:', err);
     if (err.number === 2627) {
-      return res.status(400).json({ msg: 'Thông tin đã tồn tại trong hệ thống' });
+      return res.status(400).json({ 
+        success: false,
+        message: 'Thông tin đã tồn tại trong hệ thống'
+      });
     }
-    res.status(500).json({ msg: 'Lỗi server' });
+    res.status(500).json({ 
+      success: false,
+      message: 'Lỗi server'
+    });
   }
 };
 
@@ -123,7 +138,10 @@ exports.login = async (req, res) => {
       .query(`SELECT MaKH, Email, MatKhauHash, LoaiUser FROM NguoiDung WHERE Email = @Email`);
 
     if (result.recordset.length === 0) {
-      return res.status(400).json({ message: 'Tài khoản không tồn tại.' });
+      return res.status(400).json({ 
+        success: false,
+        message: 'Tài khoản không tồn tại.'
+      });
     }
 
     const user = result.recordset[0];
@@ -131,7 +149,10 @@ exports.login = async (req, res) => {
     const isPasswordValid = await bcrypt.compare(MatKhau, user.MatKhauHash);
 
     if (!isPasswordValid) {
-      return res.status(400).json({ message: 'Mật khẩu không đúng.' });
+      return res.status(400).json({ 
+        success: false,
+        message: 'Mật khẩu không đúng.'
+      });
     }
 
     const token = jwt.sign(
@@ -168,7 +189,10 @@ exports.forgotPassword = async (req, res) => {
       .query(`SELECT MaKH FROM ${schema}.NguoiDung WHERE Email = @Email`);
 
     if(userResult.recordset.length === 0){
-      return res.status(404).json({ msg: "Email khong ton tai"});
+      return res.status(404).json({ 
+        success: false,
+        message: "Email khong ton tai"
+      });
     }
 
     const MaKH = userResult.recordset[0].MaKH;
@@ -183,11 +207,17 @@ exports.forgotPassword = async (req, res) => {
     const resetLink = `${process.env.CLIENT_URL}/reset-password?token=${token}`;
     await sendResetEmail(Email, resetLink);
 
-    res.json({ msg: 'Da gui link dat lai mat khau vao email'});
+    res.status(200).json({ 
+      success: true,
+      message: 'Đã gửi liên kết đặt lại mật khẩu vào email'
+    });
   }
   catch(err){
     console.error('AuthController.forgotPassword error', err);
-    res.status(500).json({ msg: 'Loi server'});
+    res.status(500).json({ 
+      success: false,
+      message: 'Lỗi server'
+    });
   }
 };
 
@@ -205,7 +235,10 @@ exports.resetPassword = async (req, res) => {
       .query(`SELECT MaKH FROM ${schema}.NguoiDung WHERE MaKH = @MaKH`);
 
     if(userResult.recordset.length === 0){
-      return res.status(404).json({ msg: "User khong ton tai"});
+      return res.status(404).json({ 
+        success: false,
+        message: "User khong ton tai"
+      });
     }
 
     // Ma hoa mat khau moi
@@ -217,11 +250,17 @@ exports.resetPassword = async (req, res) => {
       .input('MatKhauHash', sql.NVarChar, hasedPassword)
       .query(`UPDATE ${schema}.NguoiDung SET MatKhauHash = @MatKhauHash WHERE MaKH = @MaKH`);
     
-    res.json({ msg: 'Dat lai mat khau thanh cong'});
+    res.status(200).json({ 
+      success: true,
+      message: 'Đặt lại mật khẩu thành công'
+    });
   }
   catch(err){
     console.error('AuthController.resetPassword error:', err);
-    res.status(400).json({  message: 'Token loi hoac da het han'});
+    res.status(400).json({ 
+      success: false,
+      message: 'Token loi hoac da het han'
+    });
   }
 }
 
@@ -317,11 +356,17 @@ exports.googleLogin = async (req, res) => {
         maxAge: 1 * 60 * 60 * 1000,
       });
     console.log('GoogleLogin success:', email);
-    res.status(200).json({ message: 'Đăng nhập thành công' });
+    res.status(200).json({ 
+      success: true,
+      message: 'Đăng nhập thành công'
+    });
   }
   catch(err)
   {
     console.error('GoogleLogin error:', err);
-    res.status(500).json({ message: 'Lỗi server' });
+    res.status(500).json({ 
+      success: false,
+      message: 'Lỗi server'
+    });
   }
 }
