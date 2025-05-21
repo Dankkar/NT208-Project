@@ -209,4 +209,23 @@ exports.getFeaturedHotels = async (req, res) => {
     }
 };
 
-
+exports.suggestLocations = async (req, res) => {
+    try {
+        const keyword = req.query.keyword; //từ khóa tìm kiếm
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .input('keyword', sql.VarChar, keyword)
+            .query(`
+                SELECT DISTINCT DiaChi
+                FROM KhachSan
+                WHERE DiaChi  COLLATE Latin1_General_CI_AI LIKE '%' + @keyword + '%'
+            `);
+        
+        res.json(result.recordset.map(r => r.DiaChi));
+    }
+    catch (err)
+    {
+        console.error('Lỗi suggestLocations:', err);
+        res.status(500).json({error: 'Lỗi server'});
+    }
+}
