@@ -88,6 +88,10 @@ import FeaturedCarousel from '../components/FeaturedCarousel.vue'
 import HotelCard from '../components/HotelCard.vue'
 import { reactive, ref, onMounted } from 'vue'
 import hotelService from '../services/hotelService'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
+
+const router = useRouter()
 
 const search = reactive({
   location: '',
@@ -133,9 +137,20 @@ async function handleLocationInput() {
   debouncedFetchSuggestions()
 }
 
-function onSearch() {
-  console.log('Searching with', { ...search })
-  // TODO: chuyển đến trang kết quả search
+async function onSearch() {
+  try {
+    const response = await axios.get('http://localhost:5000/api/bookings/search', {
+      params: {
+        location: search.location,
+        startDate: search.checkIn,
+        endDate: search.checkOut,
+        numberOfGuests: search.guests
+      }
+    })
+    console.log('Search response:', response.data)
+  } catch (error) {
+    console.error('Error fetching search results:', error)
+  }
 }
 
 function formatPrice(price) {
