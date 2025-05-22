@@ -20,7 +20,7 @@
       </div>
 
       <!-- Login Form -->
-      <form @submit.prevent="login">
+      <form @submit.prevent="loginHandler">
         <div class="mb-4">
           <label for="email" class="form-label">Email</label>
           <input
@@ -81,6 +81,8 @@
 import axios from 'axios'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuth } from '../utils/auth'
+const { isLoggedIn, login} = useAuth()
 
 const email = ref('')
 const password = ref('')
@@ -128,6 +130,7 @@ async function signInWithGoogle(response) {
       { withCredentials: true }
     )
     showAlert('Successfully signed in with Google', 'success')
+   
     router.push('/homepage')
   }
   catch (err) {
@@ -137,25 +140,39 @@ async function signInWithGoogle(response) {
   }
 }
 
-async function login() { 
+async function loginHandler() { 
   if (emailError.value || passwordError.value) return
   
   isLoading.value = true
-  try {
-    const res = await axios.post('http://localhost:5000/api/auth/login', {
-      Email: email.value,
-      MatKhau: password.value
-    }, {
-      withCredentials: true
-    })
+
+  const result = await login(email.value, password.value)
+  if (result.success) {
     showAlert('Successfully signed in', 'success')
     router.push('/homepage')
+  } else {
+    showAlert(result.message || 'Sign in failed', 'danger')
   }
-  catch (err) {
-    showAlert(err.response?.data?.message || 'Sign in failed', 'danger')
-  } finally {
-    isLoading.value = false
-  }
+  isLoading.value = false
+
+
+  // try {
+  //   const res = await axios.post('http://localhost:5000/api/auth/login', {
+  //     Email: email.value,
+  //     MatKhau: password.value
+  //   }, {
+  //     withCredentials: true
+  //   })
+  //   showAlert('Successfully signed in', 'success')
+  //   setLogin()
+  //   router.push('/homepage')
+  // }
+  // catch (err) {
+  //   showAlert(err.response?.data?.message || 'Sign in failed', 'danger')
+  // } finally {
+  //   isLoading.value = false
+  // }
+
+ 
 }
 </script>
 
