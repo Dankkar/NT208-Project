@@ -2,7 +2,7 @@
 <template>
   <button
     :class="[
-      'btn py-0 px-2 d-inline-flex align-items-center text-decoration-none',
+       'btn btn-link btn-light py-0 px-2 d-inline-flex align-items-center text-decoration-none',  
       { 'w-100 h-100': block, 
       'btn-outline-light': btnOutLine, 
       'btn-outline-dark': !btnOutLine,
@@ -36,7 +36,8 @@ const props = defineProps({
   textColor:   { type: String,  default: '#fff' },
   fontSize:    { type: String,  default: '16px' },
   colorHover:  { type: String,  default: 'black' },
-})
+  bgHover:     {type: String, default: 'white'},
+})  
 </script>
 
 <style scoped>
@@ -53,5 +54,6 @@ button:hover {
 
 .btn-outline-light {
   padding: 8px 10px !important;
+  border: 1px solid currentColor !important;
 }
 </style>

@@ -54,21 +54,27 @@
             <li><a class="dropdown-item" href="#">By Date</a></li>
           </ul>
         </li>
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+        <li class="nav-item">
+          <router-link class="nav-link" to="/login">
             <Button
-              content="MY ACCOUNT"
-              isDropdown
+              content="SIGN IN"
               :textColor="showBg || bgFixed ? '#212529' : '#fff'"
               :colorHover="showBg || bgFixed ? '#0d6efd' : 'black'"
               btnLight
               btnLink
             />
-          </a>
-          <ul class="dropdown-menu">
-            <li><router-link class="dropdown-item" to="/profile">Profile</router-link></li>
-            <li><router-link class="dropdown-item" to="/bookinghistory">Booking History</router-link></li>
-          </ul>
+          </router-link>
+        </li>
+        <li class="nav-item">
+          <router-link class="nav-link" to="/signup">
+            <Button
+              content="CREATE ACCOUNT"
+              :textColor="showBg || bgFixed ? '#212529' : '#fff'"
+              :colorHover="showBg || bgFixed ? '#0d6efd' : 'black'"
+              btnLight
+              btnLink
+            />
+          </router-link>
         </li>
         <li class="nav-item">
           <router-link class="nav-link" to="/reserve">
@@ -101,11 +107,11 @@ const checkMobile = () => {
   isMobile.value = window.innerWidth < 992
 }
 const baseItems = [
-  'Home','Stay', 'Dine', 'See & Do'
+  'Stay', 'Shop', 'Dine', 'See & Do'
 ]
 const fullItems = [
-  'Home',
-  'Stay',
+  'Stay', 
+  'Shop', 
   'Dine', 
   'See & Do',
   'Ratings',

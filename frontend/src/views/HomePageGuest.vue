@@ -1,7 +1,7 @@
   <!-- src/views/HomePage.vue -->
 <template>
   <div class="home-page">
-    <NavbarLogin style="position: fixed !important;" />
+    <NavbarGuest style="position: fixed !important;" />
     <!-- HERO + SEARCH -->  
     <section class="hero position-relative text-center text-white d-flex align-items-center">
       <div class="overlay"></div>
@@ -62,7 +62,7 @@
 
 <script setup>
 import { reactive, ref, computed, onMounted, onUnmounted } from 'vue'
-import NavbarLogin from '../components/Navbar-login.vue'
+import NavbarGuest from '../components/Navbar-guest.vue'
 import Post from '../components/Post.vue'
 import Footer from '../components/Footer.vue'
 import FeaturedCarousel from '../components/FeaturedCarousel.vue'

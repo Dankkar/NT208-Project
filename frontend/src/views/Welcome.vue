@@ -6,10 +6,10 @@
       <MenuButton></MenuButton>
       <div class="d-flex">
         <router-link to="/login" style="margin-right: 8%; ">
-            <Button content="LOGIN" block bgHover="white" btnOutLine  ></Button>
+            <Button content="LOGIN" block btnOutLine bgHover="white" ></Button>
         </router-link>
         <router-link to="/homepage" style="margin-right: 5%; ">
-            <Button content="RESERVE" block bgHover="white" btnOutLine ></Button>
+            <Button content="RESERVE" block btnOutLine bgHover="white" ></Button>
         </router-link>
       </div>
       

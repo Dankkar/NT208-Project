@@ -6,8 +6,6 @@ import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 import 'bootstrap-icons/font/bootstrap-icons.css'
 import vue3GoogleLogin from 'vue3-google-login'
 
-
-
 const app = createApp(App)
 
 app.use(router)

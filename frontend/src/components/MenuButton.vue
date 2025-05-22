@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- Nút gọi menu -->
-    <Button content="MENU" isMenu btnLight btnLink @click="show = !show" />
+    <Button content="MENU" isMenu btnLight btnLink @click="show = !show" :textColor="textColor"/>
 
     <!-- Teleport overlay -->
     <teleport to="body">
