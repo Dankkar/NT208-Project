@@ -1,7 +1,7 @@
- <template>
+<template>
   <div class="modal-backdrop" @click.self="close">
     <div class="modal-box">
-      <h5 class="mb-3">Chỉnh sửa {{ sectionLabel }}</h5>
+      <h5 class="mb-3 text-center text-md-start">Chỉnh sửa {{ sectionLabel }}</h5>
       <form @submit.prevent="handleSave">
         <div v-if="section === 'personal'">
           <label class="form-label">Họ tên</label>
@@ -30,9 +30,25 @@
           <input v-model="formData.CCCD" class="form-control" />
         </div>
 
-        <div class="mt-4 text-end">
-          <button class="btn btn-secondary me-2" @click.prevent="close">Hủy</button>
-          <button type="submit" class="btn btn-primary">Lưu</button>
+        <div class="mt-4 d-flex flex-column flex-sm-row justify-content-end gap-2">
+          <Button
+            content="Hủy"
+            :textColor="'#6c757d'"
+            :colorHover="'#495057'"
+            :fontSize="'14px'"
+            :block="true"
+            textAlign="center"
+            @click="close"
+          />
+          <Button
+            content="Lưu"
+            :textColor="'#0d6efd'"
+            :colorHover="'#0a58ca'"
+            :fontSize="'14px'"
+            :block="true"
+            textAlign="center"
+            @click="handleSave"
+          />
         </div>
       </form>
     </div>
@@ -40,7 +56,8 @@
 </template>
 
 <script setup>
-import { reactive, toRefs, watch } from 'vue'
+import { reactive, watch } from 'vue'
+import Button from '@/components/Button.vue'
 
 const props = defineProps({
   user: Object,
@@ -51,7 +68,7 @@ const emits = defineEmits(['close', 'save'])
 const formData = reactive({ ...props.user })
 
 watch(() => props.section, () => {
-  Object.assign(formData, props.user) // reset khi đổi section
+  Object.assign(formData, props.user)
 })
 
 const sectionLabel = {
@@ -78,12 +95,25 @@ function handleSave() {
   align-items: center;
   justify-content: center;
   z-index: 1050;
+  padding: 1rem;
 }
+
 .modal-box {
   background: white;
   padding: 20px;
   border-radius: 12px;
-  width: 400px;
-  max-width: 90%;
+  width: 100%;
+  max-width: 500px;
+}
+
+/* Responsive button spacing */
+@media (max-width: 576px) {
+  .modal-box {
+    padding: 16px;
+  }
+
+  .modal-box form > .d-flex > * {
+    width: 100% !important;
+  }
 }
 </style>

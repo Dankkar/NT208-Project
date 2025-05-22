@@ -5,6 +5,8 @@ import ForgotPassPage from "../views/ForgotPassPage.vue"
 import HomePage from "../views/HomePage.vue"
 import MenuButton from '../components/MenuButton.vue'
 import Profile from '../views/Profile.vue'
+import WelcomePage from '../views/Welcome.vue'
+import Reserve from '../views/Reserve.vue'
 
 
 const routes = [
@@ -14,6 +16,8 @@ const routes = [
   { path: '/Homepage',name: 'Homepage', component: HomePage },
   {path: '/Menu', name: "Menu", component: MenuButton},
   {path:'/profile', name: "Profile", component:Profile},
+  {path: '/Welcome', name: 'Welcome', component: WelcomePage},
+  {path: '/reserve', name: 'Reserve', component: Reserve},
 ]
 
 export default createRouter({

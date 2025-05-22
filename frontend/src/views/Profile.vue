@@ -1,11 +1,8 @@
+<!-- src/pages/Profile.vue -->
 <template>
-  <div class="account-page">
-    <NavbarLogin bgFixed="true" />
-    <div class="py-5"></div>
-
+  <Layout title="THÔNG TIN NGƯỜI DÙNG">
+  
     <section class="account-info-section container py-5">
-      <h3 class="fw-bold mb-4">THÔNG TIN NGƯỜI DÙNG</h3>
-
       <div v-if="loading" class="text-center py-5">
         <div class="spinner-border text-primary" role="status">
           <span class="visually-hidden">Loading...</span>
@@ -18,7 +15,11 @@
 
       <div v-else-if="user">
         <!-- Personal Info -->
-        <UserInfoCard title="Thông tin cá nhân" :onEdit="() => handleEdit('personal')">
+        <UserInfoCard
+          title="Thông tin cá nhân"
+          :onEdit="() => handleEdit('personal')"
+          :highlight="highlight.personal"
+        >
           <div class="d-flex align-items-center mb-3">
             <div class="avatar-icon me-3">
               <i class="bi bi-person-circle fs-1"></i>
@@ -32,42 +33,56 @@
         </UserInfoCard>
 
         <!-- Contact Info -->
-        <UserInfoCard title="Liên hệ" :onEdit="() => handleEdit('contact')">
+        <UserInfoCard
+          title="Liên hệ"
+          :onEdit="() => handleEdit('contact')"
+          :highlight="highlight.contact"
+        >
           <p class="mb-1"><strong>Email:</strong> {{ user.Email }}</p>
           <p class="mb-1"><strong>SĐT:</strong> {{ user.SDT }}</p>
         </UserInfoCard>
 
         <!-- CCCD Info -->
-        <UserInfoCard title="Thông tin định danh" :onEdit="() => handleEdit('cccd')">
+        <UserInfoCard
+          title="Thông tin định danh"
+          :onEdit="() => handleEdit('cccd')"
+          :highlight="highlight.cccd"
+        >
           <p class="mb-1"><strong>CCCD:</strong> {{ user.CCCD }}</p>
         </UserInfoCard>
       </div>
     </section>
-      <EditUserModal
-    v-if="showModal"
-    :user="editedUser"
-    :section="editSection"
-    @close="handleModalClose"
-    @save="handleModalSave"
-  />
 
-
-    <Footer shadow />
-  </div>
+    <EditUserModal
+      v-if="showModal"
+      :user="editedUser"
+      :section="editSection"
+      @close="handleModalClose"
+      @save="handleModalSave"
+    />
+  </Layout>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
-import NavbarLogin from '@/components/Navbar-Login.vue'
-import Footer from '@/components/Footer.vue'
+import Layout from '../components/Layout.vue'
 import EditUserModal from '@/components/EditUserModal.vue'
-import Button from '@/components/Button.vue'
 import UserInfoCard from '@/components/UserInfoCard.vue'
 
 const user = ref(null)
 const loading = ref(true)
 const error = ref('')
+
+const showModal = ref(false)
+const editSection = ref('')
+const editedUser = ref({})
+
+const highlight = ref({
+  personal: false,
+  contact: false,
+  cccd: false
+})
 
 onMounted(async () => {
   loading.value = true
@@ -77,15 +92,12 @@ onMounted(async () => {
     })
     user.value = res.data
   } catch (err) {
+    console.error(err)
     error.value = err.response?.data?.message || 'Không thể lấy thông tin người dùng'
   } finally {
     loading.value = false
   }
 })
-
-const showModal = ref(false)
-const editSection = ref('')
-const editedUser = ref({})
 
 function handleEdit(section) {
   editSection.value = section
@@ -98,19 +110,29 @@ function handleModalClose() {
 }
 
 function handleModalSave({ section, data }) {
-  user.value = { ...user.value, ...data }
-  showModal.value = false
-  // Bạn có thể gọi API PUT ở đây để cập nhật lên server
-  // await axios.put('/api/users/update', data)
+  loading.value = true
+  axios.put('http://localhost:5000/api/users/me', data, {
+    withCredentials: true
+  })
+    .then(() => {
+      user.value = { ...user.value, ...data }
+      showModal.value = false
+
+      highlight.value[section] = true
+      setTimeout(() => {
+        highlight.value[section] = false
+      }, 2000)
+    })
+    .catch(err => {
+      error.value = err.response?.data?.message || 'Cập nhật thông tin thất bại'
+    })
+    .finally(() => {
+      loading.value = false
+    })
 }
 </script>
 
 <style scoped>
-.account-page {
-  background-color: white;
-  min-height: 100vh;
-}
-
 .account-info-section {
   padding-top: 120px;
 }

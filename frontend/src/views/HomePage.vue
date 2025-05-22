@@ -21,7 +21,7 @@
             <select v-model="search.guests" class="form-select">
               <option disabled value="">Guests</option>
               <option v-for="n in 5" :key="n" :value="n">{{ n }} {{ n>1?'Guests':'Guest' }}</option>
-            </select>
+            </select> 
           </div>
           <div class="col-md-2">
             <button type="submit" class="btn btn-primary w-100">Search</button>
@@ -54,7 +54,16 @@
     <Feature/>
 
     <!-- Post -->
-    <Post title="Title" text="This is some text"/>
+    <Post 
+      :contents="[
+        'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+        'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+        'Khách sạn tốt nhất cho bạn'
+      ]"
+      buttonText="Xem thêm"
+      :imgSrc="imageUrl"
+    title="Title" 
+    />
     <!-- Footer -->
     <Footer/>
   </div>
@@ -68,6 +77,7 @@ import FeaturedCarousel from '../components/FeaturedCarousel.vue'
 import HotelCard from '../components/HotelCard.vue'
 import { reactive, ref, onMounted } from 'vue'
 import hotelService from '../services/hotelService'
+import imageUrl from '@/assets/mountain.jpg'
 
 const search = reactive({
   location: '',
