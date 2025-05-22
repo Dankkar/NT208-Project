@@ -48,6 +48,16 @@ exports.getServicesByHotel = async (req, res) => {
     try {
         const pool = await poolPromise;
         const { MaKS } = req.params;
+        const hotelCheck = await pool.request()
+            .input('MaKS', sql.Int, MaKS)
+            .query('SELECT * FROM KhachSan WHERE MaKS = @MaKS');
+        if (hotelCheck.recordset.length === 0)
+        {
+            return res.status(404).json({
+                success: false,
+                message: 'Khách sạn không tồn tại'
+            });
+        }
         const result = await pool.request()
             .input('MaKS', sql.Int, MaKS)
             .query(`
@@ -253,5 +263,3 @@ exports.getBookingServices = async (req, res) => {
         });
     }
 };
-
-

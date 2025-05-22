@@ -7,9 +7,11 @@ const {
     getHotelsByNguoiQuanLy,
     getHotelById,
     getAllHotels,
-    getFeaturedHotels
+    getFeaturedHotels,
+    suggestLocations
 } = require('../controllers/hotelController');
 const {authenticateToken, isAdmin} = require('../middlewares/auth');
+const { LocationSuggestLimiter } = require('../middlewares/rateLimiter')
 
 const router = express.Router();
 //GET /featured
@@ -24,7 +26,15 @@ router.post('/', authenticateToken, isAdmin,
         check('MoTaCoSoVatChat', 'Mô tả cơ sở vật chất không được để trống').notEmpty(),
         check('QuyDinh', 'Quy định không được để trống').notEmpty(),    
     ], createHotel);
-
+ //GET /hotels/nguoi-quan-ly/:MaKH
+router.get('/nguoi-quan-ly/:MaKH', authenticateToken, isAdmin, getHotelsByNguoiQuanLy);
+    
+//GET /hotels
+router.get('/', authenticateToken, getAllHotels);
+    
+//GET /hotels/suggest-locations
+router.get('/suggest-locations', LocationSuggestLimiter, suggestLocations);
+    
 //PUT /hotels/:MaKS
 router.put('/:MaKS', authenticateToken, isAdmin, updateHotel);
 
@@ -34,11 +44,6 @@ router.delete('/:MaKS', authenticateToken, isAdmin, deleteHotel);
 //GET /hotels/:MaKS
 router.get('/:MaKS', authenticateToken, getHotelById);
 
-//GET /hotels/nguoi-quan-ly/:MaKH
-router.get('/nguoi-quan-ly/:MaKH', authenticateToken, isAdmin, getHotelsByNguoiQuanLy);
-
-//GET /hotels
-router.get('/', authenticateToken, getAllHotels);
 
 
 module.exports = router;
