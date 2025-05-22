@@ -657,6 +657,11 @@ exports.suggestAlternativeDates = async (req, res) => {
 // Tim loai phong tren thanh Search Home Page
 exports.searchAvailableRooms = async (req, res) => {
     try {
+        console.log('Search request received:', {
+            query: req.query,
+            params: req.params,
+            body: req.body
+        });
         const { location, startDate, endDate, numberOfGuests } = req.query;
 
         // Validate required parameters
@@ -758,7 +763,7 @@ exports.searchAvailableRooms = async (req, res) => {
                 JOIN LoaiPhong lp ON ar.MaLoaiPhong = lp.MaLoaiPhong
                 JOIN CauHinhGiuong chg ON ar.MaCauHinhGiuong = chg.MaCauHinhGiuong
                 WHERE 
-                    (ks.DiaChi LIKE @location OR ks.TenKS LIKE @location)
+                    (ks.DiaChi COLLATE Latin1_General_CI_AI LIKE '%' + @location + '%' OR ks.TenKS COLLATE Latin1_General_CI_AI LIKE '%' + @location + '%')
                     AND ar.MaxGuests >= @numberOfGuests
                     AND lp.MaLoaiPhong NOT IN (SELECT MaLoaiPhong FROM RoomTypesWithHoldStatus)
                 GROUP BY 

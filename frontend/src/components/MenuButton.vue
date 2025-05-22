@@ -103,7 +103,7 @@ watch(show, (newValue) => {
 }
 @media (min-width: 768px) {
   .sidebar {
-    width: 20vw;
+    width: 30vw;
     max-width: 260px;
   }
   .sidebar-header .btn-close {

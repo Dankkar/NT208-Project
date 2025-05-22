@@ -10,6 +10,9 @@ import Profile from '../views/Profile.vue'
 import Ratings from '../views/Ratings.vue'
 import Dashboard from '../views/Dashboard.vue'
 import RatingDetails from '../views/RatingDetails.vue'
+import WelcomePage from '../views/Welcome.vue'
+import Reserve from '../views/Reserve.vue'
+
 
 const routes = [
   { path: '/login', name: 'Login', component: LoginPage },
@@ -23,6 +26,8 @@ const routes = [
   {path:'/homepageguest', name: "HomepageGuest", component:HomePageGuest},
   {path:'/admin', name: "AdminDashBoard", component:Dashboard},
   {path:'/ratingdetails', name: "RatingDetails", component:RatingDetails},
+  {path: '/Welcome', name: 'Welcome', component: WelcomePage},
+  {path: '/reserve', name: 'Reserve', component: Reserve},
 ]
 
 export default createRouter({

@@ -23,65 +23,77 @@
     </button>
 
     <div class="collapse navbar-collapse justify-content-end d-lg-flex d-none" id="mainNav">
-      <ul class="navbar-nav">
-        <li class="nav-item">
-          <a class="nav-link" href="#">
-            <router-link to="/ratings" style="margin-right: 5%; ">
-            <Button
-              content="RATINGS"
-              block
-              :textColor="showBg || bgFixed ? '#212529' : '#fff'"
-              :colorHover="showBg || bgFixed ? '#0d6efd' : 'black'"
-              btnLight
-              btnLink
-            />
-            </router-link>
-          </a>
-        </li>
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-            <Button
-              content="ROOM BOOKING"
-              isDropdown
-              :textColor="showBg || bgFixed ? '#212529' : '#fff'"
-              :colorHover="showBg || bgFixed ? '#0d6efd' : 'black'"
-              btnLight
-              btnLink
-            />
-          </a>
-          <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="#">By City</a></li>
-            <li><a class="dropdown-item" href="#">By Date</a></li>
-          </ul>
-        </li>
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-            <Button
-              content="MY ACCOUNT"
-              isDropdown
-              :textColor="showBg || bgFixed ? '#212529' : '#fff'"
-              :colorHover="showBg || bgFixed ? '#0d6efd' : 'black'"
-              btnLight
-              btnLink
-            />
-          </a>
-          <ul class="dropdown-menu">
-            <li><router-link class="dropdown-item" to="/profile">Profile</router-link></li>
-            <li><router-link class="dropdown-item" to="/bookinghistory">Booking History</router-link></li>
-          </ul>
-        </li>
-        <li class="nav-item">
-          <router-link class="nav-link" to="/reserve">
-            <Button
-              content="RESERVE"
-              :textColor="showBg || bgFixed ? '#212529' : '#fff'"
-              :colorHover="showBg || bgFixed ? '#0d6efd' : 'black'"
-              btnLight
-              btnLink
-            />
-          </router-link>
-        </li>
-      </ul>
+     <ul class="navbar-nav">
+      
+   <router-link class="nav-link" to="/homepage">
+      <Button
+        content="HOME"
+        :textColor="showBg || bgFixed ? '#212529' : '#fff'"
+        :colorHover="showBg || bgFixed ? '#0d6efd' : 'black'"
+      />
+    </router-link>
+    
+  <li class="nav-item">
+    <a class="nav-link" href="#">
+      <Button
+        content="RATINGS"
+        :textColor="showBg || bgFixed ? '#212529' : '#fff'"
+        :colorHover="showBg || bgFixed? '#0d6efd' : 'black'"
+      />
+    </a>
+  </li>
+  
+  <li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+      <Button
+        content="ROOM BOOKING"
+        isDropdown
+        :textColor="showBg || bgFixed ? '#212529' : '#fff'"
+        :colorHover="showBg || bgFixed ? '#0d6efd' : 'black'"
+      />
+    </a>
+    <ul class="dropdown-menu">
+      <li><a class="dropdown-item" href="#">By City</a></li>
+      <li><a class="dropdown-item" href="#">By Date</a></li>
+    </ul>
+  </li>
+  
+  <li class="nav-item" v-if="!isLoggedIn">
+    <router-link class="nav-link" to="/login">
+      <Button
+        content="LOGIN"
+        :textColor="showBg || bgFixed ? '#212529' : '#fff'"
+        :colorHover="showBg || bgFixed ? '#0d6efd' : 'black'"
+      />
+    </router-link>
+    </li>
+
+
+  <li class="nav-item dropdown" v-if="isLoggedIn">
+    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+      <Button
+        content="MY ACCOUNT"
+        isDropdown
+        :textColor="showBg || bgFixed ? '#212529' : '#fff'"
+        :colorHover="showBg || bgFixed ? '#0d6efd' : 'black'"
+      />
+    </a>
+    <ul class="dropdown-menu">
+      <li><router-link class="dropdown-item" to="/profile">Profile</router-link></li>
+      <li><router-link class="dropdown-item" to="/login">Booking History</router-link></li>
+    </ul>
+  </li>
+  <li class="nav-item">
+    <router-link class="nav-link" to="/reserve">
+      <Button
+        content="RESERVE"
+        :textColor="showBg || bgFixed ? '#212529' : '#fff'"
+        :colorHover="showBg || bgFixed ? '#0d6efd' : 'black'"
+        block
+      />
+    </router-link>
+  </li>
+</ul>
     </div>
   </header>
 </template>
@@ -90,22 +102,24 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import Button from './Button.vue'
 import MenuButton from './MenuButton.vue'
+import { useAuth } from '../utils/auth'
 
+
+const {isLoggedIn, checkLogin} = useAuth()
+const showBg = ref(false)
 const props = defineProps({
   bgFixed: { type: Boolean, default: false }
 })
-
-const showBg = ref(false)
 const isMobile = ref(false)
+
 const checkMobile = () => {
   isMobile.value = window.innerWidth < 992
 }
 const baseItems = [
-  'Home','Stay', 'Dine', 'See & Do'
+  'Stay', 'Dine', 'See & Do'
 ]
 const fullItems = [
-  'Home',
-  'Stay',
+  'Stay', 
   'Dine', 
   'See & Do',
   'Ratings',
@@ -121,6 +135,8 @@ const handleScroll = () => {
 }
 
 onMounted(() => {
+  checkLogin()
+  console.log(isLoggedIn.value)
   checkMobile()
   window.addEventListener('scroll', handleScroll)
   window.addEventListener('resize', checkMobile)
@@ -138,7 +154,16 @@ header.navbar {
 }
 .nav-link, .navbar-toggler {
   transition: color 0.4s;
+  height: 50px
 }
+
+.nav-link > * {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
 /* Ẩn caret mặc định được Bootstrap tự thêm */
 .nav-link.dropdown-toggle::after {
   display: none !important;

@@ -11,6 +11,16 @@ const hotelService = {
             console.error('Error fetching featured hotels:', error);
             throw error;
         }
+    },
+    
+    suggestLocations: async (keyword) => {
+        try {
+            const response = await axios.get(`${API_URL}/hotels/suggest-locations?keyword=${keyword}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching suggest locations:', error);
+            throw error;
+        }
     }
 };
 

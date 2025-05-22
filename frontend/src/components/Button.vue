@@ -1,4 +1,3 @@
-<!-- Button.vue -->
 <template>
   <button
     :class="[
@@ -26,9 +25,6 @@
 <script setup>
 const props = defineProps({
   content:     { type: String,  required: true },
-  btnOutLine:  { type: Boolean, default: false },
-  btnLight:    { type: Boolean, default: false },
-  btnLink:     { type: Boolean, default: false },
   fwBold:      { type: Boolean, default: false },
   isMenu:      { type: Boolean, default: false },
   isDropdown:  { type: Boolean, default: false },
@@ -37,15 +33,18 @@ const props = defineProps({
   fontSize:    { type: String,  default: '16px' },
   colorHover:  { type: String,  default: 'black' },
   bgHover:     {type: String, default: 'white'},
+  backgroundColor:{ type: String,  default: '' },
+  borderRadius:   { type: String,  default: '6px' },
+  textAlign:      { type: String,  default: 'left' }
 })  
 </script>
 
 <style scoped>
 button {
-  transition: transform .2s ease-in-out, color .2s;
+  transition: transform 0.2s ease-in-out, color 0.2s;
 }
 
-/* Hover effect */
+/* Hover giữ nguyên */
 button:hover {
   transform: scale(1.05);
   color: var(--hover-color) !important;
@@ -55,5 +54,10 @@ button:hover {
 .btn-outline-light {
   padding: 8px 10px !important;
   border: 1px solid currentColor !important;
+}
+
+.btn-block-size {
+  width: 100% !important;
+  height: 100% !important;
 }
 </style>
