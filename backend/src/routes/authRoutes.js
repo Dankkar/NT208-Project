@@ -10,6 +10,7 @@ const {
     googleLogin,
     changePassword
 } = require('../controllers/authController');
+const {authenticateToken} = require('../middlewares/auth');
 
 const router = express.Router();
 
