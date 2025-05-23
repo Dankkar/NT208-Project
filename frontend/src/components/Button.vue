@@ -2,22 +2,20 @@
   <button
     :class="[
        'btn btn-link btn-light py-0 px-2 d-inline-flex align-items-center text-decoration-none',  
-      { 'w-100 h-100': block, 
-      'btn-outline-light': btnOutLine, 
-      'btn-outline-dark': !btnOutLine,
-      'btn-light': btnLight,
-      'btn-link': btnLink
-      }       /* chỉ full‑width khi prop block = true */
+      { 'btn-block-size': block }       /* chỉ full‑width khi prop block = true */
     ]"
     :style="{
-      color:        textColor,
-      fontSize,                     /* cho phép tuỳ cỡ chữ */
-      '--hover-color': colorHover,  /* custom property dùng trong CSS hover */
+      color:         textColor,
+      fontSize,
+      backgroundColor,
+      borderRadius,
+      textAlign: textAlign,
+      '--hover-color': colorHover,
       '--hover-bg-color': bgHover
     }"
   >
     <i v-if="isMenu"      class="bi bi-list fs-2 me-2"></i>
-    <span :class="{ 'fw-bold': fwBold }">{{ content }}</span>
+    <span class="w-100">{{ content }}</span>
     <i v-if="isDropdown"  class="bi bi-caret-down-fill ms-2"></i>
   </button>
 </template>
@@ -49,11 +47,6 @@ button:hover {
   transform: scale(1.05);
   color: var(--hover-color) !important;
   background-color: var(--hover-bg-color) !important;
-}
-
-.btn-outline-light {
-  padding: 8px 10px !important;
-  border: 1px solid currentColor !important;
 }
 
 .btn-block-size {

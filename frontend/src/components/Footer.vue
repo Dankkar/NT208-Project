@@ -16,12 +16,8 @@
       height: '150px'
     }"
   >
-  <!-- <div class="d-flex flex-column justify-content-center align-items-center h-100 text-black">
-    <h4 class="fw-bold mb-1">CHILL CHILL</h4>
-    <p class="mb-0">Phường 6, Thủ Đức, Linh xuân, Hồ Chí Minh</p>
-  </div> -->
   <h4 class="fw-bold mb-1">CHILL CHILL</h4>
-    <p class="mb-0">Phường 6, Linh Trung, Thủ Đức, Hồ Chí Minh</p>
+    <p class="mb-0">Khu phố 6, phường Linh Trung,TP.Thủ Đức, TP.Hồ Chí Minh</p>
 </footer>
 
 </template>

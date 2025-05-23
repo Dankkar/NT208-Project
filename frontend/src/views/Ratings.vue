@@ -1,14 +1,8 @@
 --- START OF FILE Ratings.vue (Improved UI) ---
 <template>
   <div class="ratings-page">
-    <NavbarLogin :bg-fixed="true" /> <!-- Navbar sẽ luôn có background (vd: đen) -->
-
-    <main class="page-content container">
-      <header class="page-header text-center mb-5">
-        <h1 class="page-title display-5 fw-bold">Explore Our Top Rated Stays</h1>
-        <p class="lead text-muted">Discover exceptional hotels نوفمبر by rating and price.</p>
-      </header>
-
+    <Layout title="Ratings and Reviews">
+      <main class="page-content container">
       <!-- Sort Controls -->
       <div class="sort-controls-wrapper d-flex justify-content-end align-items-center mb-4">
         <label for="sort" class="me-2 text-muted sort-label">Sort by:</label>
@@ -82,16 +76,15 @@
         </ul>
       </nav>
     </main>
-
-    <Footer />
-  </div>
+    </Layout>
+    </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import NavbarLogin from '../components/Navbar-login.vue';
-import Footer from '../components/Footer.vue';
-import defaultHotelImage from '../assets/mountain.jpg'; // Sử dụng alias nếu có: @/assets/mountain.jpg
+import defaultHotelImage from '../assets/mountain.jpg';
+import Layout from '../components/Layout.vue';
+import axios from 'axios';
 
 // Icon imports (Ví dụ - bạn cần setup thư viện icon hoặc dùng SVG)
 // import { MapPin, SearchX } from 'lucide-vue-next'; // Ví dụ nếu dùng Lucide Icons

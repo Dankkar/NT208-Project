@@ -25,23 +25,22 @@
     <div class="collapse navbar-collapse justify-content-end d-lg-flex d-none" id="mainNav">
      <ul class="navbar-nav">
       
-   <router-link class="nav-link" to="/homepage">
+  <router-link class="logo-wrapper" to="/homepage">
+    <Logo
+      :src="logoSrc"
+      alt="UIT_Logo"
+      hoverFilter="brightness(0.8)" 
+      width="50px"
+    />
+  </router-link>
+    
+   <router-link class="nav-link" to="/ratings">
       <Button
-        content="HOME"
+        content="RATINGS"
         :textColor="showBg || bgFixed ? '#212529' : '#fff'"
         :colorHover="showBg || bgFixed ? '#0d6efd' : 'black'"
       />
     </router-link>
-    
-  <li class="nav-item">
-    <a class="nav-link" href="#">
-      <Button
-        content="RATINGS"
-        :textColor="showBg || bgFixed ? '#212529' : '#fff'"
-        :colorHover="showBg || bgFixed? '#0d6efd' : 'black'"
-      />
-    </a>
-  </li>
   
   <li class="nav-item dropdown">
     <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
@@ -80,7 +79,7 @@
     </a>
     <ul class="dropdown-menu">
       <li><router-link class="dropdown-item" to="/profile">Profile</router-link></li>
-      <li><router-link class="dropdown-item" to="/login">Booking History</router-link></li>
+      <li><router-link class="dropdown-item" to="/bookinghistory">Booking History</router-link></li>
     </ul>
   </li>
   <li class="nav-item">
@@ -99,12 +98,17 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import Button from './Button.vue'
 import MenuButton from './MenuButton.vue'
+import Logo from './Logo.vue'
+import logouitwhite from '../assets/Logo_UIT_white.jpg'
+import logouitblue from '../assets/Logo_UIT_blue.jpg'
 import { useAuth } from '../utils/auth'
 
-
+const logoSrc = computed(() =>
+   showBg.value || props.bgFixed ? logouitblue : logouitwhite
+)
 const {isLoggedIn, checkLogin} = useAuth()
 const showBg = ref(false)
 const props = defineProps({
@@ -167,5 +171,14 @@ header.navbar {
 /* Ẩn caret mặc định được Bootstrap tự thêm */
 .nav-link.dropdown-toggle::after {
   display: none !important;
+}
+
+.logo-wrapper {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
 }
 </style>
