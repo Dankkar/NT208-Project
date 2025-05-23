@@ -43,7 +43,7 @@
                 content="Log Out"
                 block
                 textColor="black"
-                @click="handleMenuItemClick"
+                @click="Logout"
               />
             </div>
           </nav>
@@ -123,7 +123,7 @@ watch(show, (newValue) => {
 }
 @media (min-width: 768px) {
   .sidebar {
-    width: 20vw;
+    width: 30vw;
     max-width: 260px;
   }
   .sidebar-header .btn-close {

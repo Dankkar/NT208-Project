@@ -1,35 +1,34 @@
 <template>
-  <div class="container mt-5 mb-5">
-    <div class="card">
-      <div class="row g-0 justify-content-between">
-        <!-- Image Column -->
-        <div :class="['col-md-7 shadow-sm', turn ? 'order-md-2' : 'order-md-1']">
-          <img src="../assets/mountain.jpg" class="img-fluid h-100 w-100 object-fit-cover" alt="Card Image">
-        </div>
-        <!-- Content Column --> 
-        <div :class="['col-md-4 d-flex flex-column justify-content-between p-4', turn ? 'order-md-1 ms-2' : 'order-md-2 me-2']">
-          <div :class="[turn ? 'text-start' : 'text-end']">
-            <h5 class="card-title">{{ title }}</h5>
-            <p class="card-text">
-              {{ text }}
-            </p>
-          </div>
-          <div :class="[turn ? 'text-start' : 'text-end']" >
-            <a href="#" class="btn btn-primary mt-3">Discover More</a>
-          </div>
-        </div>
+  <div class="row align-items-center mb-5 mx-5">
+    <div :class="['col-md-6', reverse ? 'order-md-2' : '']">
+      <div class="text-block p-4">
+        <slot name="title"></slot>
+        <p v-for="(content, idx) in contents" :key="idx" class="mb-3">{{ content }}</p>
+        <Button v-if="buttonText" :content="buttonText" />
       </div>
+    </div>
+    <div :class="['col-md-6', reverse ? 'order-md-1' : '']">
+      <img :src="imgSrc" alt="Scenic" class="img-fluid rounded" />
     </div>
   </div>
 </template>
 
 <script setup>
-defineProps(['title', 'text', 'turn'])
+import Button from './Button.vue'
+defineProps({
+  contents: { type: Array, default: () => [] }, // nhận mảng content động
+  buttonText: String,
+  imgSrc: String,
+  reverse: { type: Boolean, default: false }
+})
 </script>
 
 <style scoped>
-.object-fit-cover {
-  object-fit: cover;
-  height: 100%;
+.text-block {
+  background: #e0e4f1;
+  border-radius: 8px;
+}
+.text-block p {
+  color: #333;
 }
 </style>

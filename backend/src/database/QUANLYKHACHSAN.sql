@@ -105,7 +105,7 @@ CREATE TABLE KhuyenMai (
 -- Bảng Đặt Phòng (Booking) - Tích hợp thông tin hủy
 CREATE TABLE Booking (
     MaDat INT PRIMARY KEY IDENTITY(1,1),          -- Mã Đặt phòng (PK)
-    MaKH INT NOT NULL,                           -- Mã Khách hàng (FK)
+    MaKH INT,                           -- Mã Khách hàng (FK)
     MaKS INT NOT NULL,                           -- Mã Khách sạn (FK) - Booking này ở KS nào
     MaPhong INT NULL,                         -- Mã phòng CỤ THỂ được đặt (FK, NULL) - Theo ERD gốc (chỉ đặt 1 phòng)
                                                 -- BỎ CỘT NÀY NẾU DÙNG BẢNG ChiTietDatPhong CHO NHIỀU PHÒNG
