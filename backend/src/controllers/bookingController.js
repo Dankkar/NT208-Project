@@ -196,6 +196,28 @@ exports.createBooking = async (req, res) => {
 
             const MaDat = bookingResult.recordset[0].MaDat;
 
+            // Lấy thông tin quản lý khách sạn
+            const managerResult = await transaction.request()
+                .input('MaKS', sql.Int, MaKS)
+                .query(`
+                    SELECT MaQL
+                    FROM KhachSan
+                    WHERE MaKS = @MaKS
+                `);
+
+            if (managerResult.recordset.length > 0) {
+                const managerId = managerResult.recordset[0].MaQL;
+                // Gửi thông báo qua Socket.IO
+                global.emitBookingNotification(managerId, {
+                    MaDat,
+                    MaKS,
+                    NgayNhanPhong,
+                    NgayTraPhong,
+                    SoLuongKhach,
+                    TongTienDuKien
+                });
+            }
+
             // Thêm chi tiết dịch vụ nếu có
             if (serviceDetails.length > 0) {
                 for (const service of serviceDetails) {
