@@ -1,8 +1,11 @@
 <template>
   <div class="template">
-    <NavbarLogin bgFixed="true" />
+    <NavbarLogin bgFixed="true" style="position: fixed !important; z-index: 100;" />
     <div class="py-5"></div>
-     <div class="d-flex align-items-center" style="background-color: #F6E4E4; height: 80px;">
+     <div  v-if="showTitle"  class="d-flex align-items-center" :style="{
+      backgroundColor: bgColor,
+      height: '80px'
+      }">
       <h3 class="fw-bold mb-0 ms-5">{{ title }}</h3>
     </div>
     <slot></slot>
@@ -11,6 +14,7 @@
 </template>
 
 <script setup>
+
 import NavbarLogin from '@/components/Navbar-Login.vue'
 import Footer from '@/components/Footer.vue'
 
@@ -23,6 +27,14 @@ const props = defineProps({
   title: {
     type: String,
     default: 'Default Title'
+  },
+  bgColor: {
+    type: String,
+    default: '#F6E4E4'
+  },
+  showTitle: {
+    type: Boolean,
+    default: true
   }
 })
 
