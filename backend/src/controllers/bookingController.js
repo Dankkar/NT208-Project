@@ -657,11 +657,6 @@ exports.suggestAlternativeDates = async (req, res) => {
 // Tim loai phong tren thanh Search Home Page
 exports.searchAvailableRooms = async (req, res) => {
     try {
-        console.log('Search request received:', {
-            query: req.query,
-            params: req.params,
-            body: req.body
-        });
         const { location, startDate, endDate, numberOfGuests } = req.query;
 
         // Validate required parameters
@@ -709,13 +704,9 @@ exports.searchAvailableRooms = async (req, res) => {
             .query(`
                 WITH AvailableRooms AS (
                     SELECT 
-                        p.MaPhong,
                         p.MaKS,
                         p.MaLoaiPhong,
-                        p.MaCauHinhGiuong,
-                        chg.SoGiuongDoi,
-                        chg.SoGiuongDon,
-                        (chg.SoGiuongDoi * 2 + chg.SoGiuongDon) as MaxGuests
+                        COUNT(*) as SoPhongTrong
                     FROM Phong p
                     JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
                     WHERE NOT EXISTS (
@@ -731,16 +722,10 @@ exports.searchAvailableRooms = async (req, res) => {
                             OR (b.TrangThaiBooking = N'Tạm giữ' AND b.ThoiGianGiuCho IS NOT NULL AND DATEDIFF(MINUTE, b.ThoiGianGiuCho, GETDATE()) <= 15)
                         )
                     )
-                ),
-                RoomTypesWithHoldStatus AS (
-                    SELECT DISTINCT p.MaLoaiPhong
-                    FROM Phong p
-                    JOIN Booking b ON p.MaPhong = b.MaPhong
-                    WHERE b.TrangThaiBooking = N'Tạm giữ'
-                    AND b.ThoiGianGiuCho IS NOT NULL
-                    AND DATEDIFF(MINUTE, b.ThoiGianGiuCho, GETDATE()) <= 15
+                    AND (chg.SoGiuongDoi * 2 + chg.SoGiuongDon) >= @numberOfGuests
+                    GROUP BY p.MaKS, p.MaLoaiPhong
                 )
-                SELECT DISTINCT
+                SELECT 
                     ks.MaKS,
                     ks.TenKS,
                     ks.DiaChi,
@@ -749,47 +734,46 @@ exports.searchAvailableRooms = async (req, res) => {
                     ks.MoTaChung,
                     ks.Latitude,
                     ks.Longitude,
-                    lp.MaLoaiPhong,
-                    lp.TenLoaiPhong,
-                    lp.GiaCoSo,
-                    lp.DienTich,
-                    lp.TienNghi,
-                    chg.TenCauHinh as CauHinhGiuong,
-                    chg.SoGiuongDoi,
-                    chg.SoGiuongDon,
-                    COUNT(ar.MaPhong) as SoPhongTrong
+                    (
+                        SELECT 
+                            lp.MaLoaiPhong,
+                            lp.TenLoaiPhong,
+                            lp.GiaCoSo,
+                            lp.DienTich,
+                            lp.TienNghi,
+                            chg.TenCauHinh as CauHinhGiuong,
+                            chg.SoGiuongDoi,
+                            chg.SoGiuongDon,
+                            ar.SoPhongTrong
+                        FROM LoaiPhong lp
+                        JOIN Phong p ON p.MaLoaiPhong = lp.MaLoaiPhong
+                        JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
+                        JOIN AvailableRooms ar ON ar.MaKS = p.MaKS AND ar.MaLoaiPhong = p.MaLoaiPhong
+                        WHERE p.MaKS = ks.MaKS
+                        AND (chg.SoGiuongDoi * 2 + chg.SoGiuongDon) >= @numberOfGuests
+                        FOR JSON PATH
+                    ) as RoomTypes
                 FROM KhachSan ks
-                JOIN AvailableRooms ar ON ks.MaKS = ar.MaKS
-                JOIN LoaiPhong lp ON ar.MaLoaiPhong = lp.MaLoaiPhong
-                JOIN CauHinhGiuong chg ON ar.MaCauHinhGiuong = chg.MaCauHinhGiuong
-                WHERE 
-                    (ks.DiaChi COLLATE Latin1_General_CI_AI LIKE '%' + @location + '%' OR ks.TenKS COLLATE Latin1_General_CI_AI LIKE '%' + @location + '%')
-                    AND ar.MaxGuests >= @numberOfGuests
-                    AND lp.MaLoaiPhong NOT IN (SELECT MaLoaiPhong FROM RoomTypesWithHoldStatus)
-                GROUP BY 
-                    ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, 
-                    ks.LoaiHinh, ks.MoTaChung, ks.Latitude, ks.Longitude,
-                    lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo, lp.DienTich,
-                    lp.TienNghi, chg.TenCauHinh, chg.SoGiuongDoi, chg.SoGiuongDon
-                HAVING COUNT(ar.MaPhong) > 0
-                ORDER BY ks.HangSao DESC, lp.GiaCoSo ASC
+                WHERE (ks.DiaChi COLLATE Latin1_General_CI_AI LIKE @location OR ks.TenKS COLLATE Latin1_General_CI_AI LIKE @location)
+                AND EXISTS (
+                    SELECT 1 FROM AvailableRooms ar
+                    WHERE ar.MaKS = ks.MaKS
+                )
+                ORDER BY ks.HangSao DESC
             `);
+
+        // Parse the RoomTypes JSON string for each hotel
+        const hotels = result.recordset.map(hotel => ({
+            ...hotel,
+            RoomTypes: JSON.parse(hotel.RoomTypes)
+        }));
 
         res.json({
             success: true,
-            data: result.recordset
+            data: hotels
         });
     } catch (error) {
         console.error('Error searching available rooms:', error);
-        console.error('Error details:', {
-            message: error.message,
-            code: error.code,
-            state: error.state,
-            class: error.class,
-            lineNumber: error.lineNumber,
-            serverName: error.serverName,
-            procName: error.procName
-        });
         res.status(500).json({
             success: false,
             message: 'Lỗi khi tìm kiếm phòng',

@@ -7,7 +7,8 @@ const {
     forgotPassword, 
     resetPassword, 
     logout,
-    googleLogin
+    googleLogin,
+    changePassword
 } = require('../controllers/authController');
 const {authenticateToken, isAdmin} = require('../middlewares/auth');
 
@@ -78,15 +79,33 @@ router.post(
 router.put(
     '/reset-password',
     [
-        check('token', 'Token khong duoc de trong').notEmpty(),
-        check('newPassword', 'Mat khau toi thieu 8 ky tu').isLength({ min: 8}),
+        check('token').notEmpty().withMessage('Token khong duoc de trong'),
+        check('newPassword').isLength({ min: 8 }).withMessage('Mat khau toi thieu 8 ky tu'),
+    ],
+    (req, res, next) => {
+        const errs = validationResult(req);
+        if(!errs.isEmpty()) {
+            return res.status(400).json({ errors: errs.array() });
+        }
+        next();
+    },
+    resetPassword
+);
+
+// Doi mat khau
+router.put(
+    '/change-password',
+    authenticateToken,
+    [
+        check('currentPassword', 'Mật khẩu hiện tại không được để trống').notEmpty(),
+        check('newPassword', 'Mật khẩu mới tối thiểu 8 ký tự').isLength({ min: 8 }),
     ],
     (req, res, next) => {
         const errs = validationResult(req);
         if(!errs.isEmpty()) return res.status(400).json({ errors: errs.array() });
         next();
     },
-    resetPassword
+    changePassword
 );
 
 router.post('/logout', logout);
