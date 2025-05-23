@@ -61,6 +61,7 @@
                 backgroundColor="black"
                 textAlign="center"
                 colorHover="white"
+                bgHover="black"
               />
             </div>
     </section>

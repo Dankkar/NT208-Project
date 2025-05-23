@@ -44,12 +44,12 @@
                         <div v-if="formSubmitted && errors.adults" class="text-danger small mt-1">{{ errors.adults }}</div>
                       </div>
                       <div>
-                        <label for="children" class="form-label small text-secondary">Children</label>
+                        <!-- <label for="children" class="form-label small text-secondary">Children</label>
                         <div class="input-group input-group-sm">
                           <button class="btn btn-outline-secondary px-2" type="button" @click="decrement('children')" :disabled="searchParams.children <= 0">-</button>
                           <input type="text" class="form-control text-center fw-bold" id="children" :value="searchParams.children" readonly>
                           <button class="btn btn-outline-secondary px-2" type="button" @click="increment('children')">+</button>
-                        </div>
+                        </div> -->
                         <!-- No error for children in this design usually -->
                       </div>
                     </div>
