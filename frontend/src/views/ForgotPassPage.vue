@@ -1,13 +1,6 @@
 <!-- src/views/ForgotPasswordPage.vue -->
 <template>
   <div class="forgot-pass-page">
-      <!-- Header menu -->
-    <header class="position-absolute top-0 w-100 px-4 py-3 d-flex align-items-center">
-      <button class="btn btn-link p-0 d-flex text-decoration-none align-items-center text-light">
-        <i class="bi bi-list fs-2 me-2"></i>
-        <span class="fw-bold">MENU</span>
-      </button>
-    </header>
     <div class="form-card">
       <!-- Title -->
       <h2 class="form-title">Forgot your password?</h2>
