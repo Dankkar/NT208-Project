@@ -7,6 +7,7 @@ import MenuButton from '../components/MenuButton.vue'
 import Profile from '../views/Profile.vue'
 import WelcomePage from '../views/Welcome.vue'
 import Reserve from '../views/Reserve.vue'
+import BookingProcess from '../views/BookingProcess.vue'
 
 
 const routes = [
@@ -18,6 +19,7 @@ const routes = [
   {path:'/profile', name: "Profile", component:Profile},
   {path: '/Welcome', name: 'Welcome', component: WelcomePage},
   {path: '/reserve', name: 'Reserve', component: Reserve},
+  {path: '/BookingProcess', name: 'BookingProcess', component: BookingProcess}, 
 ]
 
 export default createRouter({

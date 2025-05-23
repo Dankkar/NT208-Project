@@ -88,8 +88,10 @@ router.put(
     },
     resetPassword
 );
-
+ // Đăng xuất
 router.post('/logout', logout);
+
+//Đăng nhập bằng google
 router.post('/google', googleLogin);
 
 

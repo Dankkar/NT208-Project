@@ -14,7 +14,7 @@
     }"
   >
     <i v-if="isMenu" class="bi bi-list fs-2 me-2"></i>
-    <span class="fw-bold w-100">{{ content }}</span>
+    <span class="[{'fw-bold': fwBold }, w-100]">{{ content }}</span>
     <i v-if="isDropdown" class="bi bi-caret-down-fill ms-2"></i>
   </button>
 </template>
@@ -26,9 +26,10 @@ defineProps({
   isDropdown:     { type: Boolean, default: false },
   block:          { type: Boolean, default: false },
 
+  fwBold:       { type: Boolean, default: false },
   textColor:      { type: String,  default: '#fff' },
   fontSize:       { type: String,  default: '16px' },
-  colorHover:     { type: String,  default: 'black' },
+  colorHover:     { type: String,  default: 'black' },  
 
   backgroundColor:{ type: String,  default: '' },
   borderRadius:   { type: String,  default: '6px' },

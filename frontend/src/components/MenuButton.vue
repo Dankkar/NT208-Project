@@ -38,14 +38,6 @@
                 />
               </li>
             </ul>
-            <div>
-              <Button
-                content="Log Out"
-                block
-                textColor="black"
-                @click="Logout"
-              />
-            </div>
           </nav>
         </div>
       </transition>
@@ -56,6 +48,10 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import Button from './Button.vue'
+
+
+
+
 
 const props = defineProps({
   textColor:   { type: String, default: 'white' },
