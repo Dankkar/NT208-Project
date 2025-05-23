@@ -5,7 +5,9 @@ import ForgotPassPage from "../views/ForgotPassPage.vue"
 import HomePage from "../views/HomePage.vue"
 import MenuButton from '../components/MenuButton.vue'
 import Profile from '../views/Profile.vue'
-import WelcomePage from '../views/Welcome.vue'
+import Ratings from '../views/Ratings.vue'
+import Dashboard from '../views/Dashboard.vue'
+import RatingDetails from '../views/RatingDetails.vue'
 import Reserve from '../views/Reserve.vue'
 
 
@@ -16,7 +18,9 @@ const routes = [
   { path: '/Homepage',name: 'Homepage', component: HomePage },
   {path: '/Menu', name: "Menu", component: MenuButton},
   {path:'/profile', name: "Profile", component:Profile},
-  {path: '/Welcome', name: 'Welcome', component: WelcomePage},
+  {path:'/ratings', name: "Ratings", component:Ratings},
+  {path:'/admin', name: "AdminDashBoard", component:Dashboard},
+  {path:'/ratingdetails', name: "RatingDetails", component:RatingDetails},
   {path: '/reserve', name: 'Reserve', component: Reserve},
 ]
 

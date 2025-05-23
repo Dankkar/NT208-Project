@@ -1,4 +1,4 @@
-<!-- src/views/HomePage.vue -->
+  <!-- src/views/HomePage.vue -->
 <template>
   <div class="home-page">
     <NavbarLogin style="position: fixed !important;" />
@@ -90,12 +90,12 @@
 </template>
 
 <script setup>
+import { reactive, ref, computed, onMounted, onUnmounted } from 'vue'
 import NavbarLogin from '../components/Navbar-login.vue'
 import Post from '../components/Post.vue'
 import Footer from '../components/Footer.vue'
 import FeaturedCarousel from '../components/FeaturedCarousel.vue'
 import HotelCard from '../components/HotelCard.vue'
-import { reactive, ref, onMounted } from 'vue'
 import hotelService from '../services/hotelService'
 import { useRouter } from 'vue-router'
 import axios from 'axios'

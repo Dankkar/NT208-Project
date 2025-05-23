@@ -4,7 +4,7 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [vue()],
-    resolve: {
+  resolve: {
     alias: {
       // so "@/assets/foo.jpg" => "<project-root>/src/assets/foo.jpg"
       '@': path.resolve(__dirname, 'src')
@@ -12,8 +12,7 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-  open: '/homepage',
-  //root: '.', 
+    open: '/homepage',
   },
 })
 
