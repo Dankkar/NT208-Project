@@ -1,6 +1,5 @@
 <template>
   <div class="login-page">
-   
   <div class="form-card">
       <h2 class="form-title">Sign in to CHILLCHILL</h2>
 
