@@ -13,7 +13,9 @@ const {
     getAllBookings,
     holdBooking,
     suggestAlternativeDates,
-    searchAvailableRooms
+    searchAvailableRooms,
+    checkIn,
+    checkOut
 } = require('../controllers/bookingController');
 const { authenticateToken, isAdmin } = require('../middlewares/auth');
 
@@ -93,5 +95,19 @@ router.post('/:MaDat/confirmations', authenticateToken, sendBookingConfirmation)
  * @access  Public
  */
 router.post('/suggest-dates', suggestAlternativeDates);
+
+/**
+ * @route   PUT /api/bookings/:MaDat/check-in
+ * @desc    Check-in đơn đặt phòng
+ * @access  Private
+ */
+router.put('/:MaDat/check-in', authenticateToken, checkIn);
+
+/**
+ * @route   PUT /api/bookings/:MaDat/check-out
+ * @desc    Check-out đơn đặt phòng
+ * @access  Private
+ */
+router.put('/:MaDat/check-out', authenticateToken, checkOut);
 
 module.exports = router;
