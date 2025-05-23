@@ -1,96 +1,73 @@
 const { poolPromise, sql } = require('../database/db');
+const { containsBadWords } = require('../utils/badWords');
 
 // Create a new review
 exports.createReview = async (req, res) => {
-    const { MaDat, MaKS, Sao, NoiDung } = req.body;
-    const MaKH = req.user.MaKH; // Get from authenticated user
-
     try {
+        const { MaKS, MaDat, NoiDung, DiemDanhGia } = req.body;
+        const MaKH = req.user.MaKH;
         const pool = await poolPromise;
 
-        // Check if booking exists and belongs to user
+        // Kiểm tra từ cấm
+        const badWordsCheck = containsBadWords(NoiDung);
+        if (badWordsCheck.contains) {
+            return res.status(400).json({
+                error: "Nội dung review chứa từ ngữ không phù hợp",
+                details: {
+                    word: badWordsCheck.word,
+                    language: badWordsCheck.language
+                }
+            });
+        }
+
+        // Kiểm tra xem khách hàng đã từng đặt phòng và đã check-out chưa
         const bookingCheck = await pool.request()
             .input('MaDat', sql.Int, MaDat)
             .input('MaKH', sql.Int, MaKH)
             .query(`
-                SELECT MaDat, TrangThaiBooking 
-                FROM Booking 
+                SELECT TrangThaiBooking
+                FROM Booking
                 WHERE MaDat = @MaDat AND MaKH = @MaKH
             `);
 
         if (bookingCheck.recordset.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'Không tìm thấy đơn đặt phòng hoặc bạn không có quyền đánh giá'
-            });
+            return res.status(403).json({ error: "Bạn không có quyền đánh giá đơn đặt phòng này" });
         }
 
-        // Check if user has already reviewed this booking
+        if (bookingCheck.recordset[0].TrangThaiBooking !== 'Đã trả phòng') {
+            return res.status(400).json({ error: "Bạn chỉ có thể đánh giá sau khi đã trả phòng" });
+        }
+
+        // Kiểm tra xem đã đánh giá chưa
         const existingReview = await pool.request()
             .input('MaDat', sql.Int, MaDat)
-            .query('SELECT MaDG FROM BaiDanhGia WHERE MaDat = @MaDat');
+            .query(`
+                SELECT MaReview
+                FROM Review
+                WHERE MaDat = @MaDat
+            `);
 
         if (existingReview.recordset.length > 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'Bạn đã đánh giá đơn đặt phòng này'
-            });
+            return res.status(400).json({ error: "Bạn đã đánh giá đơn đặt phòng này" });
         }
 
-        // Generate auto-reply based on rating
-        let autoReply = '';
-        if (Sao >= 4) {
-            autoReply = 'Cảm ơn quý khách đã đánh giá tích cực! Chúng tôi rất vui khi được phục vụ quý khách và mong được đón tiếp quý khách trong thời gian tới.';
-        } else if (Sao >= 3) {
-            autoReply = 'Cảm ơn quý khách đã góp ý. Chúng tôi sẽ cố gắng cải thiện dịch vụ để phục vụ quý khách tốt hơn trong lần sau.';
-        } else {
-            autoReply = 'Chúng tôi rất tiếc về trải nghiệm không tốt của quý khách. Chúng tôi sẽ xem xét và cải thiện dịch vụ để phục vụ quý khách tốt hơn.';
-        }
-
-        // Insert review with auto-reply
+        // Tạo review mới
         const result = await pool.request()
             .input('MaKH', sql.Int, MaKH)
-            .input('MaDat', sql.Int, MaDat)
             .input('MaKS', sql.Int, MaKS)
-            .input('Sao', sql.Int, Sao)
+            .input('MaDat', sql.Int, MaDat)
             .input('NoiDung', sql.NVarChar, NoiDung)
-            .input('AutoReply', sql.NVarChar, autoReply)
+            .input('DiemDanhGia', sql.Int, DiemDanhGia)
+            .input('NgayTao', sql.DateTime, new Date())
             .query(`
-                INSERT INTO BaiDanhGia (MaKH, MaDat, MaKS, Sao, NoiDung, IsApproved)
-                VALUES (@MaKH, @MaDat, @MaKS, @Sao, @NoiDung, 1);
-                
-        
+                INSERT INTO Review (MaKH, MaKS, MaDat, NoiDung, DiemDanhGia, NgayTao)
+                VALUES (@MaKH, @MaKS, @MaDat, @NoiDung, @DiemDanhGia, @NgayTao)
             `);
-//         -- Insert auto-reply as a separate review
-        //         INSERT INTO BaiDanhGia (MaKH, MaDat, MaKS, Sao, NoiDung, IsApproved)
-        //         SELECT 
-        //             (SELECT MaNguoiQuanLy FROM KhachSan WHERE MaKS = @MaKS),
-        //             @MaDat,
-        //             @MaKS,
-        //             5,
-        //             @AutoReply,
-        //             1;
-        res.status(201).json({
-            success: true,
-            message: 'Đánh giá đã được gửi thành công',
-            data: {
-                review: {
-                    MaKH,
-                    MaDat,
-                    MaKS,
-                    Sao,
-                    NoiDung
-                },
-                autoReply
-            }
-        });
-    } catch (error) {
-        console.error('Lỗi khi tạo đánh giá:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Lỗi server khi tạo đánh giá',
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
+
+        res.status(201).json({ message: "Đánh giá thành công" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Lỗi hệ thống" });
     }
 };
 

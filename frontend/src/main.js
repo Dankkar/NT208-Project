@@ -8,8 +8,6 @@ import 'bootstrap-icons/font/bootstrap-icons.css'
 import vue3GoogleLogin from 'vue3-google-login'
 import flatpickr from 'flatpickr'
 
-
-
 const app = createApp(App)
 
 app.use(router)

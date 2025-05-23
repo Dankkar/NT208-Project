@@ -196,6 +196,28 @@ exports.createBooking = async (req, res) => {
 
             const MaDat = bookingResult.recordset[0].MaDat;
 
+            // Lấy thông tin quản lý khách sạn
+            const managerResult = await transaction.request()
+                .input('MaKS', sql.Int, MaKS)
+                .query(`
+                    SELECT MaQL
+                    FROM KhachSan
+                    WHERE MaKS = @MaKS
+                `);
+
+            if (managerResult.recordset.length > 0) {
+                const managerId = managerResult.recordset[0].MaQL;
+                // Gửi thông báo qua Socket.IO
+                global.emitBookingNotification(managerId, {
+                    MaDat,
+                    MaKS,
+                    NgayNhanPhong,
+                    NgayTraPhong,
+                    SoLuongKhach,
+                    TongTienDuKien
+                });
+            }
+
             // Thêm chi tiết dịch vụ nếu có
             if (serviceDetails.length > 0) {
                 for (const service of serviceDetails) {
@@ -795,5 +817,116 @@ exports.searchAvailableRooms = async (req, res) => {
             message: 'Lỗi khi tìm kiếm phòng',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
+    }
+};
+
+// Check-in
+exports.checkIn = async (req, res) => {
+    try {
+        const { MaDat } = req.params;
+        const pool = await poolPromise;
+
+        // Kiểm tra trạng thái hiện tại
+        const bookingResult = await pool.request()
+            .input('MaDat', sql.Int, MaDat)
+            .query(`
+                SELECT TrangThaiBooking, NgayNhanPhong
+                FROM Booking
+                WHERE MaDat = @MaDat
+            `);
+
+        if (bookingResult.recordset.length === 0) {
+            return res.status(404).json({ error: "Không tìm thấy đơn đặt phòng" });
+        }
+
+        const { TrangThaiBooking, NgayNhanPhong } = bookingResult.recordset[0];
+        
+        // Kiểm tra điều kiện check-in
+        if (TrangThaiBooking !== 'Đã xác nhận') {
+            return res.status(400).json({ error: "Chỉ có thể check-in đơn đã xác nhận" });
+        }
+
+        const checkInDate = new Date(NgayNhanPhong);
+        const today = new Date();
+        if (today < checkInDate) {
+            return res.status(400).json({ error: "Chưa đến ngày nhận phòng" });
+        }
+
+        // Cập nhật trạng thái
+        await pool.request()
+            .input('MaDat', sql.Int, MaDat)
+            .input('TrangThaiBooking', sql.NVarChar, 'Đã nhận phòng')
+            .input('ThoiGianCheckIn', sql.DateTime, new Date())
+            .query(`
+                UPDATE Booking
+                SET TrangThaiBooking = @TrangThaiBooking,
+                    ThoiGianCheckIn = @ThoiGianCheckIn
+                WHERE MaDat = @MaDat
+            `);
+
+        res.json({ message: "Check-in thành công" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Lỗi hệ thống" });
+    }
+};
+
+// Check-out
+exports.checkOut = async (req, res) => {
+    try {
+        const { MaDat } = req.params;
+        const pool = await poolPromise;
+
+        // Kiểm tra trạng thái hiện tại
+        const bookingResult = await pool.request()
+            .input('MaDat', sql.Int, MaDat)
+            .query(`
+                SELECT b.TrangThaiBooking, b.NgayTraPhong, nd.Email, nd.HoTen, ks.TenKS
+                FROM Booking b
+                JOIN NguoiDung nd ON b.MaKH = nd.MaKH
+                JOIN KhachSan ks ON b.MaKS = ks.MaKS
+                WHERE b.MaDat = @MaDat
+            `);
+
+        if (bookingResult.recordset.length === 0) {
+            return res.status(404).json({ error: "Không tìm thấy đơn đặt phòng" });
+        }
+
+        const { TrangThaiBooking, NgayTraPhong, Email, HoTen, TenKS } = bookingResult.recordset[0];
+        
+        // Kiểm tra điều kiện check-out
+        if (TrangThaiBooking !== 'Đã nhận phòng') {
+            return res.status(400).json({ error: "Chỉ có thể check-out đơn đã nhận phòng" });
+        }
+
+        // Cập nhật trạng thái
+        await pool.request()
+            .input('MaDat', sql.Int, MaDat)
+            .input('TrangThaiBooking', sql.NVarChar, 'Đã trả phòng')
+            .input('ThoiGianCheckOut', sql.DateTime, new Date())
+            .query(`
+                UPDATE Booking
+                SET TrangThaiBooking = @TrangThaiBooking,
+                    ThoiGianCheckOut = @ThoiGianCheckOut
+                WHERE MaDat = @MaDat
+            `);
+
+        // Gửi email mời đánh giá
+        try {
+            await sendReviewRequestEmail(Email, {
+                guestName: HoTen,
+                hotelName: TenKS,
+                bookingId: MaDat
+            });
+        } catch (emailErr) {
+            console.error("Lỗi gửi email:", emailErr);
+        }
+
+        res.json({ 
+            message: "Check-out thành công"
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Lỗi hệ thống" });
     }
 };
