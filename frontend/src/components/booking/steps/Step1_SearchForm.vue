@@ -153,9 +153,9 @@ function handleSearch() {
   if (!validateForm()) return;
   const [checkIn, checkOut] = selectedDates.value || [];
   const searchData = {
-    checkInDate: checkIn ? format(checkIn, 'yyyy-MM-dd') : null,
-    checkOutDate: checkOut ? format(checkOut, 'yyyy-MM-dd') : null,
-    adults: searchParams.adults,
+    startDate: checkIn ? format(checkIn, 'yyyy-MM-dd') : null,
+    endDate: checkOut ? format(checkOut, 'yyyy-MM-dd') : null,
+    numberOfGuests: searchParams.adults,
   };
   emit('search-submitted', searchData);
 }

@@ -63,6 +63,7 @@ import Step1_SearchForm from '@/components/booking/steps/Step1_SearchForm.vue';
 import Step2_RoomSelection from '../components/booking/steps/Step2_RoomSelection.vue';
 
 import defaultBannerImage from '@/assets/mountain.jpg';
+import axios from 'axios';
 
 const bannerImageUrl = ref(defaultBannerImage);
 
@@ -73,8 +74,19 @@ const selectedRoomAndPackage = ref(null);
 const guestInformation = ref(null);
 const finalBookingDetails = ref(null);
 
-function handleSearchSubmitted(data) {
+async function handleSearchSubmitted(data) {
   console.log('Search submitted with data:', data);
+
+  try {
+    const res = await axios.get('http://localhost:5000/api/bookings/search?startDate=' + data.startDate + '&endDate=' + data.endDate + '&numberOfGuests=' + data.numberOfGuests);
+    console.log('Response from search:', res.data);
+  } catch (error) {
+    console.error('Error fetching rooms:', error);
+    return;
+  }
+
+
+
   searchCriteria.value = data;
   currentStep.value = 2;
   if (maxCompletedStep.value < 1) maxCompletedStep.value = 1;

@@ -83,7 +83,7 @@
     </ul>
   </li>
   <li class="nav-item">
-    <router-link class="nav-link" to="/reserve">
+    <router-link class="nav-link" to="/BookingProcess">
       <Button
         content="RESERVE"
         :textColor="showBg || bgFixed ? '#212529' : '#fff'"
