@@ -1,10 +1,10 @@
 <template>
-  <NavbarLogin />
-  <div class="d-flex">
+  <div class="admin">
+    <Layout title="DASHBOARD">
     <Sidebar />
-    <main class="flex-grow-1 bg-light p-4" style="min-height: 100vh;">
+    <!-- padding-top 56px để tránh header fixed/absolute -->
+   <main class="flex-grow-1 bg-light p-4" style="min-height: 100vh; margin-top: 70px;">
       <h1 class="mb-4 fw-bold text-center">HOTEL BOOKING DASHBOARD</h1>
-
       <section>
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h2 class="h5 mb-0">Reservations</h2>
@@ -26,8 +26,8 @@
         />
       </section>
     </main>
+    </Layout>
   </div>
-  <Footer />
 </template>
 
 <script setup>
@@ -35,9 +35,10 @@ import { ref, computed } from 'vue'
 import Sidebar from '@/components/Sidebar.vue'
 import ReservationTable from '@/components/ReservationTable.vue'
 import Pagination from '@/components/Pagination.vue'
-import NavbarLogin from '../components/Navbar-login.vue'
+import Navbar from '../components/NavBar.vue'
 import axios from 'axios'
 import Footer from '../components/Footer.vue'
+import Layout from '../components/Layout.vue'
 
 // Original data - remains unchanged
 const allReservationsData = [

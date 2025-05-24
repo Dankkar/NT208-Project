@@ -34,4 +34,18 @@ const hover = ref(false)
   cursor: pointer;
   transition: filter .2s ease-in-out;
 }
+
+@media (max-width: 1024px) {
+  .logo-img {
+    max-width: 50px; /* Logo nhỏ hơn trên màn hình tablet/mobile */
+    margin-right: 470px;
+  }
+}
+
+@media (max-width: 768px) {
+  .logo-img {
+    max-width: 30px; /* Logo nhỏ hơn trên màn hình tablet/mobile */
+    margin-left: 500px;
+  }
+}
 </style>

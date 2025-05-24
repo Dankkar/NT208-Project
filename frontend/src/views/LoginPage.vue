@@ -1,6 +1,14 @@
 <template>
   <div class="login-page">
-  <div class="form-card">
+    <router-link class="logo-wrapper" to="/homepage">
+      <Logo
+        :src="logoSrc"
+        alt="UIT_Logo"
+        hoverFilter="brightness(0.8)" 
+        width="50px"
+      />
+    </router-link>
+    <div class="form-card">
       <h2 class="form-title">Sign in to CHILLCHILL</h2>
 
       <!-- Alert messages -->
@@ -81,6 +89,8 @@ import axios from 'axios'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../utils/auth'
+import Logo from '../components/Logo.vue'
+import uit_logo from '../assets/Logo_UIT_blue.jpg'
 const { isLoggedIn, login} = useAuth()
 
 const email = ref('')
@@ -91,6 +101,7 @@ const isLoading = ref(false)
 const alertMessage = ref('')
 const alertType = ref('')
 const router = useRouter()
+const logoSrc = ref(uit_logo)
 
 function validateEmail() {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -183,7 +194,7 @@ async function loginHandler() {
   justify-content: center;
   background: url('../assets/mountain.jpg') no-repeat center/cover;
   min-height: 100vh;
-  opacity: 90%;
+  opacity: 100%;
   padding: 2rem;
 }
 
@@ -314,5 +325,14 @@ async function loginHandler() {
   background-color: #f8d7da;
   border: 1px solid #f5c6cb;
   color: #721c24;
+}
+
+.logo-wrapper {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 700px;
+  display: flex;
+  align-items: center;
 }
 </style>
