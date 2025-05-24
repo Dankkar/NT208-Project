@@ -3,7 +3,6 @@
 const express = require('express');
 const router = express.Router();
 const { 
-    getAvailableRoomTypes,
     createBooking,
     getBookingById,
     cancelBooking,
@@ -17,7 +16,7 @@ const {
     checkIn,
     checkOut
 } = require('../controllers/bookingController');
-const { authenticateToken, isAdmin } = require('../middlewares/auth');
+const { authenticateToken, isAdmin, isStaff } = require('../middlewares/auth');
 
 /**
  * @route   GET /api/bookings/search
@@ -26,12 +25,7 @@ const { authenticateToken, isAdmin } = require('../middlewares/auth');
  */
 router.get('/search', searchAvailableRooms);
 
-/**
- * @route   GET /api/bookings/rooms/available
- * @desc    Kiểm tra phòng trống theo loại phòng và ngày
- * @access  Public
- */
-router.get('/rooms/available', getAvailableRoomTypes);
+
 
 /**
  * @route   GET /api/bookings/admin
@@ -101,13 +95,13 @@ router.post('/suggest-dates', suggestAlternativeDates);
  * @desc    Check-in đơn đặt phòng
  * @access  Private
  */
-router.put('/:MaDat/check-in', authenticateToken, checkIn);
+router.put('/:MaDat/check-in', authenticateToken, isStaff, checkIn);
 
 /**
  * @route   PUT /api/bookings/:MaDat/check-out
  * @desc    Check-out đơn đặt phòng
  * @access  Private
  */
-router.put('/:MaDat/check-out', authenticateToken, checkOut);
+router.put('/:MaDat/check-out', authenticateToken, isStaff, checkOut);
 
 module.exports = router;
