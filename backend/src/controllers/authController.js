@@ -224,6 +224,7 @@ exports.forgotPassword = async (req, res) => {
 // API Dat lai mat khau
 exports.resetPassword = async (req, res) => {
   const { token, newPassword} = req.body;
+  
   try{
     const decoded = jwt.verify(token, process.env.RESET_PASSWORD_SECRET);
 
@@ -257,9 +258,24 @@ exports.resetPassword = async (req, res) => {
   }
   catch(err){
     console.error('AuthController.resetPassword error:', err);
+    
+    if (err.name === 'TokenExpiredError') {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Token đã hết hạn'
+      });
+    }
+    
+    if (err.name === 'JsonWebTokenError') {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Token không hợp lệ'
+      });
+    }
+
     res.status(400).json({ 
       success: false,
-      message: 'Token loi hoac da het han'
+      message: 'Token lỗi hoặc đã hết hạn'
     });
   }
 }
@@ -370,3 +386,55 @@ exports.googleLogin = async (req, res) => {
     });
   }
 }
+
+exports.changePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const currentUser = req.user; // Lấy thông tin user từ middleware auth
+
+  try {
+    const pool = await poolPromise;
+
+    // Lấy thông tin user hiện tại
+    const userResult = await pool.request()
+      .input('MaKH', sql.Int, currentUser.MaKH)
+      .query(`SELECT MatKhauHash FROM ${schema}.NguoiDung WHERE MaKH = @MaKH`);
+
+    if (userResult.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy người dùng"
+      });
+    }
+
+    const user = userResult.recordset[0];
+
+    // Kiểm tra mật khẩu hiện tại
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.MatKhauHash);
+    if (!isPasswordValid) {
+      return res.status(400).json({
+        success: false,
+        message: "Mật khẩu hiện tại không đúng"
+      });
+    }
+
+    // Mã hóa mật khẩu mới
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Cập nhật mật khẩu mới
+    await pool.request()
+      .input('MaKH', sql.Int, currentUser.MaKH)
+      .input('MatKhauHash', sql.NVarChar, hashedPassword)
+      .query(`UPDATE ${schema}.NguoiDung SET MatKhauHash = @MatKhauHash WHERE MaKH = @MaKH`);
+
+    res.status(200).json({
+      success: true,
+      message: "Đổi mật khẩu thành công"
+    });
+  } catch (err) {
+    console.error('AuthController.changePassword error:', err);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server"
+    });
+  }
+};
