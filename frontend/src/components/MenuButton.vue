@@ -37,10 +37,6 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import Button from './Button.vue'
 
-
-
-
-
 const props = defineProps({
   textColor:   { type: String, default: 'white' },
   colorHover:  { type: String, default: '#white' },

@@ -358,7 +358,7 @@ onMounted(() => {
 .btn-primary-theme {
   background-color: var(--primary-theme-color);
   border-color: var(--primary-theme-color);
-  color: white;
+  color: black;
   font-weight: 500;
   padding: 0.4rem 0.8rem;
   font-size: 0.875rem;

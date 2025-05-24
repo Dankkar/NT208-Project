@@ -9,13 +9,13 @@
       fontSize,
       backgroundColor,
       borderRadius,
-      textAlign: textAlign,
+      textAlign,
       '--hover-color': colorHover,
       '--hover-bg-color': bgHover
     }"
   >
     <i v-if="isMenu"      class="bi bi-list fs-2 me-2"></i>
-    <span class="w-100">{{ content }}</span>
+    <span :class="[{'fw-bold': fwBold}, 'w-100']">{{ content }}</span>
     <i v-if="isDropdown"  class="bi bi-caret-down-fill ms-2"></i>
   </button>
 </template>
