@@ -39,9 +39,22 @@ exports.getRoomTypesByHotel = async (req, res) => {
     }
     
     try {
+        const { page = 1, limit = 10 } = req.query;
+        const offset = (page - 1) * limit;
         const pool = await poolPromise;
-        const result = await pool.request()
+        const countResult = await pool.request()
             .input('MaKS', sql.Int, MaKS)
+            .query(`
+                SELECT COUNT(*) as total
+                FROM LoaiPhong lp
+                JOIN KhachSan ks ON lp.MaKS = ks.MaKS
+                WHERE lp.MaKS = @MaKS
+            `);
+
+        const result = await pool.request()
+            .input('MaKS', sql.Int, MaKS)  
+            .input('offset', sql.Int, offset)
+            .input('limit', sql.Int, limit)
             .query(`
                 SELECT 
                     lp.*,
@@ -52,8 +65,20 @@ exports.getRoomTypesByHotel = async (req, res) => {
                 WHERE lp.MaKS = @MaKS
                 GROUP BY lp.MaLoaiPhong, lp.MaKS, lp.TenLoaiPhong, lp.TienNghi, 
                          lp.DienTich, lp.GiaCoSo, lp.MoTa
+                ORDER BY lp.MaLoaiPhong DESC
+                OFFSET @offset ROWS
+                FETCH NEXT @limit ROWS ONLY
             `);
-        res.json(result.recordset);
+        res.json({
+            success: true,
+            data: result.recordset,
+            pagination: {
+                total: countResult.recordset[0].total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(countResult.recordset[0].total / parseInt(limit))
+            }
+        });
     }
     catch (err) {
         console.error('Lỗi getRoomTypesByHotel:', err);

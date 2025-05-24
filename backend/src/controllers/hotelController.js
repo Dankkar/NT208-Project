@@ -106,7 +106,16 @@ exports.deleteHotel = async (req, res) => {
 
 exports.getAllHotels = async (req, res) => {
     try {
+        const { page = 1, limit = 10 } = req.query;
+        const offset = (page - 1) * limit;
         const pool = await poolPromise;
+
+        const countResult = await pool.request().query(`
+            SELECT COUNT(*) as total
+            FROM KhachSan
+        `);
+        const total = countResult.recordset[0].total;
+        const totalPages = Math.ceil(total / limit);
 
         const result = await pool.request().query(`
             SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh,
@@ -114,9 +123,20 @@ exports.getAllHotels = async (req, res) => {
             FROM KhachSan ks
             LEFT JOIN NguoiDung nd ON ks.MaNguoiQuanLy = nd.MaKH
             ORDER BY ks.MaKS DESC
+            OFFSET @offset ROWS
+            FETCH NEXT @limit ROWS ONLY
         `);
 
-        res.json(result.recordset);
+        res.json({
+            success: true,
+            data: result.recordset,
+            pagination: {
+                total: countResult.recordset[0].total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(countResult.recordset[0].total / parseInt(limit))
+            }
+        });
     } catch (err) {
         console.error('Lỗi getAllHotels:', err);
         res.status(500).json({ error: 'Lỗi hệ thống' });
@@ -135,11 +155,15 @@ exports.getHotelById = async (req, res) => {
 
         const result = await pool.request()
             .input('MaKS', sql.Int, MaKS)
+            .input('offset', sql.Int, offset)
+            .input('limit', sql.Int, limit)
             .query(`
                 SELECT ks.*, nd.HoTen AS NguoiQuanLy
                 FROM KhachSan ks
                 LEFT JOIN NguoiDung nd ON ks.MaNguoiQuanLy = nd.MaKH
                 WHERE ks.MaKS = @MaKS
+                OFFSET @offset ROWS
+                FETCH NEXT @limit ROWS ONLY
             `);
 
         if (result.recordset.length === 0) {

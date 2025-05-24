@@ -22,6 +22,15 @@ router.get('/:MaDV', getServiceById);
 //GET /api/services/hotel/:MaKS
 router.get('/hotel/:MaKS', getServicesByHotel);
 
+//POST /api/services/booking/:MaDat
+router.post('/booking/:MaDat', authenticateToken, addServiceToBooking);
+
+//DELETE /api/services/booking/:MaDat/:MaDV
+router.delete('/booking/:MaDat/:MaDV', authenticateToken, removeServiceFromBooking);
+
+//GET /api/services/booking/:MaDat
+router.get('/booking/:MaDat', authenticateToken, getBookingServices);
+
 //POST /api/services
 router.post('/', authenticateToken, isStaff, createService);
 
@@ -32,12 +41,5 @@ router.put('/:MaDV', authenticateToken, isStaff, updateService);
 router.delete('/:MaDV', authenticateToken, isStaff, deleteService);
 
 
-//POST /api/services/booking/:MaDat
-router.post('/booking/:MaDat', authenticateToken, addServiceToBooking);
 
-//DELETE /api/services/booking/:MaDat/:MaDV
-router.delete('/booking/:MaDat/:MaDV', authenticateToken, removeServiceFromBooking);
-
-//GET /api/services/booking/:MaDat
-router.get('/booking/:MaDat', authenticateToken, getBookingServices);
 module.exports = router;

@@ -1,6 +1,7 @@
 //backend/src/index.js
 
 require('dotenv').config();
+const { initBookingCleanupJob } = require('./services/bookingCleanupService');
 
 const express = require('express');
 const app = express();
@@ -83,5 +84,6 @@ global.emitBookingNotification = emitBookingNotification;
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+    initBookingCleanupJob();
 })
 

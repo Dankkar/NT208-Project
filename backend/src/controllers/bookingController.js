@@ -3,57 +3,8 @@
 const { poolPromise, sql } = require('../database/db');
 const { sendReviewRequestEmail, sendBookingConfirmation } = require('../utils/emailService');
 const PriceCalculationService = require('../services/priceCalculationService');
-const EmailService = require('../services/emailService');
 
-// Kiem tra phong trong cua tung loai phong
-exports.getAvailableRoomTypes = async (req, res) => {
-    try {
-        const { NgayNhanPhong, NgayTraPhong } = req.body;
 
-        if (!NgayNhanPhong || !NgayTraPhong) {
-            return res.status(400).json({ error: "Vui lòng cung cấp ngày nhận phòng và ngày trả phòng" });
-        }
-
-        const pool = await poolPromise;
-
-        const result = await pool.request()
-            .input('NgayNhanPhong', sql.Date, NgayNhanPhong)
-            .input('NgayTraPhong', sql.Date, NgayTraPhong)
-            .query(`
-                SELECT 
-                    lp.MaLoaiPhong, 
-                    lp.TenLoaiPhong, 
-                    lp.GiaCoSo,
-                    chg.TenCauHinh as CauHinhGiuong,
-                    chg.SoGiuongDoi,
-                    chg.SoGiuongDon,
-                    COUNT(*) AS SoPhongTrong
-                FROM Phong p
-                JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
-                JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
-                WHERE NOT EXISTS (
-                    SELECT 1 FROM Booking b
-                    WHERE b.MaPhong = p.MaPhong
-                    AND b.TrangThaiBooking != N'Đã hủy'
-                    AND (
-                        b.NgayNhanPhong <= @NgayTraPhong
-                        AND b.NgayTraPhong >= @NgayNhanPhong
-                    )
-                    AND (
-                        b.TrangThaiBooking != N'Tạm giữ'
-                        OR (b.TrangThaiBooking = N'Tạm giữ' AND b.ThoiGianGiuCho IS NOT NULL AND DATEDIFF(MINUTE, b.ThoiGianGiuCho, GETDATE()) <= 15)
-                    )
-                )
-                GROUP BY lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo, 
-                         chg.TenCauHinh, chg.SoGiuongDoi, chg.SoGiuongDon
-            `);
-
-        res.json(result.recordset);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Lỗi hệ thống" });
-    }
-};
 
 // Tao don dat phong
 exports.createBooking = async (req, res) => {
@@ -163,6 +114,10 @@ exports.createBooking = async (req, res) => {
                 WHERE MaPhong = @MaPhong
                 AND TrangThaiBooking != N'Đã hủy'
                 AND (NgayNhanPhong <= @NgayTraPhong AND NgayTraPhong >= @NgayNhanPhong)
+                AND (
+                    TrangThaiBooking != N'Tạm giữ'
+                    OR (TrangThaiBooking = N'Tạm giữ' AND ThoiGianGiuCho IS NOT NULL AND DATEDIFF(MINUTE, ThoiGianGiuCho, GETDATE()) <= 15)
+                )
             `);
 
         if(check.recordset[0].count > 0) {
@@ -185,7 +140,7 @@ exports.createBooking = async (req, res) => {
                 .input('SoLuongKhach', sql.Int, SoLuongKhach)
                 .input('YeuCauDacBiet', sql.NVarChar, YeuCauDacBiet || '')
                 .input('TongTienDuKien', sql.Decimal(18, 2), TongTienDuKien)
-                .input('TrangThaiBooking', sql.NVarChar, 'Tạm giữ')
+                .input('TrangThaiBooking', sql.NVarChar, 'Đã Xác Nhận')
                 .query(`
                     INSERT INTO Booking
                     (MaKH, MaKS, MaPhong, NgayDat, NgayNhanPhong, NgayTraPhong, SoLuongKhach, YeuCauDacBiet, TongTienDuKien, TrangThaiBooking)
@@ -256,65 +211,24 @@ exports.createBooking = async (req, res) => {
     }
 };
 
-//Gửi email đánh giá sau khi trả phòng
-
-exports.checkoutBooking = async (req, res) => {
-    try {
-        const { MaDat } = req.params;
-        const pool = await sql.connect(db);
-
-        // Cập nhật trạng thái
-        await pool.request()
-            .input('MaDat', sql.Int, MaDat)
-            .input('TrangThaiBooking', sql.NVarChar, 'Đã trả phòng')
-            .query(`
-                UPDATE Booking
-                SET TrangThaiBooking = @TrangThaiBooking
-                WHERE MaDat = @MaDat
-            `);
-
-        // Lấy thông tin booking + email người dùng
-        const result = await pool.request()
-            .input('MaDat', sql.Int, MaDat)
-            .query(`
-                SELECT b.NgayNhanPhong, b.NgayTraPhong, ks.TenKS AS hotelName, nd.Email
-                FROM Booking b 
-                JOIN KhachSan ks ON b.MaKS = ks.MaKS
-                JOIN NguoiDung nd ON b.MaKH = nd.MaKH
-                WHERE b.MaDat = @MaDat
-            `);
-        if (result.recordset.length === 0) {
-            return res.status(404).json({ error: "Không tìm thấy đơn đặt phòng" });
-        }
-        const info = result.recordset[0];
-        const reviewLink = `https://your-domain.com/review/${MaDat}`; // Tùy chỉnh
-        try {
-            await sendReviewRequestEmail(info.Email, info, reviewLink);
-        } catch (emailErr) {
-            console.error("Gửi email thất bại:", emailErr);
-            // Không throw để không ảnh hưởng người dùng
-        }
-
-        res.json({ message: "Check-out thành công và đã gửi email mời đánh giá!" });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Lỗi hệ thống" });
-    }
-};
 
 // Xem chi tiet don
 exports.getBookingById = async (req, res) => {
     try {
         const { MaDat } = req.params;
+        const currentUser = req.user;
         const pool = await poolPromise;
 
-        const result = await pool.request()
+        // Kiểm tra quyền xem đơn đặt phòng
+        const bookingResult = await pool.request()
             .input('MaDat', sql.Int, MaDat)
             .query(`
                 SELECT 
                     b.*, 
                     p.SoPhong, 
                     ks.TenKS, 
+                    ks.MaKS,
+                    ks.MaNguoiQuanLy,
                     nd.HoTen,
                     chg.TenCauHinh as CauHinhGiuong,
                     chg.SoGiuongDoi,
@@ -327,40 +241,82 @@ exports.getBookingById = async (req, res) => {
                 WHERE b.MaDat = @MaDat
             `);
 
-        if(result.recordset.length === 0) {
+        if (bookingResult.recordset.length === 0) {
             return res.status(404).json({ error: 'Không tìm thấy đơn đặt phòng' });
         }
 
-        res.json(result.recordset[0]);
+        const booking = bookingResult.recordset[0];
+
+        // Kiểm tra quyền xem đơn đặt phòng
+        const canView = 
+            currentUser.LoaiUser === 'Admin' || // Admin có thể xem mọi đơn
+            currentUser.MaKH === booking.MaKH || // Khách hàng xem đơn của mình
+            (currentUser.LoaiUser === 'QuanLyKS' && currentUser.MaKH === booking.MaNguoiQuanLy); // Quản lý KS xem đơn của KS mình
+
+        if (!canView) {
+            return res.status(403).json({ error: 'Bạn không có quyền xem đơn đặt phòng này' });
+        }
+
+        res.json(booking);
     }
     catch(err) {
+        console.error('Lỗi getBookingById:', err);
         res.status(500).json({ error: 'Lỗi server' });
     }
 };
 
 // Huy don
 exports.cancelBooking = async (req, res) => {
-    try{
+    try {
         const { MaDat } = req.params;
-        const {LyDoHuy} = req.body;
-
+        const { LyDoHuy } = req.body;
+        const currentUser = req.user;
         const pool = await poolPromise;
 
-        const booking = await pool.request()
+        // Kiểm tra quyền hủy đặt phòng
+        const bookingResult = await pool.request()
             .input('MaDat', sql.Int, MaDat)
             .query(`
-                SELECT NgayNhanPhong, TongTienDuKien FROM Booking
-                WHERE MaDat = @MaDat
-        `);
-        if(booking.recordset.length == 0){
-            return res.status(404).json({ error: 'Khong tim thay don'});
+                SELECT b.MaKH, b.TrangThaiBooking, b.NgayNhanPhong, b.TongTienDuKien,
+                       ks.MaKS, ks.MaNguoiQuanLy
+                FROM Booking b
+                JOIN KhachSan ks ON b.MaKS = ks.MaKS
+                WHERE b.MaDat = @MaDat
+            `);
+
+        if (bookingResult.recordset.length === 0) {
+            return res.status(404).json({ error: 'Không tìm thấy đơn đặt phòng' });
         }
 
-        // Tinh tien hoan tra
-        const { NgayNhanPhong, TongTienDuKien } = booking.recordset[0];
-        const dayBefore = Math.floor((new Date(NgayNhanPhong) - new Date()) / (1000 * 3600 * 24));
-        const TienHoanTra = dayBefore >= 7 ? TongTienDuKien : 0;
+        const booking = bookingResult.recordset[0];
+        
+        // Kiểm tra quyền hủy đặt phòng
+        const canCancel = 
+            currentUser.MaKH === booking.MaKH || // Khách hàng hủy đơn của mình
+            currentUser.LoaiUser === 'Admin' || // Admin có thể hủy mọi đơn
+            (currentUser.LoaiUser === 'QuanLyKS' && currentUser.MaKH === booking.MaNguoiQuanLy); // Quản lý KS chỉ hủy đơn của KS mình
 
+        if (!canCancel) {
+            return res.status(403).json({ error: 'Bạn không có quyền hủy đơn đặt phòng này' });
+        }
+
+        // Kiểm tra trạng thái đặt phòng
+        if (booking.TrangThaiBooking === 'Đã hủy') {
+            return res.status(400).json({ error: 'Đơn đặt phòng đã bị hủy trước đó' });
+        }
+
+        if (booking.TrangThaiBooking === 'Đã trả phòng') {
+            return res.status(400).json({ error: 'Không thể hủy đơn đã trả phòng' });
+        }
+
+        // Chỉ áp dụng chính sách hủy cho đơn đã xác nhận hoặc chờ thanh toán
+        let TienHoanTra = 0;
+        if (booking.TrangThaiBooking === 'Đã xác nhận' || booking.TrangThaiBooking === 'Chờ thanh toán') {
+            const dayBefore = Math.floor((new Date(booking.NgayNhanPhong) - new Date()) / (1000 * 3600 * 24));
+            TienHoanTra = dayBefore >= 7 ? booking.TongTienDuKien : 0;
+        }
+
+        // Cập nhật trạng thái đặt phòng
         await pool.request()
             .input('MaDat', sql.Int, MaDat)
             .input('TrangThaiBooking', sql.NVarChar, 'Đã hủy')
@@ -376,54 +332,76 @@ exports.cancelBooking = async (req, res) => {
                 WHERE MaDat = @MaDat
             `);
 
-        res.json({ message: 'Huy don thanh cong', TienHoanTra});
-    }
-    catch(err){
-        res.status(500).json({ error: 'Loi he thong'});
+        res.json({ 
+            message: 'Hủy đơn thành công', 
+            TienHoanTra,
+            refundPolicy: dayBefore >= 7 ? 'Hoàn tiền 100%' : 'Không hoàn tiền'
+        });
+    } catch (err) {
+        console.error('Lỗi hủy đơn:', err);
+        res.status(500).json({ error: 'Lỗi hệ thống' });
     }
 };
 
 // Xem don dat phong theo MaKH
 exports.getBookingByUser = async (req, res) => {
     try {
-        const requestedMaKH = parseInt(req.params.MaKH);
+        const { MaKH } = req.params;
         const currentUser = req.user;
-        if (!requestedMaKH || isNaN(Number(requestedMaKH))) {
-            return res.status(400).json({ error: 'MaKH không hợp lệ' });
+
+        // Kiểm tra quyền truy cập
+        if (currentUser.LoaiUser !== 'Admin' && 
+            currentUser.LoaiUser !== 'QuanLyKS' && 
+            currentUser.MaKH !== parseInt(MaKH)) {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Bạn không có quyền xem thông tin đặt phòng này' 
+            });
         }
-        if(currentUser.role !== 'QuanLyKS' && currentUser.role !== 'Admin') {
-            if(currentUser.MaKH !== requestedMaKH) {
-                return res.status(403).json({ error: 'Bạn không có quyền truy cập vào đơn đặt phòng của người khác' });
-            }
-        }
+
         const pool = await poolPromise;
+        let query = `
+            SELECT 
+                b.*,
+                ks.TenKS,
+                ks.DiaChi,
+                p.SoPhong,
+                lp.TenLoaiPhong,
+                lp.GiaCoSo,
+                u.HoTen as TenKhachHang,
+                u.Email as EmailKhachHang,
+                u.SDT as SDTKhachHang,
+                ks.MaNguoiQuanLy
+            FROM Booking b
+            JOIN KhachSan ks ON b.MaKS = ks.MaKS
+            LEFT JOIN Phong p ON b.MaPhong = p.MaPhong
+            LEFT JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
+            JOIN NguoiDung u ON b.MaKH = u.MaKH
+            WHERE b.MaKH = @MaKH
+        `;
+
+        // Nếu là QuanLyKS, chỉ xem được booking của khách sạn mình quản lý
+        if (currentUser.LoaiUser === 'QuanLyKS') {
+            query += ' AND ks.MaNguoiQuanLy = @MaNguoiQuanLy';
+        }
+
+        query += ' ORDER BY b.NgayDat DESC';
 
         const result = await pool.request()
-            .input('MaKH', sql.Int, requestedMaKH)
-            .query(`
-                SELECT 
-                    b.MaDat, 
-                    ks.TenKS, 
-                    p.SoPhong, 
-                    b.NgayNhanPhong, 
-                    b.NgayTraPhong, 
-                    b.TrangThaiBooking,
-                    chg.TenCauHinh as CauHinhGiuong,
-                    chg.SoGiuongDoi,
-                    chg.SoGiuongDon
-                FROM Booking b 
-                JOIN KhachSan ks ON b.MaKS = ks.MaKS
-                JOIN Phong p ON b.MaPhong = p.MaPhong
-                JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
-                WHERE b.MaKH = @MaKH
-                ORDER BY b.NgayDat DESC
-            `);
+            .input('MaKH', sql.Int, MaKH)
+            .input('MaNguoiQuanLy', sql.Int, currentUser.MaKH)
+            .query(query);
 
-        res.json(result.recordset);
-    }
-    catch(err) {
+        res.json({
+            success: true,
+            data: result.recordset
+        });
+    } catch (err) {
         console.error('Lỗi getBookingByUser:', err);
-        res.status(500).json({ error: "Lỗi hệ thống" });
+        res.status(500).json({ 
+            success: false, 
+            message: 'Lỗi server khi lấy thông tin đặt phòng' 
+        });
     }
 };
 
@@ -492,20 +470,82 @@ exports.sendBookingConfirmation = async (req, res) => {
 //API: Admin xem toan bo don dat phong
 exports.getAllBookings = async (req, res) => {
     try {
+        const currentUser = req.user;
+
+        // Kiểm tra quyền xem tất cả đơn
+        if (currentUser.LoaiUser !== 'Admin' && currentUser.LoaiUser !== 'QuanLyKS') {
+            return res.status(403).json({ error: 'Bạn không có quyền xem tất cả đơn đặt phòng' });
+        }
+
+        const { page = 1, limit = 10 } = req.query;
+        const offset = (page - 1) * limit;
+
         const pool = await poolPromise;
 
-        const result = await pool.request().query(`
-        SELECT 
-            b.MaDat, b.NgayDat, b.NgayNhanPhong, b.NgayTraPhong, 
-            b.TrangThaiBooking, b.TongTienDuKien,
-            ks.TenKS, p.SoPhong, nd.HoTen AS TenKhachHang, nd.Email, nd.SDT
-        FROM Booking b
-        JOIN KhachSan ks ON b.MaKS = ks.MaKS
-        JOIN Phong p ON b.MaPhong = p.MaPhong
-        JOIN NguoiDung nd ON b.MaKH = nd.MaKH
-        ORDER BY b.NgayDat DESC
-        `);
-        res.json({success: true, data: result.recordset});
+        // Xây dựng điều kiện WHERE dựa trên quyền
+        let whereClause = '';
+        let params = [];
+
+        if (currentUser.LoaiUser === 'QuanLyKS') {
+            whereClause = 'WHERE b.MaKS = @MaKS';
+            params.push({ name: 'MaKS', value: currentUser.MaKS });
+        }
+
+        // Đếm tổng số đơn
+        const countQuery = `
+            SELECT COUNT(*) as total 
+            FROM Booking b
+            JOIN KhachSan ks ON b.MaKS = ks.MaKS
+            JOIN Phong p ON b.MaPhong = p.MaPhong
+            JOIN NguoiDung nd ON b.MaKH = nd.MaKH
+            ${whereClause}
+        `;
+        const countRequest = pool.request();
+        params.forEach(param => {
+            countRequest.input(param.name, param.value);
+        });
+        const countResult = await countRequest.query(countQuery);
+
+        // Lấy danh sách đơn
+        const query = `
+            SELECT 
+                b.MaDat, b.NgayDat, b.NgayNhanPhong, b.NgayTraPhong, 
+                b.TrangThaiBooking, b.TongTienDuKien,
+                ks.TenKS, p.SoPhong, 
+                nd.HoTen AS TenKhachHang, nd.Email, nd.SDT,
+                chg.TenCauHinh as CauHinhGiuong,
+                chg.SoGiuongDoi,
+                chg.SoGiuongDon
+            FROM Booking b
+            JOIN KhachSan ks ON b.MaKS = ks.MaKS
+            JOIN Phong p ON b.MaPhong = p.MaPhong
+            JOIN NguoiDung nd ON b.MaKH = nd.MaKH
+            JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
+            ${whereClause}
+            ORDER BY b.NgayDat DESC
+            OFFSET @offset ROWS
+            FETCH NEXT @limit ROWS ONLY
+        `;
+
+        const request = pool.request();
+        params.forEach(param => {
+            request.input(param.name, param.value);
+        });
+        request.input('offset', sql.Int, offset);
+        request.input('limit', sql.Int, limit);
+
+        const result = await request.query(query);
+
+        res.json({
+            success: true,
+            data: result.recordset,
+            pagination: {
+                total: countResult.recordset[0].total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(countResult.recordset[0].total / parseInt(limit))
+            }
+        });
     }
     catch (err) {
         console.error('Lỗi getAllBookings:', err);
@@ -547,7 +587,25 @@ exports.holdBooking = async (req, res) => {
                 error: `Số lượng khách vượt quá sức chứa của phòng. Tối đa ${maxGuests} người.` 
             });
         }
-
+        const check = await pool.request()
+            .input('MaPhong', sql.Int, MaPhong)
+            .input('NgayNhanPhong', sql.Date, NgayNhanPhong)
+            .input('NgayTraPhong', sql.Date, NgayTraPhong)
+            .query(`
+                SELECT COUNT(*) FROM Booking
+                WHERE MaPhong = @MaPhong
+                AND (NgayNhanPhong <= @NgayTraPhong AND NgayTraPhong >= @NgayNhanPhong)
+                AND TrangThaiBooking != N'Đã hủy'
+                AND (
+                    TrangThaiBooking != N'Tạm giữ'
+                    OR (TrangThaiBooking = N'Tạm giữ' AND ThoiGianGiuCho IS NOT NULL AND DATEDIFF(MINUTE, ThoiGianGiuCho, GETDATE()) <= 15)
+                )
+            `);
+        if(check.recordset[0].count > 0){
+            return res.status(400).json({
+                error: 'Phòng đã bị đặt trong khoảng thời gian này'
+            });
+        }
         const result = await pool.request()
             .input('MaKH', sql.Int, MaKH)
             .input('MaKS', sql.Int, MaKS)
@@ -558,17 +616,22 @@ exports.holdBooking = async (req, res) => {
             .input('YeuCauDacBiet', sql.NVarChar, YeuCauDacBiet || '')
             .input('TongTienDuKien', sql.Decimal(18, 2), TongTienDuKien)
             .input('TrangThaiBooking', sql.NVarChar, 'Tạm giữ')
+            .input('ThoiGianGiuCho', sql.DateTime, new Date())
             .query(`
                 INSERT INTO Booking
-                (MaKH, MaKS, MaPhong, NgayNhanPhong, NgayTraPhong, SoLuongKhach, YeuCauDacBiet, TongTienDuKien, TrangThaiBooking)
+                (MaKH, MaKS, MaPhong, NgayNhanPhong, NgayTraPhong, SoLuongKhach, YeuCauDacBiet, TongTienDuKien, TrangThaiBooking, ThoiGianGiuCho)
                 OUTPUT INSERTED.MaDat
                 VALUES
-                (@MaKH, @MaKS, @MaPhong, @NgayNhanPhong, @NgayTraPhong, @SoLuongKhach, @YeuCauDacBiet, @TongTienDuKien, @TrangThaiBooking)
+                (@MaKH, @MaKS, @MaPhong, @NgayNhanPhong, @NgayTraPhong, @SoLuongKhach, @YeuCauDacBiet, @TongTienDuKien, @TrangThaiBooking, @ThoiGianGiuCho)
             `);
 
         const MaDat = result.recordset[0].MaDat;
 
-        res.status(201).json({success: true, MaDat});
+        res.status(201).json({
+            success: true, 
+            MaDat,
+            message: 'Đã giữ phòng thành công. Bạn có 15 phút để hoàn tất đặt phòng.'
+        });
     }
     catch(err) {
         console.error('Lỗi holdBooking:', err);
@@ -594,18 +657,20 @@ exports.suggestAlternativeDates = async (req, res) => {
 
         const pool = await poolPromise;
 
-        // Tìm các khoảng thời gian trống trước và sau khoảng thời gian yêu cầu
+        // Tìm các khoảng thời gian thay thế
         const result = await pool.request()
             .input('NgayNhanPhong', sql.Date, NgayNhanPhong)
             .input('NgayTraPhong', sql.Date, NgayTraPhong)
             .input('MaLoaiPhong', sql.Int, MaLoaiPhong)
             .query(`
                 WITH DateRange AS (
+                    -- Tạo chuỗi ngày từ 7 ngày trước đến 7 ngày sau khoảng thời gian yêu cầu
                     SELECT 
                         DATEADD(DAY, -7, @NgayNhanPhong) as StartDate,
                         DATEADD(DAY, 7, @NgayTraPhong) as EndDate
                 ),
                 BookedDates AS (
+                    -- Lấy tất cả các đặt phòng đã xác nhận hoặc đang giữ chỗ trong khoảng thời gian
                     SELECT 
                         b.NgayNhanPhong,
                         b.NgayTraPhong
@@ -614,46 +679,80 @@ exports.suggestAlternativeDates = async (req, res) => {
                     WHERE p.MaLoaiPhong = @MaLoaiPhong
                     AND b.TrangThaiBooking != N'Đã hủy'
                     AND (
-                        b.TrangThaiBooking != N'Tạm Giữ'
-                        OR DATEDIFF(MINUTE, b.ThoiGianGiuCho, GETDATE()) <= 15
+                        b.TrangThaiBooking != N'Tạm giữ'
+                        OR (b.TrangThaiBooking = N'Tạm giữ' AND b.ThoiGianGiuCho IS NOT NULL AND DATEDIFF(MINUTE, b.ThoiGianGiuCho, GETDATE()) <= 15)
+                    )
+                    AND (
+                        (b.NgayNhanPhong <= @NgayTraPhong AND b.NgayTraPhong >= @NgayNhanPhong)
+                        OR (b.NgayNhanPhong BETWEEN (SELECT StartDate FROM DateRange) AND (SELECT EndDate FROM DateRange))
+                        OR (b.NgayTraPhong BETWEEN (SELECT StartDate FROM DateRange) AND (SELECT EndDate FROM DateRange))
                     )
                 ),
-                AvailableDates AS (
+                AvailableRanges AS (
+                    -- Tìm các khoảng trống giữa các đặt phòng
                     SELECT 
-                        d.StartDate as CheckInDate,
-                        d.EndDate as CheckOutDate,
+                        DATEADD(DAY, 1, COALESCE(LAG(NgayTraPhong) OVER (ORDER BY NgayNhanPhong), (SELECT StartDate FROM DateRange))) as GapStart,
+                        DATEADD(DAY, -1, NgayNhanPhong) as GapEnd
+                    FROM BookedDates
+                    UNION ALL
+                    -- Xử lý trường hợp không có booking nào
+                    SELECT 
+                        StartDate,
+                        EndDate
+                    FROM DateRange
+                    WHERE NOT EXISTS (SELECT 1 FROM BookedDates)
+                ),
+                ValidRanges AS (
+                    -- Lọc các khoảng trống có đủ số ngày
+                    SELECT 
+                        GapStart,
+                        GapEnd,
+                        DATEDIFF(DAY, GapStart, GapEnd) as Duration
+                    FROM AvailableRanges
+                    WHERE DATEDIFF(DAY, GapStart, GapEnd) >= DATEDIFF(DAY, @NgayNhanPhong, @NgayTraPhong)
+                ),
+                SuggestedDates AS (
+                    -- Tạo các gợi ý từ các khoảng trống
+                    SELECT 
+                        GapStart as CheckInDate,
+                        DATEADD(DAY, DATEDIFF(DAY, @NgayNhanPhong, @NgayTraPhong), GapStart) as CheckOutDate,
                         CASE 
-                            WHEN d.StartDate < @NgayNhanPhong THEN 'before'
+                            WHEN GapStart < @NgayNhanPhong THEN 'before'
                             ELSE 'after'
-                        END as Period
-                    FROM DateRange d
-                    WHERE NOT EXISTS (
-                        SELECT 1 FROM BookedDates b
-                        WHERE (
-                            b.NgayNhanPhong <= d.EndDate
-                            AND b.NgayTraPhong >= d.StartDate
-                        )
-                    )
+                        END as Period,
+                        DATEDIFF(DAY, GapStart, GapEnd) as AvailableDuration,
+                        ABS(DATEDIFF(DAY, GapStart, @NgayNhanPhong)) as DaysFromOriginal,
+                        -- Thêm thông tin về khoảng thời gian có sẵn
+                        CASE 
+                            WHEN DATEDIFF(DAY, GapStart, GapEnd) >= DATEDIFF(DAY, @NgayNhanPhong, @NgayTraPhong) * 2 THEN 'extended'
+                            ELSE 'standard'
+                        END as AvailabilityType
+                    FROM ValidRanges
+                    WHERE DATEADD(DAY, DATEDIFF(DAY, @NgayNhanPhong, @NgayTraPhong), GapStart) <= GapEnd
                 )
                 SELECT 
                     CheckInDate,
                     CheckOutDate,
                     Period,
-                    DATEDIFF(DAY, CheckInDate, CheckOutDate) as Duration
-                FROM AvailableDates
+                    AvailableDuration,
+                    DaysFromOriginal,
+                    AvailabilityType
+                FROM SuggestedDates
                 ORDER BY 
                     CASE 
                         WHEN Period = 'before' THEN 1
                         ELSE 2
                     END,
-                    ABS(DATEDIFF(DAY, CheckInDate, @NgayNhanPhong))
+                    DaysFromOriginal
             `);
 
         const suggestions = result.recordset.map(date => ({
             checkIn: date.CheckInDate,
             checkOut: date.CheckOutDate,
             period: date.Period,
-            duration: date.Duration
+            availableDuration: date.AvailableDuration,
+            daysFromOriginal: date.DaysFromOriginal,
+            availabilityType: date.AvailabilityType
         }));
 
         res.json({
@@ -661,7 +760,8 @@ exports.suggestAlternativeDates = async (req, res) => {
             data: {
                 originalDates: {
                     checkIn: NgayNhanPhong,
-                    checkOut: NgayTraPhong
+                    checkOut: NgayTraPhong,
+                    duration: Math.ceil((new Date(NgayTraPhong) - new Date(NgayNhanPhong)) / (1000 * 60 * 60 * 24))
                 },
                 suggestions
             }
@@ -679,18 +779,13 @@ exports.suggestAlternativeDates = async (req, res) => {
 // Tim loai phong tren thanh Search Home Page
 exports.searchAvailableRooms = async (req, res) => {
     try {
-        console.log('Search request received:', {
-            query: req.query,
-            params: req.params,
-            body: req.body
-        });
-        const { location, startDate, endDate, numberOfGuests } = req.query;
+        const { startDate, endDate, numberOfGuests, location } = req.query;
 
         // Validate required parameters
-        if (!location || !startDate || !endDate || !numberOfGuests) {
+        if (!startDate || !endDate || !numberOfGuests) {
             return res.status(400).json({
                 success: false,
-                message: 'Vui lòng cung cấp đầy đủ thông tin: địa điểm, ngày nhận phòng, ngày trả phòng và số lượng khách'
+                message: 'Vui lòng cung cấp đầy đủ thông tin: ngày nhận phòng, ngày trả phòng và số lượng khách'
             });
         }
 
@@ -724,45 +819,37 @@ exports.searchAvailableRooms = async (req, res) => {
 
         // Search hotels with available rooms
         const result = await pool.request()
-            .input('location', sql.NVarChar, `%${location}%`)
             .input('startDate', sql.Date, startDate)
             .input('endDate', sql.Date, endDate)
             .input('numberOfGuests', sql.Int, guests)
+            .input('location', sql.NVarChar, location ? `%${location}%` : '%')
             .query(`
                 WITH AvailableRooms AS (
-                    SELECT 
-                        p.MaPhong,
+                    SELECT
+                        p.MaPhong,      -- Cần MaPhong để định danh phòng cụ thể
                         p.MaKS,
                         p.MaLoaiPhong,
-                        p.MaCauHinhGiuong,
-                        chg.SoGiuongDoi,
-                        chg.SoGiuongDon,
-                        (chg.SoGiuongDoi * 2 + chg.SoGiuongDon) as MaxGuests
+                        p.MaCauHinhGiuong, -- Cần để JOIN và lấy thông tin cấu hình giường
+                        (chg.SoGiuongDoi * 2 + chg.SoGiuongDon) as MaxGuestsPerRoom -- Sức chứa của phòng này
                     FROM Phong p
                     JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
-                    WHERE NOT EXISTS (
+                    WHERE p.TrangThaiPhong != N'Bảo trì'
+                    AND (chg.SoGiuongDoi * 2 + chg.SoGiuongDon) >= @numberOfGuests -- Lọc những phòng đủ sức chứa
+                    AND NOT EXISTS ( -- Kiểm tra xem phòng này có bị đặt trong khoảng thời gian đó không
                         SELECT 1 FROM Booking b
-                        WHERE b.MaPhong = p.MaPhong
+                        WHERE b.MaPhong = p.MaPhong -- Liên kết với phòng cụ thể đang xét
                         AND b.TrangThaiBooking != N'Đã hủy'
                         AND (
-                            b.NgayNhanPhong <= @endDate
-                            AND b.NgayTraPhong >= @startDate
+                            b.NgayNhanPhong < @endDate -- Chồng chéo khi ngày nhận của booking < ngày trả yêu cầu
+                            AND b.NgayTraPhong > @startDate -- Và ngày trả của booking > ngày nhận yêu cầu
                         )
                         AND (
                             b.TrangThaiBooking != N'Tạm giữ'
                             OR (b.TrangThaiBooking = N'Tạm giữ' AND b.ThoiGianGiuCho IS NOT NULL AND DATEDIFF(MINUTE, b.ThoiGianGiuCho, GETDATE()) <= 15)
                         )
                     )
-                ),
-                RoomTypesWithHoldStatus AS (
-                    SELECT DISTINCT p.MaLoaiPhong
-                    FROM Phong p
-                    JOIN Booking b ON p.MaPhong = b.MaPhong
-                    WHERE b.TrangThaiBooking = N'Tạm giữ'
-                    AND b.ThoiGianGiuCho IS NOT NULL
-                    AND DATEDIFF(MINUTE, b.ThoiGianGiuCho, GETDATE()) <= 15
                 )
-                SELECT DISTINCT
+                SELECT
                     ks.MaKS,
                     ks.TenKS,
                     ks.DiaChi,
@@ -776,46 +863,68 @@ exports.searchAvailableRooms = async (req, res) => {
                     lp.GiaCoSo,
                     lp.DienTich,
                     lp.TienNghi,
-                    chg.TenCauHinh as CauHinhGiuong,
+                    chg.TenCauHinh as CauHinhGiuong, -- Thông tin cấu hình giường của loại phòng này (nếu tất cả phòng cùng loại có cùng cấu hình)
+                                                    -- Nếu muốn hiển thị tất cả cấu hình giường có thể, cần GROUP BY khác
                     chg.SoGiuongDoi,
                     chg.SoGiuongDon,
-                    COUNT(ar.MaPhong) as SoPhongTrong
+                    COUNT(ar.MaPhong) as SoPhongTrong, -- Đếm số phòng cụ thể còn trống
+                    MIN(lp.GiaCoSo) as GiaThapNhat     -- Giá thấp nhất của loại phòng này tại khách sạn này
                 FROM KhachSan ks
-                JOIN AvailableRooms ar ON ks.MaKS = ar.MaKS
-                JOIN LoaiPhong lp ON ar.MaLoaiPhong = lp.MaLoaiPhong
-                JOIN CauHinhGiuong chg ON ar.MaCauHinhGiuong = chg.MaCauHinhGiuong
-                WHERE 
-                    (ks.DiaChi COLLATE Latin1_General_CI_AI LIKE '%' + @location + '%' OR ks.TenKS COLLATE Latin1_General_CI_AI LIKE '%' + @location + '%')
-                    AND ar.MaxGuests >= @numberOfGuests
-                    AND lp.MaLoaiPhong NOT IN (SELECT MaLoaiPhong FROM RoomTypesWithHoldStatus)
-                GROUP BY 
-                    ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, 
+                JOIN LoaiPhong lp ON ks.MaKS = lp.MaKS -- Giả sử LoaiPhong cũng có MaKS, hoặc JOIN qua Phong
+                JOIN AvailableRooms ar ON lp.MaLoaiPhong = ar.MaLoaiPhong AND ks.MaKS = ar.MaKS -- Join AvailableRooms với LoaiPhong và KhachSan
+                JOIN CauHinhGiuong chg ON ar.MaCauHinhGiuong = chg.MaCauHinhGiuong -- Lấy thông tin cấu hình giường từ các phòng thực sự trống
+                WHERE
+                    (ks.DiaChi COLLATE Latin1_General_CI_AI LIKE @location OR ks.TenKS COLLATE Latin1_General_CI_AI LIKE @location)
+                    -- Điều kiện ar.MaxGuestsPerRoom >= @numberOfGuests đã được xử lý trong CTE, không cần ở đây nữa
+                GROUP BY
+                    ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao,
                     ks.LoaiHinh, ks.MoTaChung, ks.Latitude, ks.Longitude,
                     lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo, lp.DienTich,
-                    lp.TienNghi, chg.TenCauHinh, chg.SoGiuongDoi, chg.SoGiuongDon
-                HAVING COUNT(ar.MaPhong) > 0
-                ORDER BY ks.HangSao DESC, lp.GiaCoSo ASC
+                    lp.TienNghi,
+                    chg.TenCauHinh, chg.SoGiuongDoi, chg.SoGiuongDon -- Group theo cả cấu hình giường
+                HAVING COUNT(ar.MaPhong) > 0 -- Đảm bảo có ít nhất một phòng trống cho tổ hợp này
+                ORDER BY ks.HangSao DESC, GiaThapNhat ASC, SoPhongTrong DESC;
             `);
+
+        // Format response
+        const hotels = {};
+        result.recordset.forEach(record => {
+            if (!hotels[record.MaKS]) {
+                hotels[record.MaKS] = {
+                    MaKS: record.MaKS,
+                    TenKS: record.TenKS,
+                    DiaChi: record.DiaChi,
+                    HangSao: record.HangSao,
+                    LoaiHinh: record.LoaiHinh,
+                    MoTaChung: record.MoTaChung,
+                    Latitude: record.Latitude,
+                    Longitude: record.Longitude,
+                    roomTypes: []
+                };
+            }
+
+            hotels[record.MaKS].roomTypes.push({
+                MaLoaiPhong: record.MaLoaiPhong,
+                TenLoaiPhong: record.TenLoaiPhong,
+                GiaCoSo: record.GiaCoSo,
+                DienTich: record.DienTich,
+                TienNghi: record.TienNghi,
+                CauHinhGiuong: record.CauHinhGiuong,
+                SoGiuongDoi: record.SoGiuongDoi,
+                SoGiuongDon: record.SoGiuongDon,
+                SoPhongTrong: record.SoPhongTrong
+            });
+        });
 
         res.json({
             success: true,
-            data: result.recordset
+            data: Object.values(hotels)
         });
     } catch (error) {
         console.error('Error searching available rooms:', error);
-        console.error('Error details:', {
-            message: error.message,
-            code: error.code,
-            state: error.state,
-            class: error.class,
-            lineNumber: error.lineNumber,
-            serverName: error.serverName,
-            procName: error.procName
-        });
         res.status(500).json({
             success: false,
-            message: 'Lỗi khi tìm kiếm phòng',
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            message: 'Lỗi khi tìm kiếm phòng'
         });
     }
 };
@@ -824,47 +933,79 @@ exports.searchAvailableRooms = async (req, res) => {
 exports.checkIn = async (req, res) => {
     try {
         const { MaDat } = req.params;
+        const currentUser = req.user;
         const pool = await poolPromise;
 
-        // Kiểm tra trạng thái hiện tại
+        // Kiểm tra quyền check-in
         const bookingResult = await pool.request()
             .input('MaDat', sql.Int, MaDat)
             .query(`
-                SELECT TrangThaiBooking, NgayNhanPhong
-                FROM Booking
-                WHERE MaDat = @MaDat
+                SELECT b.TrangThaiBooking, b.NgayNhanPhong, b.MaPhong, b.MaKS,
+                       ks.MaNguoiQuanLy
+                FROM Booking b
+                JOIN KhachSan ks ON b.MaKS = ks.MaKS
+                WHERE b.MaDat = @MaDat
             `);
 
         if (bookingResult.recordset.length === 0) {
             return res.status(404).json({ error: "Không tìm thấy đơn đặt phòng" });
         }
 
-        const { TrangThaiBooking, NgayNhanPhong } = bookingResult.recordset[0];
+        const booking = bookingResult.recordset[0];
         
+        // Kiểm tra quyền check-in
+        const canCheckIn = 
+            currentUser.LoaiUser === 'Admin' || // Admin có thể check-in mọi đơn
+            (currentUser.LoaiUser === 'QuanLyKS' && currentUser.MaKH === booking.MaNguoiQuanLy); // Quản lý KS chỉ check-in đơn của KS mình
+
+        if (!canCheckIn) {
+            return res.status(403).json({ error: "Bạn không có quyền thực hiện check-in" });
+        }
+
         // Kiểm tra điều kiện check-in
-        if (TrangThaiBooking !== 'Đã xác nhận') {
+        if (booking.TrangThaiBooking !== 'Đã xác nhận') {
             return res.status(400).json({ error: "Chỉ có thể check-in đơn đã xác nhận" });
         }
 
-        const checkInDate = new Date(NgayNhanPhong);
+        const checkInDate = new Date(booking.NgayNhanPhong);
         const today = new Date();
         if (today < checkInDate) {
             return res.status(400).json({ error: "Chưa đến ngày nhận phòng" });
         }
 
-        // Cập nhật trạng thái
-        await pool.request()
-            .input('MaDat', sql.Int, MaDat)
-            .input('TrangThaiBooking', sql.NVarChar, 'Đã nhận phòng')
-            .input('ThoiGianCheckIn', sql.DateTime, new Date())
-            .query(`
-                UPDATE Booking
-                SET TrangThaiBooking = @TrangThaiBooking,
-                    ThoiGianCheckIn = @ThoiGianCheckIn
-                WHERE MaDat = @MaDat
-            `);
+        // Bắt đầu transaction
+        const transaction = pool.transaction();
+        await transaction.begin();
 
-        res.json({ message: "Check-in thành công" });
+        try {
+            // Cập nhật trạng thái phòng
+            await transaction.request()
+                .input('MaPhong', sql.Int, booking.MaPhong)
+                .input('TrangThaiPhong', sql.NVarChar, 'Đang ở')
+                .query(`
+                    UPDATE Phong
+                    SET TrangThaiPhong = @TrangThaiPhong
+                    WHERE MaPhong = @MaPhong
+                `);
+
+            // Cập nhật trạng thái booking
+            await transaction.request()
+                .input('MaDat', sql.Int, MaDat)
+                .input('TrangThaiBooking', sql.NVarChar, 'Đã nhận phòng')
+                .input('ThoiGianCheckIn', sql.DateTime, new Date())
+                .query(`
+                    UPDATE Booking
+                    SET TrangThaiBooking = @TrangThaiBooking,
+                        ThoiGianCheckIn = @ThoiGianCheckIn
+                    WHERE MaDat = @MaDat
+                `);
+
+            await transaction.commit();
+            res.json({ message: "Check-in thành công" });
+        } catch (err) {
+            await transaction.rollback();
+            throw err;
+        }
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Lỗi hệ thống" });
@@ -875,16 +1016,19 @@ exports.checkIn = async (req, res) => {
 exports.checkOut = async (req, res) => {
     try {
         const { MaDat } = req.params;
+        const currentUser = req.user;
         const pool = await poolPromise;
 
-        // Kiểm tra trạng thái hiện tại
+        // Kiểm tra quyền check-out
         const bookingResult = await pool.request()
             .input('MaDat', sql.Int, MaDat)
             .query(`
-                SELECT b.TrangThaiBooking, b.NgayTraPhong, nd.Email, nd.HoTen, ks.TenKS
+                SELECT b.TrangThaiBooking, b.NgayTraPhong, b.MaPhong, b.MaKS,
+                       ks.MaNguoiQuanLy,
+                       nd.Email, nd.HoTen, ks.TenKS
                 FROM Booking b
-                JOIN NguoiDung nd ON b.MaKH = nd.MaKH
                 JOIN KhachSan ks ON b.MaKS = ks.MaKS
+                JOIN NguoiDung nd ON b.MaKH = nd.MaKH
                 WHERE b.MaDat = @MaDat
             `);
 
@@ -892,39 +1036,69 @@ exports.checkOut = async (req, res) => {
             return res.status(404).json({ error: "Không tìm thấy đơn đặt phòng" });
         }
 
-        const { TrangThaiBooking, NgayTraPhong, Email, HoTen, TenKS } = bookingResult.recordset[0];
+        const booking = bookingResult.recordset[0];
+        
+        // Kiểm tra quyền check-out
+        const canCheckOut = 
+            currentUser.LoaiUser === 'Admin' || // Admin có thể check-out mọi đơn
+            (currentUser.LoaiUser === 'QuanLyKS' && currentUser.MaKH === booking.MaNguoiQuanLy); // Quản lý KS chỉ check-out đơn của KS mình
+
+        if (!canCheckOut) {
+            return res.status(403).json({ error: "Bạn không có quyền thực hiện check-out" });
+        }
         
         // Kiểm tra điều kiện check-out
-        if (TrangThaiBooking !== 'Đã nhận phòng') {
+        if (booking.TrangThaiBooking !== 'Đã nhận phòng') {
             return res.status(400).json({ error: "Chỉ có thể check-out đơn đã nhận phòng" });
         }
 
-        // Cập nhật trạng thái
-        await pool.request()
-            .input('MaDat', sql.Int, MaDat)
-            .input('TrangThaiBooking', sql.NVarChar, 'Đã trả phòng')
-            .input('ThoiGianCheckOut', sql.DateTime, new Date())
-            .query(`
-                UPDATE Booking
-                SET TrangThaiBooking = @TrangThaiBooking,
-                    ThoiGianCheckOut = @ThoiGianCheckOut
-                WHERE MaDat = @MaDat
-            `);
+        // Bắt đầu transaction
+        const transaction = pool.transaction();
+        await transaction.begin();
 
-        // Gửi email mời đánh giá
         try {
-            await sendReviewRequestEmail(Email, {
-                guestName: HoTen,
-                hotelName: TenKS,
-                bookingId: MaDat
-            });
-        } catch (emailErr) {
-            console.error("Lỗi gửi email:", emailErr);
-        }
+            // Cập nhật trạng thái phòng
+            await transaction.request()
+                .input('MaPhong', sql.Int, booking.MaPhong)
+                .input('TrangThaiPhong', sql.NVarChar, 'Trống')
+                .query(`
+                    UPDATE Phong
+                    SET TrangThaiPhong = @TrangThaiPhong
+                    WHERE MaPhong = @MaPhong
+                `);
 
-        res.json({ 
-            message: "Check-out thành công"
-        });
+            // Cập nhật trạng thái booking
+            await transaction.request()
+                .input('MaDat', sql.Int, MaDat)
+                .input('TrangThaiBooking', sql.NVarChar, 'Đã trả phòng')
+                .input('ThoiGianCheckOut', sql.DateTime, new Date())
+                .query(`
+                    UPDATE Booking
+                    SET TrangThaiBooking = @TrangThaiBooking,
+                        ThoiGianCheckOut = @ThoiGianCheckOut
+                    WHERE MaDat = @MaDat
+                `);
+
+            await transaction.commit();
+
+            // Gửi email mời đánh giá
+            try {
+                await sendReviewRequestEmail(booking.Email, {
+                    guestName: booking.HoTen,
+                    hotelName: booking.TenKS,
+                    bookingId: MaDat
+                });
+            } catch (emailErr) {
+                console.error("Lỗi gửi email:", emailErr);
+            }
+
+            res.json({ 
+                message: "Check-out thành công"
+            });
+        } catch (err) {
+            await transaction.rollback();
+            throw err;
+        }
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Lỗi hệ thống" });

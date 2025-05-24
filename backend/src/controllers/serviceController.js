@@ -2,13 +2,33 @@ const { poolPromise, sql } = require('../database/db');
 
 exports.getAllServices = async (req, res) => {
     try {
+        const { page = 1, limit = 10 } = req.query;
+        const offset = (page - 1) * limit;
         const pool = await poolPromise;
-        const result = await pool.request().query(`
-            SELECT * FROM LoaiDichVu
+        const countResult = await pool.request().query(`
+            SELECT COUNT(*) as total
+            FROM LoaiDichVu
+        `);
+
+
+        const result = await pool.request()
+            .input('offset', sql.Int, offset)
+            .input('limit', sql.Int, limit)
+            .query(`
+                SELECT * FROM LoaiDichVu
+                ORDER BY MaLoaiDV DESC
+                OFFSET @offset ROWS
+                FETCH NEXT @limit ROWS ONLY
         `);
     res.status(200).json({
         success: true,
-        data: result.recordset
+        data: result.recordset,
+        pagination: {
+            total: countResult.recordset[0].total,
+            page: parseInt(page),
+            limit: parseInt(limit),
+            totalPages: Math.ceil(countResult.recordset[0].total / parseInt(limit))
+        }
     });
     } 
     catch (error) {
@@ -48,6 +68,8 @@ exports.getServicesByHotel = async (req, res) => {
     try {
         const pool = await poolPromise;
         const { MaKS } = req.params;
+        const { page = 1, limit = 10 } = req.query;
+        const offset = (page - 1) * limit;
         const hotelCheck = await pool.request()
             .input('MaKS', sql.Int, MaKS)
             .query('SELECT * FROM KhachSan WHERE MaKS = @MaKS');
@@ -58,16 +80,34 @@ exports.getServicesByHotel = async (req, res) => {
                 message: 'Khách sạn không tồn tại'
             });
         }
+        const countResult = await pool.request()
+            .input('MaKS', sql.Int, MaKS)
+            .query(`
+                SELECT COUNT(*) as total
+                FROM LoaiDichVu
+                WHERE MaKS = @MaKS
+            `);
         const result = await pool.request()
             .input('MaKS', sql.Int, MaKS)
+            .input('offset', sql.Int, offset)
+            .input('limit', sql.Int, limit)
             .query(`
                 SELECT * 
                 FROM LoaiDichVu
                 WHERE MaKS = @MaKS
+                ORDER BY MaLoaiDV DESC
+                OFFSET @offset ROWS
+                FETCH NEXT @limit ROWS ONLY
             `);
         res.status(200).json({
             success: true,
-            data: result.recordset
+            data: result.recordset,
+            pagination: {
+                total: countResult.recordset[0].total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(countResult.recordset[0].total / parseInt(limit))
+            }
         });
     } catch (error) {
         console.error('Lỗi getServicesByHotel:', error);
