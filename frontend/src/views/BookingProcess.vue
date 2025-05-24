@@ -28,11 +28,17 @@
             v-if="currentStep === 1"
             @search-submitted="handleSearchSubmitted"
           />
-          <div v-if="currentStep === 2" class="text-center py-5">
+          <!-- <div v-if="currentStep === 2" class="text-center py-5">
             <h4 class="text-muted">Step 2: Select Room (Placeholder)</h4>
             <p>Search Params: {{ searchCriteria }}</p>
             <button class="btn btn-primary mt-3" @click="mockGoToNextStepFromStep2">Mock Select Room & Proceed</button>
-          </div>
+          </div> -->
+
+          <Step2_RoomSelection
+            v-if="currentStep === 2"
+            :search-params="searchCriteria"
+            @view-packages-clicked="mockGoToNextStepFromStep2"
+            />
           <div v-if="currentStep === 3" class="text-center py-5">
             <h4 class="text-muted">Step 3: Guest Info (Placeholder)</h4>
             <p>Selected Room/Package: {{ selectedRoomAndPackage }}</p>
@@ -54,6 +60,7 @@ import Layout from '@/components/Layout.vue';
 import HeroSection from '@/components/HeroSection.vue';
 import BookingProgressIndicator from '@/components/booking/BookingProgressIndicator.vue';
 import Step1_SearchForm from '@/components/booking/steps/Step1_SearchForm.vue';
+import Step2_RoomSelection from '../components/booking/steps/Step2_RoomSelection.vue';
 
 import defaultBannerImage from '@/assets/mountain.jpg';
 
@@ -67,6 +74,7 @@ const guestInformation = ref(null);
 const finalBookingDetails = ref(null);
 
 function handleSearchSubmitted(data) {
+  console.log('Search submitted with data:', data);
   searchCriteria.value = data;
   currentStep.value = 2;
   if (maxCompletedStep.value < 1) maxCompletedStep.value = 1;
@@ -119,6 +127,7 @@ function scrollToTopOfSteps() {
 
 <style scoped>
 .page-content-container {
+
 }
 .booking-steps-content {
   min-height: 40vh;
