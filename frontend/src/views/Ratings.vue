@@ -384,7 +384,7 @@ onMounted(() => {
 .custom-pagination .page-item.active .page-link {
   background-color: var(--primary-theme-color);
   border-color: var(--primary-theme-color);
-  color: white;
+  color: #0077b6;
   box-shadow: 0 2px 5px rgba(0, 119, 182, 0.3);
 }
 .custom-pagination .page-item:not(.active) .page-link:hover {

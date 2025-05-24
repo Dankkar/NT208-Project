@@ -12,7 +12,7 @@
         :items="isMobile ? fullItems : baseItems" 
       />
     </div>
-
+<!-- 
     <button
       class="navbar-toggler border-0"
       type="button"
@@ -20,7 +20,7 @@
       data-bs-target="#mainNav"
     >
       <i :class="['bi', 'bi-list', 'fs-2', showBg || bgFixed ? 'text-dark' : 'text-white']"></i>
-    </button>
+    </button> -->
 
     <div class="collapse navbar-collapse justify-content-end d-lg-flex d-none" id="mainNav">
      <ul class="navbar-nav">

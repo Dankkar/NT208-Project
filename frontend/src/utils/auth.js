@@ -7,6 +7,8 @@ export function useAuth() {
   return { isLoggedIn, login, logout, checkLogin }
 }
 
+
+//Gọi api đăng nhập
 async function login(email, password) {
   try {
     await axios.post('http://localhost:5000/api/auth/login', {
@@ -21,6 +23,7 @@ async function login(email, password) {
   }
 }
 
+//Gọi api kiểm tra token đang còn hạn hay chưa
 async function checkLogin() {
   try {
     await axios.get('http://localhost:5000/api/users/me', { withCredentials: true })
@@ -29,6 +32,17 @@ async function checkLogin() {
     isLoggedIn.value = false
   }
 }
-function logout() {
-  isLoggedIn.value = false
+
+//Gọi api đăng xuất
+async function logout() {
+  try {
+    await axios.post('http://localhost:5000/api/auth/logout', 
+      {}, 
+      { withCredentials: true })
+      isLoggedIn.value = false
+      return { success: true }
+  } catch (err) {
+    console.error('Logout failed:', err)
+    return { success: false, message: err.response?.data?.message || 'Logout failed' }
+  }
 }

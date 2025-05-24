@@ -2,7 +2,7 @@
 <template>
   <Layout title="THÔNG TIN NGƯỜI DÙNG">
   
-    <section class="account-info-section container py-5">
+    <section class="account-info-section container py-5 position-relative">
       <div v-if="loading" class="text-center py-5">
         <div class="spinner-border text-primary" role="status">
           <span class="visually-hidden">Loading...</span>
@@ -51,6 +51,19 @@
           <p class="mb-1"><strong>CCCD:</strong> {{ user.CCCD }}</p>
         </UserInfoCard>
       </div>
+       <div style="height: 30px; width: 10%;" class="position-absolute end-0" >
+              <Button
+                content="LOG OUT"
+                block
+                textColor="white"
+                @click="logoutHandler"
+                borderRadius="0px"
+                backgroundColor="black"
+                textAlign="center"
+                colorHover="white"
+                bgHover="black"
+              />
+            </div>
     </section>
 
     <EditUserModal
@@ -67,8 +80,22 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import Layout from '../components/Layout.vue'
+import Button from '../components/Button.vue'
 import EditUserModal from '@/components/EditUserModal.vue'
 import UserInfoCard from '@/components/UserInfoCard.vue'
+
+import  { useAuth } from '../utils/auth'
+const { logout } = useAuth()
+
+async function logoutHandler() {
+  const result = await logout()
+  if (result.success) {
+    window.location.href = '/homepage'
+  } else {
+    console.error('Logout failed:', result)
+  }
+
+}
 
 const user = ref(null)
 const loading = ref(true)
