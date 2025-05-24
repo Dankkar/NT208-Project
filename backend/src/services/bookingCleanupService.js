@@ -8,7 +8,23 @@ const cleanupExpiredBookings = async () => {
     try {
         const pool = await poolPromise;
         
-        // Xóa các booking có trạng thái "Tạm giữ" và đã quá 15 phút
+        // Kiểm tra xem có booking nào cần xóa không
+        const checkResult = await pool.request()
+            .query(`
+                SELECT COUNT(*) as count
+                FROM Booking
+                WHERE TrangThaiBooking = N'Tạm giữ'
+                AND ThoiGianGiuCho IS NOT NULL
+                AND DATEDIFF(MINUTE, ThoiGianGiuCho, GETDATE()) > 15
+            `);
+
+        // Nếu không có booking nào cần xóa, thoát sớm
+        if (checkResult.recordset[0].count === 0) {
+            console.log(`[${new Date().toISOString()}] Không có booking nào cần xóa`);
+            return;
+        }
+
+        // Nếu có booking cần xóa, thực hiện cập nhật
         const result = await pool.request()
             .query(`
                 UPDATE Booking
@@ -19,11 +35,11 @@ const cleanupExpiredBookings = async () => {
                 AND ThoiGianGiuCho IS NOT NULL
                 AND DATEDIFF(MINUTE, ThoiGianGiuCho, GETDATE()) > 15;
 
-                SELECT @@ROWCOUNT as DeletedCount;
+                SELECT @@ROWCOUNT as UpdatedCount;
             `);
 
-        const deletedCount = result.recordset[0].DeletedCount;
-        console.log(`[${new Date().toISOString()}] Đã xóa ${deletedCount} booking hết hạn`);
+        const updatedCount = result.recordset[0].UpdatedCount;
+        console.log(`[${new Date().toISOString()}] Đã cập nhật ${updatedCount} booking hết hạn`);
     } catch (error) {
         console.error('Lỗi khi xóa booking hết hạn:', error);
     }

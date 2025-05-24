@@ -23,15 +23,36 @@ exports.getAllPromotions = async (req, res) => {
 exports.getActivePromotions = async (req, res) => {
     try {
         const pool = await poolPromise;
-        const result = await pool.request().query(`
-            SELECT * FROM KhuyenMai
+        const { page = 1, limit = 10 } = req.query;
+        const offset = (page - 1) * limit;
+        const countResult = await pool.request().query(`
+            SELECT COUNT(*) as total
+            FROM KhuyenMai
             WHERE NgayBatDau <= GETDATE() 
             AND NgayKetThuc >= GETDATE()
             AND TrangThai = 1
         `);
+        const result = await pool.request()
+            .input('offset', sql.Int, offset)
+            .input('limit', sql.Int, limit)
+            .query(`
+                SELECT * FROM KhuyenMai
+                WHERE NgayBatDau <= GETDATE() 
+                AND NgayKetThuc >= GETDATE()
+                AND TrangThai = 1
+                ORDER BY MaKM DESC
+                OFFSET @offset ROWS
+                FETCH NEXT @limit ROWS ONLY
+        `);
         res.status(200).json({
             success: true,
-            data: result.recordset
+            data: result.recordset,
+            pagination: {
+                total: countResult.recordset[0].total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(countResult.recordset[0].total / parseInt(limit))
+            }
         });
     } catch (error) {
         console.error('Lỗi getActivePromotions:', error);

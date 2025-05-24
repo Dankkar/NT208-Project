@@ -62,7 +62,7 @@ CREATE TABLE Phong (
     MaCauHinhGiuong INT NOT NULL,               -- Mã cấu hình giường (FK)
     SoPhong NVARCHAR(20) NOT NULL,              -- Số phòng (VD: '101', 'P205', C308, TVQ36)
     Tang INT NULL,                              -- Phòng ở tầng mấy (Optional)
-    TrangThaiPhong NVARCHAR(50) DEFAULT N'Sẵn sàng', -- Trạng thái (Sẵn sàng, Đang ở, Đang dọn, Bảo trì)
+    TrangThaiPhong NVARCHAR(50) DEFAULT 'Trong', -- Trạng thái (Trống, Đang ở, Bảo trì)
     CONSTRAINT FK_Phong_KhachSan FOREIGN KEY (MaKS) REFERENCES KhachSan(MaKS),
     CONSTRAINT FK_Phong_LoaiPhong FOREIGN KEY (MaLoaiPhong) REFERENCES LoaiPhong(MaLoaiPhong),
     CONSTRAINT FK_Phong_CauHinhGiuong FOREIGN KEY (MaCauHinhGiuong) REFERENCES CauHinhGiuong(MaCauHinhGiuong),
@@ -108,14 +108,13 @@ CREATE TABLE Booking (
     MaKH INT,                           -- Mã Khách hàng (FK)
     MaKS INT NOT NULL,                           -- Mã Khách sạn (FK) - Booking này ở KS nào
     MaPhong INT NULL,                         -- Mã phòng CỤ THỂ được đặt (FK, NULL) - Theo ERD gốc (chỉ đặt 1 phòng)
-                                                -- BỎ CỘT NÀY NẾU DÙNG BẢNG ChiTietDatPhong CHO NHIỀU PHÒNG
     NgayDat DATETIME2 DEFAULT GETDATE(),         -- Ngày thực hiện đặt phòng
     NgayNhanPhong DATETIME2 NOT NULL,            -- Ngày nhận phòng dự kiến
     NgayTraPhong DATETIME2 NOT NULL,             -- Ngày trả phòng dự kiến
     SoLuongKhach INT DEFAULT 1 CHECK(SoLuongKhach > 0), -- Số lượng khách
     YeuCauDacBiet NVARCHAR(MAX),                 -- Yêu cầu thêm
     TongTienDuKien DECIMAL(18, 2),               -- Tổng tiền dự kiến (có thể tính toán lại khi checkout)
-    TrangThaiBooking NVARCHAR(50) DEFAULT N'Đã xác nhận', -- Trạng thái ( Đã xác nhận, Đã nhận phòng, Đã trả phòng, Đã hủy, Tạm Giữ)
+    TrangThaiBooking NVARCHAR(50) DEFAULT N'Đã xác nhận', -- Trạng thái (Tạm giữ, Đã xác nhận, Đã nhận phòng, Đã trả phòng, Đã hủy)
     NgayHuy DATETIME2 NULL,                      -- Ngày hủy (nếu có)
     LyDoHuy NVARCHAR(255) NULL,                  -- Lý do hủy
     TienHoanTra DECIMAL(18, 2) NULL,             -- Số tiền hoàn lại khi hủy (nếu có)
