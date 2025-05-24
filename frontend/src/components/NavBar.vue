@@ -73,7 +73,7 @@
         </ul>
       </li>
       <li class="nav-item">
-        <router-link class="nav-link" to="/reserve">
+        <router-link class="nav-link" to="/bookingprocess">
           <Button
             content="RESERVE"
             :textColor="computedTextColor"
