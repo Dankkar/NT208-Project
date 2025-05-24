@@ -825,24 +825,23 @@ exports.searchAvailableRooms = async (req, res) => {
             .input('location', sql.NVarChar, location ? `%${location}%` : '%')
             .query(`
                 WITH AvailableRooms AS (
-                    SELECT 
-                        p.MaPhong,
+                    SELECT
+                        p.MaPhong,      -- Cần MaPhong để định danh phòng cụ thể
                         p.MaKS,
                         p.MaLoaiPhong,
-                        p.MaCauHinhGiuong,
-                        chg.SoGiuongDoi,
-                        chg.SoGiuongDon,
-                        (chg.SoGiuongDoi * 2 + chg.SoGiuongDon) as MaxGuests
+                        p.MaCauHinhGiuong, -- Cần để JOIN và lấy thông tin cấu hình giường
+                        (chg.SoGiuongDoi * 2 + chg.SoGiuongDon) as MaxGuestsPerRoom -- Sức chứa của phòng này
                     FROM Phong p
                     JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
-                    WHERE p.TrangThaiPhong != N'Bảo trì'  -- Chỉ loại bỏ phòng đang bảo trì
-                    AND NOT EXISTS (
+                    WHERE p.TrangThaiPhong != N'Bảo trì'
+                    AND (chg.SoGiuongDoi * 2 + chg.SoGiuongDon) >= @numberOfGuests -- Lọc những phòng đủ sức chứa
+                    AND NOT EXISTS ( -- Kiểm tra xem phòng này có bị đặt trong khoảng thời gian đó không
                         SELECT 1 FROM Booking b
-                        WHERE b.MaPhong = p.MaPhong
+                        WHERE b.MaPhong = p.MaPhong -- Liên kết với phòng cụ thể đang xét
                         AND b.TrangThaiBooking != N'Đã hủy'
                         AND (
-                            b.NgayNhanPhong <= @endDate
-                            AND b.NgayTraPhong >= @startDate
+                            b.NgayNhanPhong < @endDate -- Chồng chéo khi ngày nhận của booking < ngày trả yêu cầu
+                            AND b.NgayTraPhong > @startDate -- Và ngày trả của booking > ngày nhận yêu cầu
                         )
                         AND (
                             b.TrangThaiBooking != N'Tạm giữ'
@@ -850,7 +849,7 @@ exports.searchAvailableRooms = async (req, res) => {
                         )
                     )
                 )
-                SELECT DISTINCT
+                SELECT
                     ks.MaKS,
                     ks.TenKS,
                     ks.DiaChi,
@@ -864,25 +863,27 @@ exports.searchAvailableRooms = async (req, res) => {
                     lp.GiaCoSo,
                     lp.DienTich,
                     lp.TienNghi,
-                    chg.TenCauHinh as CauHinhGiuong,
+                    chg.TenCauHinh as CauHinhGiuong, -- Thông tin cấu hình giường của loại phòng này (nếu tất cả phòng cùng loại có cùng cấu hình)
+                                                    -- Nếu muốn hiển thị tất cả cấu hình giường có thể, cần GROUP BY khác
                     chg.SoGiuongDoi,
                     chg.SoGiuongDon,
-                    COUNT(ar.MaPhong) as SoPhongTrong,
-                    MIN(lp.GiaCoSo) as GiaThapNhat
+                    COUNT(ar.MaPhong) as SoPhongTrong, -- Đếm số phòng cụ thể còn trống
+                    MIN(lp.GiaCoSo) as GiaThapNhat     -- Giá thấp nhất của loại phòng này tại khách sạn này
                 FROM KhachSan ks
-                JOIN AvailableRooms ar ON ks.MaKS = ar.MaKS
-                JOIN LoaiPhong lp ON ar.MaLoaiPhong = lp.MaLoaiPhong
-                JOIN CauHinhGiuong chg ON ar.MaCauHinhGiuong = chg.MaCauHinhGiuong
-                WHERE 
+                JOIN LoaiPhong lp ON ks.MaKS = lp.MaKS -- Giả sử LoaiPhong cũng có MaKS, hoặc JOIN qua Phong
+                JOIN AvailableRooms ar ON lp.MaLoaiPhong = ar.MaLoaiPhong AND ks.MaKS = ar.MaKS -- Join AvailableRooms với LoaiPhong và KhachSan
+                JOIN CauHinhGiuong chg ON ar.MaCauHinhGiuong = chg.MaCauHinhGiuong -- Lấy thông tin cấu hình giường từ các phòng thực sự trống
+                WHERE
                     (ks.DiaChi COLLATE Latin1_General_CI_AI LIKE @location OR ks.TenKS COLLATE Latin1_General_CI_AI LIKE @location)
-                    AND ar.MaxGuests >= @numberOfGuests
-                GROUP BY 
-                    ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, 
+                    -- Điều kiện ar.MaxGuestsPerRoom >= @numberOfGuests đã được xử lý trong CTE, không cần ở đây nữa
+                GROUP BY
+                    ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao,
                     ks.LoaiHinh, ks.MoTaChung, ks.Latitude, ks.Longitude,
                     lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo, lp.DienTich,
-                    lp.TienNghi, chg.TenCauHinh, chg.SoGiuongDoi, chg.SoGiuongDon
-                HAVING COUNT(ar.MaPhong) > 0
-                ORDER BY ks.HangSao DESC, GiaThapNhat ASC
+                    lp.TienNghi,
+                    chg.TenCauHinh, chg.SoGiuongDoi, chg.SoGiuongDon -- Group theo cả cấu hình giường
+                HAVING COUNT(ar.MaPhong) > 0 -- Đảm bảo có ít nhất một phòng trống cho tổ hợp này
+                ORDER BY ks.HangSao DESC, GiaThapNhat ASC, SoPhongTrong DESC;
             `);
 
         // Format response
