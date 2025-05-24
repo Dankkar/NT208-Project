@@ -9,7 +9,6 @@ const {
     logout,
     googleLogin
 } = require('../controllers/authController');
-const {authenticateToken, isAdmin} = require('../middlewares/auth');
 
 const router = express.Router();
 
@@ -57,7 +56,7 @@ router.post(
         next();
     },
     login
-);
+);  
 
 
 // Quen mat khau
@@ -88,8 +87,10 @@ router.put(
     },
     resetPassword
 );
-
+ // Đăng xuất
 router.post('/logout', logout);
+
+//Đăng nhập bằng google
 router.post('/google', googleLogin);
 
 

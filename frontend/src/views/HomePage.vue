@@ -3,7 +3,7 @@
   <div class="home-page">
     <NavbarLogin style="position: fixed !important;" />
     <!-- HERO + SEARCH -->  
-    <section class="hero position-relative text-center text-white d-flex align-items-center">
+    <!-- <section class="hero position-relative text-center text-white d-flex align-items-center">
       <div class="overlay"></div>
       <div class="container">
         <h1 class="display-4 fw-bold mb-4">Find Your Perfect Stay</h1>
@@ -48,7 +48,58 @@
           </div>
         </form>
       </div>
-    </section>
+    </section> -->
+
+    <HeroSection
+      :image-url="heroImageUrl"
+      height="85vh"
+      :overlay-opacity="0.4"
+      text-align="center"
+      text-color="white"
+    >
+      <!-- This content goes into the slot of HeroSection -->
+      <h1 class="display-4 fw-bold mb-4">Find Your Perfect Stay</h1>
+      <form @submit.prevent="onSearch" class="row g-2 justify-content-center">
+        <div class="col-md-3">
+          <div class="position-relative">
+            <input
+              v-model="search.location"
+              type="text"
+              class="form-control"
+              placeholder="Location"
+              @input="handleLocationInput"
+              @focus="showSuggestions = true"
+              @blur="hideSuggestionsWithDelay"
+            />
+            <div v-if="showSuggestions && locationSuggestions.length > 0" class="suggestions-dropdown">
+              <div
+                v-for="suggestion in locationSuggestions"
+                :key="suggestion"
+                class="suggestion-item"
+                @mousedown="selectLocation(suggestion)"
+              >
+                {{ suggestion }}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <input v-model="search.checkIn" type="date" class="form-control" />
+        </div>
+        <div class="col-md-2">
+          <input v-model="search.checkOut" type="date" class="form-control" />
+        </div>
+        <div class="col-md-2">
+          <select v-model="search.guests" class="form-select">
+            <option disabled value="">Guests</option>
+            <option v-for="n in 5" :key="n" :value="n">{{ n }} {{ n>1?'Guests':'Guest' }}</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-primary w-100">Search</button>
+        </div>
+      </form>
+    </HeroSection>
 
     <!-- FEATURED -->
     <section class="featured py-5">
@@ -92,6 +143,7 @@
 <script setup>
 import { reactive, ref, computed, onMounted, onUnmounted } from 'vue'
 import NavbarLogin from '../components/Navbar-login.vue'
+import HeroSection from '../components/HeroSection.vue'
 import Post from '../components/Post.vue'
 import Footer from '../components/Footer.vue'
 import FeaturedCarousel from '../components/FeaturedCarousel.vue'
@@ -99,8 +151,12 @@ import HotelCard from '../components/HotelCard.vue'
 import hotelService from '../services/hotelService'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import mountain from '../assets/mountain.jpg'
 
-const router = useRouter()
+
+const heroImageUrl = mountain
+const imageUrl = mountain
+
 
 const search = reactive({
   location: '',
