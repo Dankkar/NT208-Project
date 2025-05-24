@@ -1,7 +1,7 @@
 <!-- src/components/booking/BookingProgressIndicator.vue -->
 <template>
   <div class="booking-progress-indicator-wrapper py-4" style="background-color: #FFF0F5;"> <!-- Màu nền hồng nhạt từ ảnh -->
-    <div class="container">
+    <div class="container-fluid">
       <div class="d-flex justify-content-around align-items-center">
         <div
           v-for="step in steps"

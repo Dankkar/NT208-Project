@@ -1,7 +1,7 @@
 <template>
   <button
     :class="[
-       'btn btn-link btn-light py-0 px-2 d-inline-flex align-items-center text-decoration-none',  
+       'btn btn-link btn-light py-1 px-2 d-inline-flex align-items-center text-decoration-none',  
       { 'btn-block-size': block }       /* chỉ full‑width khi prop block = true */
     ]"
     :style="{
