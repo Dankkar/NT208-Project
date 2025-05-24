@@ -114,6 +114,10 @@ exports.createBooking = async (req, res) => {
                 WHERE MaPhong = @MaPhong
                 AND TrangThaiBooking != N'Đã hủy'
                 AND (NgayNhanPhong <= @NgayTraPhong AND NgayTraPhong >= @NgayNhanPhong)
+                AND (
+                    TrangThaiBooking != N'Tạm giữ'
+                    OR (TrangThaiBooking = N'Tạm giữ' AND ThoiGianGiuCho IS NOT NULL AND DATEDIFF(MINUTE, ThoiGianGiuCho, GETDATE()) <= 15)
+                )
             `);
 
         if(check.recordset[0].count > 0) {
@@ -342,101 +346,62 @@ exports.cancelBooking = async (req, res) => {
 // Xem don dat phong theo MaKH
 exports.getBookingByUser = async (req, res) => {
     try {
-        const requestedMaKH = parseInt(req.params.MaKH);
+        const { MaKH } = req.params;
         const currentUser = req.user;
-        const pool = await poolPromise;
-
-        // Kiểm tra quyền xem đơn đặt phòng
-        if (!requestedMaKH || isNaN(Number(requestedMaKH))) {
-            return res.status(400).json({ error: 'MaKH không hợp lệ' });
-        }
 
         // Kiểm tra quyền truy cập
-        const canAccess = 
-            currentUser.LoaiUser === 'Admin' || // Admin có thể xem mọi đơn
-            currentUser.MaKH === requestedMaKH || // Khách hàng xem đơn của mình
-            (currentUser.LoaiUser === 'QuanLyKS' && currentUser.MaKS); // Quản lý KS xem đơn của KS mình
-
-        if (!canAccess) {
-            return res.status(403).json({ error: 'Bạn không có quyền truy cập vào đơn đặt phòng này' });
+        if (currentUser.LoaiUser !== 'Admin' && 
+            currentUser.LoaiUser !== 'QuanLyKS' && 
+            currentUser.MaKH !== parseInt(MaKH)) {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Bạn không có quyền xem thông tin đặt phòng này' 
+            });
         }
 
-        const { page = 1, limit = 10 } = req.query;
-        const offset = (page - 1) * limit;
-
-        // Xây dựng điều kiện WHERE dựa trên quyền
-        let whereClause = '';
-        let params = [];
-
-        if (currentUser.LoaiUser === 'QuanLyKS') {
-            whereClause = 'WHERE b.MaKS = @MaKS';
-            params.push({ name: 'MaKS', value: currentUser.MaKS });
-        } else if (currentUser.LoaiUser === 'KhachHang') {
-            whereClause = 'WHERE b.MaKH = @MaKH';
-            params.push({ name: 'MaKH', value: currentUser.MaKH });
-        }
-
-        // Đếm tổng số đơn
-        const countQuery = `
-            SELECT COUNT(*) as total
-            FROM Booking b
-            ${whereClause}
-        `;
-        const countRequest = pool.request();
-        params.forEach(param => {
-            countRequest.input(param.name, param.value);
-        });
-        const countResult = await countRequest.query(countQuery);
-
-        // Lấy danh sách đơn
-        const query = `
+        const pool = await poolPromise;
+        let query = `
             SELECT 
-                b.MaDat, 
-                ks.TenKS, 
-                p.SoPhong, 
-                b.NgayNhanPhong, 
-                b.NgayTraPhong, 
-                b.TrangThaiBooking,
-                chg.TenCauHinh as CauHinhGiuong,
-                chg.SoGiuongDoi,
-                chg.SoGiuongDon,
-                nd.HoTen as TenKhachHang,
-                nd.Email,
-                nd.SDT
-            FROM Booking b 
+                b.*,
+                ks.TenKS,
+                ks.DiaChi,
+                p.SoPhong,
+                lp.TenLoaiPhong,
+                lp.GiaCoSo,
+                u.HoTen as TenKhachHang,
+                u.Email as EmailKhachHang,
+                u.SDT as SDTKhachHang,
+                ks.MaNguoiQuanLy
+            FROM Booking b
             JOIN KhachSan ks ON b.MaKS = ks.MaKS
-            JOIN Phong p ON b.MaPhong = p.MaPhong
-            JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
-            JOIN NguoiDung nd ON b.MaKH = nd.MaKH
-            ${whereClause}
-            ORDER BY b.NgayDat DESC
-            OFFSET @offset ROWS
-            FETCH NEXT @limit ROWS ONLY
+            LEFT JOIN Phong p ON b.MaPhong = p.MaPhong
+            LEFT JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
+            JOIN NguoiDung u ON b.MaKH = u.MaKH
+            WHERE b.MaKH = @MaKH
         `;
 
-        const request = pool.request();
-        params.forEach(param => {
-            request.input(param.name, param.value);
-        });
-        request.input('offset', sql.Int, offset);
-        request.input('limit', sql.Int, limit);
+        // Nếu là QuanLyKS, chỉ xem được booking của khách sạn mình quản lý
+        if (currentUser.LoaiUser === 'QuanLyKS') {
+            query += ' AND ks.MaNguoiQuanLy = @MaNguoiQuanLy';
+        }
 
-        const result = await request.query(query);
+        query += ' ORDER BY b.NgayDat DESC';
+
+        const result = await pool.request()
+            .input('MaKH', sql.Int, MaKH)
+            .input('MaNguoiQuanLy', sql.Int, currentUser.MaKH)
+            .query(query);
 
         res.json({
             success: true,
-            data: result.recordset,
-            pagination: {
-                total: countResult.recordset[0].total,
-                page: parseInt(page),
-                limit: parseInt(limit),
-                totalPages: Math.ceil(countResult.recordset[0].total / parseInt(limit))
-            }
+            data: result.recordset
         });
-    }
-    catch(err) {
+    } catch (err) {
         console.error('Lỗi getBookingByUser:', err);
-        res.status(500).json({ error: "Lỗi hệ thống" });
+        res.status(500).json({ 
+            success: false, 
+            message: 'Lỗi server khi lấy thông tin đặt phòng' 
+        });
     }
 };
 
@@ -629,7 +594,7 @@ exports.holdBooking = async (req, res) => {
             .query(`
                 SELECT COUNT(*) FROM Booking
                 WHERE MaPhong = @MaPhong
-                AND (NgayNhanPhong <= @NgayNhanPhong AND NgayTraPhong >= @NgayNhanPhong)
+                AND (NgayNhanPhong <= @NgayTraPhong AND NgayTraPhong >= @NgayNhanPhong)
                 AND TrangThaiBooking != N'Đã hủy'
                 AND (
                     TrangThaiBooking != N'Tạm giữ'
@@ -726,13 +691,8 @@ exports.suggestAlternativeDates = async (req, res) => {
                 AvailableRanges AS (
                     -- Tìm các khoảng trống giữa các đặt phòng
                     SELECT 
-                        COALESCE(LAG(NgayTraPhong) OVER (ORDER BY NgayNhanPhong), (SELECT StartDate FROM DateRange)) as GapStart,
-                        NgayNhanPhong as GapEnd
-                    FROM BookedDates
-                    UNION ALL
-                    SELECT 
-                        MAX(NgayTraPhong),
-                        (SELECT EndDate FROM DateRange)
+                        DATEADD(DAY, 1, COALESCE(LAG(NgayTraPhong) OVER (ORDER BY NgayNhanPhong), (SELECT StartDate FROM DateRange))) as GapStart,
+                        DATEADD(DAY, -1, NgayNhanPhong) as GapEnd
                     FROM BookedDates
                     UNION ALL
                     -- Xử lý trường hợp không có booking nào
