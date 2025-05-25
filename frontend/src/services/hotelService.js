@@ -12,6 +12,15 @@ const hotelService = {
             throw error;
         }
     },
+    getAllHotels: async () => {
+        try {
+            const response = await axios.get(`${API_URL}/hotels`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching all hotels:', error);
+            throw error;
+        }
+    },
     
     suggestLocations: async (keyword) => {
         try {

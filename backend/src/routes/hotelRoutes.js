@@ -30,7 +30,7 @@ router.post('/', authenticateToken, isAdmin,
 router.get('/nguoi-quan-ly/:MaKH', authenticateToken, isAdmin, getHotelsByNguoiQuanLy);
     
 //GET /hotels
-router.get('/', authenticateToken, getAllHotels);
+router.get('/', getAllHotels);
     
 //GET /hotels/suggest-locations
 router.get('/suggest-locations', LocationSuggestLimiter, suggestLocations);

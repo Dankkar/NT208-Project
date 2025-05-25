@@ -234,3 +234,22 @@ INSERT INTO CauHinhGiuong (TenCauHinh, SoGiuongDoi, SoGiuongDon) VALUES
 (N'1 giường đôi + 1 giường đơn', 1, 1),
 (N'2 giường đôi', 2, 0);
 SELECT * FROM LoaiPhong
+
+DROP TABLE BaiDanhGia;
+DROP TABLE HoaDon;
+DROP TABLE SuDungDichVu;
+-- Bảng Booking
+DROP TABLE Booking;
+
+-- Bảng dịch vụ
+DROP TABLE LoaiDichVu;
+
+-- Bảng phòng
+DROP TABLE Phong;
+DROP TABLE LoaiPhong;
+
+-- Bảng khách sạn
+DROP TABLE KhachSan;
+
+-- Bảng khuyến mãi
+DROP TABLE KhuyenMai;
