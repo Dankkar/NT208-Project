@@ -270,11 +270,17 @@ exports.suggestLocations = async (req, res) => {
                 WHERE DiaChi  COLLATE Latin1_General_CI_AI LIKE '%' + @keyword + '%'
             `);
         
-        res.json(result.recordset.map(r => r.DiaChi));
+        res.json({
+            success: true,
+            data: result.recordset.map(r => r.DiaChi)
+        });
     }
     catch (err)
     {
         console.error('Lỗi suggestLocations:', err);
-        res.status(500).json({error: 'Lỗi server'});
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi server'
+        });
     }
 }
