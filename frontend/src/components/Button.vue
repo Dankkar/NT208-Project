@@ -1,7 +1,7 @@
 <template>
   <button
     :class="[
-       'btn btn-link btn-light py-0 px-2 d-inline-flex align-items-center text-decoration-none',  
+       'btn btn-link btn-light py-1 px-2 d-inline-flex align-items-center text-decoration-none',  
       { 'btn-block-size': block }       /* chỉ full‑width khi prop block = true */
     ]"
     :style="{
@@ -9,13 +9,13 @@
       fontSize,
       backgroundColor,
       borderRadius,
-      textAlign: textAlign,
+      textAlign,
       '--hover-color': colorHover,
       '--hover-bg-color': bgHover
     }"
   >
     <i v-if="isMenu"      class="bi bi-list fs-2 me-2"></i>
-    <span class="w-100">{{ content }}</span>
+    <span :class="[{'fw-bold': fwBold}, 'w-100']">{{ content }}</span>
     <i v-if="isDropdown"  class="bi bi-caret-down-fill ms-2"></i>
   </button>
 </template>

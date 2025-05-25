@@ -233,3 +233,4 @@ INSERT INTO CauHinhGiuong (TenCauHinh, SoGiuongDoi, SoGiuongDon) VALUES
 (N'2 giường đơn', 0, 2),
 (N'1 giường đôi + 1 giường đơn', 1, 1),
 (N'2 giường đôi', 2, 0);
+SELECT * FROM LoaiPhong

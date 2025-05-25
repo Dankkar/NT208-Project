@@ -1,5 +1,5 @@
 <template>
-  <div class="custom-card-wrapper border-0 shadow-lg w-100">
+  <div class="custom-card-wrapper border-0 shadow-md w-100">
     <div class="card d-flex flex-md-row overflow-hidden ">
       <div class="custom-card__image-container col-md-4 d-flex align-items-center justify-content-center p-3 bg-white">
         <img :src="imageUrl" alt="Card Image" class="img-fluid custom-card__image" />
