@@ -109,23 +109,48 @@ exports.getAllHotels = async (req, res) => {
         const { page = 1, limit = 10 } = req.query;
         const offset = (page - 1) * limit;
         const pool = await poolPromise;
+        const isAdmin = req.user && req.user.Role === 'admin';
 
         const countResult = await pool.request().query(`
             SELECT COUNT(*) as total
             FROM KhachSan
         `);
-        const total = countResult.recordset[0].total;
-        const totalPages = Math.ceil(total / limit);
 
-        const result = await pool.request().query(`
+        // Base query without NguoiQuanLy
+        let query = `
             SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh,
-                   nd.HoTen AS NguoiQuanLy
+                   MIN(lp.GiaCoSo) as GiaThapNhat
             FROM KhachSan ks
-            LEFT JOIN NguoiDung nd ON ks.MaNguoiQuanLy = nd.MaKH
-            ORDER BY ks.MaKS DESC
+            LEFT JOIN Phong p ON ks.MaKS = p.MaKS
+            LEFT JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
+        `;
+
+        // Add NguoiQuanLy to query if user is admin
+        if (isAdmin) {
+            query = `
+                SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh,
+                       nd.HoTen AS NguoiQuanLy,
+                       MIN(lp.GiaCoSo) as GiaThapNhat
+                FROM KhachSan ks
+                LEFT JOIN NguoiDung nd ON ks.MaNguoiQuanLy = nd.MaKH
+                LEFT JOIN Phong p ON ks.MaKS = p.MaKS
+                LEFT JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
+            `;
+        }
+
+        // Add GROUP BY, ORDER BY and pagination
+        query += `
+            GROUP BY ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh
+            ${isAdmin ? ', nd.HoTen' : ''}
+            ORDER BY ks.HangSao DESC
             OFFSET @offset ROWS
             FETCH NEXT @limit ROWS ONLY
-        `);
+        `;
+
+        const result = await pool.request()
+            .input('offset', sql.Int, offset)
+            .input('limit', sql.Int, limit)
+            .query(query);
 
         res.json({
             success: true,
