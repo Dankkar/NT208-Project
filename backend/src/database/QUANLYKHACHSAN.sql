@@ -232,3 +232,68 @@ DELETE FROM KhuyenMai;
 DELETE FROM NguoiDung;
 SELECT * FROM KhachSan
 SELECT * FROM LoaiPhong
+
+INSERT INTO KhachSan (TenKS, DiaChi, Latitude, Longitude, HangSao, LoaiHinh, MoTaCoSoVatChat, QuyDinh, MoTaChung)
+VALUES 
+(N'Khách Sạn Biển Xanh', N'123 Đường Biển, Nha Trang', 12.238791, 109.196748, 4.5, N'Khách Sạn', N'Hồ bơi, Gym, Spa', N'Không hút thuốc trong phòng', N'Khách sạn 4 sao gần biển, đầy đủ tiện nghi'),
+(N'Resort Núi Vàng', N'456 Đường Núi, Đà Lạt', 11.940420, 108.458312, 5.0, N'Resort', N'Sân golf, Hồ nước nóng', N'Thu cọc 500k khi check-in', N'Resort sang trọng giữa thiên nhiên xanh mát');
+
+INSERT INTO LoaiPhong (MaKS, TenLoaiPhong, SoGiuong, TienNghi, DienTich, GiaCoSo, MoTa)
+VALUES
+(1, N'Superior', 1, N'Máy lạnh, Wifi, Tủ lạnh', 25.0, 700000, N'Phòng có cửa sổ hướng biển'),
+(1, N'Deluxe', 2, N'Máy lạnh, Wifi, TV, Mini Bar', 35.0, 900000, N'Phòng rộng rãi, ban công view biển'),
+(2, N'Phòng Đôi VIP', 2, N'Máy lạnh, Wifi, Bồn tắm nước nóng', 40.0, 1500000, N'Phòng đôi cao cấp view đồi thông');
+
+
+INSERT INTO CauHinhGiuong (TenCauHinh, SoGiuongDoi, SoGiuongDon)
+VALUES
+(N'1 giường đôi', 1, 0),
+(N'2 giường đơn', 0, 2),
+(N'1 giường đôi + 1 giường đơn', 1, 1);
+
+
+INSERT INTO Phong (MaKS, MaLoaiPhong, MaCauHinhGiuong, SoPhong, Tang)
+VALUES
+(1, 1, 6, N'101', 1),
+(1, 2, 7, N'202', 2),
+(2, 3, 8, N'B101', 1);
+
+
+INSERT INTO LoaiDichVu (MaKS, TenLoaiDV, GiaDV, MoTaDV)
+VALUES
+(1, N'Dịch vụ giặt ủi', 50000, N'Giặt và ủi quần áo trong ngày'),
+(1, N'Đưa đón sân bay', 200000, N'Xe đưa đón tận nơi'),
+(2, N'Spa cao cấp', 300000, N'Spa trị liệu, thư giãn');
+
+
+INSERT INTO KhuyenMai (MaCodeKM, TenKM, MoTaKM, NgayBD, NgayKT, LoaiKM, GiaTriKM, DieuKienApDung)
+VALUES
+(N'SUMMER20', N'Khuyến mãi hè 20%', N'Giảm 20% cho tất cả booking từ 3 đêm trở lên', '2025-06-01', '2025-08-31', N'Giảm %', 20, N'Đặt tối thiểu 3 đêm');
+
+
+INSERT INTO Booking (MaKH, MaKS, MaPhong, NgayNhanPhong, NgayTraPhong, SoLuongKhach, YeuCauDacBiet, TongTienDuKien)
+VALUES
+(1, 1, 1, '2025-07-01 14:00', '2025-07-03 12:00', 2, N'Cần phòng tầng thấp', 1400000),
+(2, 2, 3, '2025-08-10 15:00', '2025-08-15 11:00', 2, N'Yêu cầu xe đưa đón', 7500000);
+
+
+INSERT INTO SuDungDichVu (MaDat, MaLoaiDV, SoLuong, GiaTaiThoiDiemSuDung)
+VALUES
+(1, 1, 2, 50000),
+(2, 3, 1, 300000);
+
+
+INSERT INTO HoaDon (MaDat, MaKH, MaKM, TongTienPhong, TongTienDichVu, TienGiamGia, ThueVAT, HinhThucTT, TrangThaiThanhToan)
+VALUES
+(1, 1, 1, 1400000, 100000, 280000, 150000, N'Thẻ tín dụng', N'Đã thanh toán'),
+(2, 2, NULL, 7500000, 300000, 0, 300000, N'Tiền mặt', N'Chưa thanh toán');
+
+INSERT INTO BaiDanhGia (MaKH, MaDat, MaKS, Sao, NoiDung)
+VALUES
+(1, 1, 1, 5, N'Phòng sạch sẽ, gần biển, nhân viên thân thiện'),
+(2, 2, 2, 4, N'Không gian yên tĩnh, thích hợp nghỉ dưỡng');
+
+SELECT * FROM KhachSan
+select * from LoaiPhong
+select * from Phong
+SELECT * FROM CauHinhGiuong
