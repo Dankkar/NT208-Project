@@ -69,13 +69,7 @@ CREATE TABLE Phong (
     CONSTRAINT UQ_Phong_SoPhong_MaKS UNIQUE (MaKS, SoPhong)
 );
 
--- Insert some common bed configurations
-INSERT INTO CauHinhGiuong (TenCauHinh, SoGiuongDoi, SoGiuongDon) VALUES
-(N'1 giường đôi', 1, 0),
-(N'1 giường đơn', 0, 1),    
-(N'2 giường đơn', 0, 2),
-(N'1 giường đôi + 1 giường đơn', 1, 1),
-(N'2 giường đôi', 2, 0);
+
 
 -- Bảng Loại Dịch Vụ (ServiceType) - Đổi tên từ DICHVU và tách để đạt BCNF
 CREATE TABLE LoaiDichVu (
@@ -297,3 +291,31 @@ SELECT * FROM KhachSan
 select * from LoaiPhong
 select * from Phong
 SELECT * FROM CauHinhGiuong
+-- Insert some common bed configurations
+INSERT INTO CauHinhGiuong (TenCauHinh, SoGiuongDoi, SoGiuongDon) VALUES
+(N'1 giường đôi', 1, 0),
+(N'1 giường đơn', 0, 1),    
+(N'2 giường đơn', 0, 2),
+(N'1 giường đôi + 1 giường đơn', 1, 1),
+(N'2 giường đôi', 2, 0);
+SELECT * FROM LoaiPhong
+
+DROP TABLE BaiDanhGia;
+DROP TABLE HoaDon;
+DROP TABLE SuDungDichVu;
+-- Bảng Booking
+DROP TABLE Booking;
+
+-- Bảng dịch vụ
+DROP TABLE LoaiDichVu;
+
+-- Bảng phòng
+DROP TABLE Phong;
+DROP TABLE LoaiPhong;
+
+-- Bảng khách sạn
+DROP TABLE KhachSan;
+
+-- Bảng khuyến mãi
+DROP TABLE KhuyenMai;
+

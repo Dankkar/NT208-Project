@@ -28,9 +28,9 @@
 
     <div class="collapse navbar-collapse justify-content-end d-lg-flex d-none" id="mainNav">
      <ul class="navbar-nav">
-      <router-link class="nav-link" to="/ratings">
+      <router-link class="nav-link" to="/hotels">
         <Button
-          content="RATINGS"
+          content="HOTEL"
           :textColor="computedTextColor"
           :colorHover="computedColorHover"
         />

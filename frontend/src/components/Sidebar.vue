@@ -1,5 +1,6 @@
 <template>
-  <div class="d-flex flex-column bg-light vh-100 border-end p-3" style="width: 280px;">
+  <nav class = navbar>
+    <div class="d-flex flex-column bg-light vh-100 border-end p-3" style="width: 280px;">
     <h5 class="fw-bold mb-4">ADMINISTRATOR</h5>
 
     <div class="accordion" id="sidebarAccordion">
@@ -34,10 +35,8 @@
     </div>
 
     <hr />
-    <a href="#" class="text-decoration-none text-dark d-flex align-items-center mt-auto">
-      <i class="bi bi-gear me-2"></i> Settings
-    </a>
   </div>
+  </nav>
 </template>
 
 <script setup>
@@ -60,3 +59,16 @@ const sections = [
   },
 ]
 </script>
+
+<style scoped>
+.sidebar {
+  position: fixed;
+  top: 56px;      /* đẩy xuống đúng chiều cao header */
+  left: 0;
+  bottom: 0;
+  width: 250px;   /* hoặc width mà bạn đang dùng */
+  overflow-y: auto;
+  background: #fff;
+  z-index: 1020;  /* thấp hơn navbar (để navbar vẫn nằm trên) */
+}
+</style>
