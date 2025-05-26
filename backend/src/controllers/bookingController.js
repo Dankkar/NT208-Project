@@ -678,22 +678,29 @@ exports.suggestAlternativeDates = async (req, res) => {
                     JOIN Phong p ON b.MaPhong = p.MaPhong
                     WHERE p.MaLoaiPhong = @MaLoaiPhong
                     AND b.TrangThaiBooking != N'Đã hủy'
+                    AND p.TrangThaiPhong != N'Bảo trì'
                     AND (
                         b.TrangThaiBooking != N'Tạm giữ'
                         OR (b.TrangThaiBooking = N'Tạm giữ' AND b.ThoiGianGiuCho IS NOT NULL AND DATEDIFF(MINUTE, b.ThoiGianGiuCho, GETDATE()) <= 15)
                     )
-                    AND (
-                        (b.NgayNhanPhong <= @NgayTraPhong AND b.NgayTraPhong >= @NgayNhanPhong)
-                        OR (b.NgayNhanPhong BETWEEN (SELECT StartDate FROM DateRange) AND (SELECT EndDate FROM DateRange))
-                        OR (b.NgayTraPhong BETWEEN (SELECT StartDate FROM DateRange) AND (SELECT EndDate FROM DateRange))
-                    )
+                    AND b.NgayNhanPhong < (SELECT EndDate FROM DateRange)
+                    AND b.NgayTraPhong > (SELECT StartDate FROM DateRange)
                 ),
                 AvailableRanges AS (
                     -- Tìm các khoảng trống giữa các đặt phòng
                     SELECT 
                         DATEADD(DAY, 1, COALESCE(LAG(NgayTraPhong) OVER (ORDER BY NgayNhanPhong), (SELECT StartDate FROM DateRange))) as GapStart,
                         DATEADD(DAY, -1, NgayNhanPhong) as GapEnd
-                    FROM BookedDates
+                    FROM BookedDates bd, DateRange dr
+                    WHERE DATEADD(DAY, -1, bd.NgayNhanPhong) >= DATEADD(DAY, 1, COALESCE(LAG(bd.NgayTraPhong) OVER (ORDER BY bd.NgayNhanPhong), dr.StartDate))
+                    UNION ALL
+                    -- Khoảng trống sau booking cuối cùng đến cuối DateRange
+                    SELECT
+                        DATEADD(DAY, 1, MAX(NgayTraPhong)) as GapStart,
+                        dr.EndDate as GapEnd
+                    FROM BookedDates as bd, DateRange as dr
+                    HAVING MAX(bd.NgayTraPhong) IS NOT NULL AND MAX(bd.NgayTraPhong) < dr.EndDate
+
                     UNION ALL
                     -- Xử lý trường hợp không có booking nào
                     SELECT 
@@ -728,7 +735,7 @@ exports.suggestAlternativeDates = async (req, res) => {
                             ELSE 'standard'
                         END as AvailabilityType
                     FROM ValidRanges
-                    WHERE DATEADD(DAY, DATEDIFF(DAY, @NgayNhanPhong, @NgayTraPhong), GapStart) <= GapEnd
+                    WHERE DATEADD(DAY, DATEDIFF(DAY, @NgayNhanPhong, @NgayTraPhong) - 1, GapStart) <= GapEnd
                 )
                 SELECT 
                     CheckInDate,
