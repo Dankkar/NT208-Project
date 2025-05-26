@@ -27,10 +27,24 @@ exports.getCurrentUser = async (req, res) => {
 exports.getAllUsers = async (req, res) => {
     try {
         const pool = await poolPromise;
-        const result = await pool.request().query(`
-            SELECT MaKH, HoTen, Email, SDT, CCCD, NgaySinh, GioiTinh FROM NguoiDung
-        `);
-        res.status(200).json(result.recordset);
+        const { page = 1, limit = 10 } = req.query;
+        const offset = (page - 1) * limit;
+        const result = await pool.request()
+            .input('offset', sql.Int, offset)
+            .input('limit', sql.Int, limit)
+            .query(`
+                SELECT MaKH, HoTen, Email, SDT, CCCD, NgaySinh, GioiTinh FROM NguoiDung
+                ORDER BY MaKH
+                OFFSET @offset ROWS
+                FETCH NEXT @limit ROWS ONLY
+            `);
+        res.status(200).json({
+            success: true,
+            data: result.recordset,
+            total: totalCount.recordset[0].total,
+            currentPage: parseInt(page),
+            totalPages: Math.ceil(totalCount.recordset[0].total / limit)
+        });
     } catch (error) {
         console.error('Lỗi khi lấy tất cả người dùng:', error);
         res.status(500).json({
@@ -126,3 +140,27 @@ exports.deleteUser = async (req, res) => {
         });
     }
 };
+
+exports.searchUser = async (req, res) => {
+    try {
+        const keyword = req.query.keyword;
+        const pool = await  poolPromise;
+        const result = await pool.request()
+            .input('keyword', sql.VarChar, keyword)
+            .query(`
+                SELECT MaKH, HoTen, Email, SDT, CCCD, NgaySinh, GioiTinh FROM NguoiDung
+                WHERE Email COLLATE Latin1_General_CI_AI LIKE '%' + @keyword + '%'
+            `);
+        res.status(200).json({
+            success: true,
+            data: result.recordset
+        });
+    } catch (error) {
+        console.error('Lỗi khi tìm kiếm người dùng:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi server'
+        });
+
+    }
+}
