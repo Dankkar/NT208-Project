@@ -57,7 +57,7 @@
     </ul>
   </li>
   
-  <li class="nav-item" v-if="!isLoggedIn">
+  <li class="nav-item" v-if="!AuthStore.isAuthenticated">
     <router-link class="nav-link" to="/login">
       <Button
         content="LOGIN"
@@ -68,7 +68,7 @@
     </li>
 
 
-  <li class="nav-item dropdown" v-if="isLoggedIn">
+  <li class="nav-item dropdown" v-if="AuthStore.isAuthenticated">
     <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
       <Button
         content="MY ACCOUNT"
@@ -104,12 +104,12 @@ import MenuButton from './MenuButton.vue'
 import Logo from './Logo.vue'
 import logouitwhite from '../assets/Logo_UIT_white.jpg'
 import logouitblue from '../assets/Logo_UIT_blue.jpg'
-import { useAuth } from '../utils/auth'
+import { useAuthStore } from '../store/authStore'
 
 const logoSrc = computed(() =>
    showBg.value || props.bgFixed ? logouitblue : logouitwhite
 )
-const {isLoggedIn, checkLogin} = useAuth()
+const AuthStore = useAuthStore();
 const showBg = ref(false)
 const props = defineProps({
   bgFixed: { type: Boolean, default: false }
@@ -139,8 +139,6 @@ const handleScroll = () => {
 }
 
 onMounted(() => {
-  checkLogin()
-  console.log(isLoggedIn.value)
   checkMobile()
   window.addEventListener('scroll', handleScroll)
   window.addEventListener('resize', checkMobile)

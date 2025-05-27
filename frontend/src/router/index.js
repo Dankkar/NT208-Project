@@ -10,6 +10,7 @@ import Ratings from '../views/Ratings.vue'
 import RatingDetails from '../views/RatingDetails.vue'
 import Reserve from '../views/Reserve.vue'
 import BookingProcess from '../views/BookingProcess.vue'
+import vueCard1 from '../components/vueCard1.vue'
 
 
 const routes = [
@@ -24,6 +25,7 @@ const routes = [
   {path:'/ratingdetails', name: "RatingDetails", component:RatingDetails},
   {path: '/reserve', name: 'Reserve', component: Reserve},
   {path: '/BookingProcess', name: 'BookingProcess', component: BookingProcess}, 
+  {path: '/vueCard1', name: 'vueCard1', component: vueCard1},
 ]
 
 export default createRouter({
