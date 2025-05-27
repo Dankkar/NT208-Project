@@ -8,7 +8,8 @@ const {
     getHotelById,
     getAllHotels,
     getFeaturedHotels,
-    suggestLocations
+    suggestLocations,
+    searchAvailableHotels
 } = require('../controllers/hotelController');
 const {authenticateToken, isAdmin} = require('../middlewares/auth');
 const { LocationSuggestLimiter } = require('../middlewares/rateLimiter')
@@ -16,6 +17,10 @@ const { LocationSuggestLimiter } = require('../middlewares/rateLimiter')
 const router = express.Router();
 //GET /featured
 router.get('/featured', getFeaturedHotels);
+
+//POST /search
+router.post('/search', searchAvailableHotels);
+
 //POST /hotels
 router.post('/', authenticateToken, isAdmin,
     [
@@ -43,7 +48,5 @@ router.delete('/:MaKS', authenticateToken, isAdmin, deleteHotel);
 
 //GET /hotels/:MaKS
 router.get('/:MaKS', authenticateToken, getHotelById);
-
-
 
 module.exports = router;

@@ -155,7 +155,7 @@ exports.createBooking = async (req, res) => {
             const managerResult = await transaction.request()
                 .input('MaKS', sql.Int, MaKS)
                 .query(`
-                    SELECT MaQL
+                    SELECT MaNguoiQuanLy
                     FROM KhachSan
                     WHERE MaKS = @MaKS
                 `);
@@ -649,28 +649,32 @@ exports.suggestAlternativeDates = async (req, res) => {
         const { NgayNhanPhong, NgayTraPhong, MaLoaiPhong } = req.body;
 
         if (!NgayNhanPhong || !NgayTraPhong || !MaLoaiPhong) {
-            return res.status(400).json({ 
+            const response = { 
                 success: false, 
                 message: 'Vui lòng cung cấp đầy đủ thông tin: NgayNhanPhong, NgayTraPhong, MaLoaiPhong' 
-            });
+            };
+            if (res && res.json) {
+                return res.status(400).json(response);
+            }
+            return response;
         }
 
         const pool = await poolPromise;
+        const originalDuration = Math.ceil((new Date(NgayTraPhong) - new Date(NgayNhanPhong)) / (1000 * 60 * 60 * 24));
 
         // Tìm các khoảng thời gian thay thế
         const result = await pool.request()
             .input('NgayNhanPhong', sql.Date, NgayNhanPhong)
             .input('NgayTraPhong', sql.Date, NgayTraPhong)
             .input('MaLoaiPhong', sql.Int, MaLoaiPhong)
+            .input('originalDuration', sql.Int, originalDuration)
             .query(`
                 WITH DateRange AS (
-                    -- Tạo chuỗi ngày từ 7 ngày trước đến 7 ngày sau khoảng thời gian yêu cầu
                     SELECT 
                         DATEADD(DAY, -7, @NgayNhanPhong) as StartDate,
                         DATEADD(DAY, 7, @NgayTraPhong) as EndDate
                 ),
                 BookedDates AS (
-                    -- Lấy tất cả các đặt phòng đã xác nhận hoặc đang giữ chỗ trong khoảng thời gian
                     SELECT 
                         b.NgayNhanPhong,
                         b.NgayTraPhong
@@ -678,24 +682,49 @@ exports.suggestAlternativeDates = async (req, res) => {
                     JOIN Phong p ON b.MaPhong = p.MaPhong
                     WHERE p.MaLoaiPhong = @MaLoaiPhong
                     AND b.TrangThaiBooking != N'Đã hủy'
+                    AND p.TrangThaiPhong != N'Bảo trì'
                     AND (
                         b.TrangThaiBooking != N'Tạm giữ'
                         OR (b.TrangThaiBooking = N'Tạm giữ' AND b.ThoiGianGiuCho IS NOT NULL AND DATEDIFF(MINUTE, b.ThoiGianGiuCho, GETDATE()) <= 15)
                     )
-                    AND (
-                        (b.NgayNhanPhong <= @NgayTraPhong AND b.NgayTraPhong >= @NgayNhanPhong)
-                        OR (b.NgayNhanPhong BETWEEN (SELECT StartDate FROM DateRange) AND (SELECT EndDate FROM DateRange))
-                        OR (b.NgayTraPhong BETWEEN (SELECT StartDate FROM DateRange) AND (SELECT EndDate FROM DateRange))
-                    )
+                    AND b.NgayNhanPhong < (SELECT EndDate FROM DateRange)
+                    AND b.NgayTraPhong > (SELECT StartDate FROM DateRange)
                 ),
                 AvailableRanges AS (
-                    -- Tìm các khoảng trống giữa các đặt phòng
+                    -- Khoảng trống trước booking đầu tiên
                     SELECT 
-                        DATEADD(DAY, 1, COALESCE(LAG(NgayTraPhong) OVER (ORDER BY NgayNhanPhong), (SELECT StartDate FROM DateRange))) as GapStart,
-                        DATEADD(DAY, -1, NgayNhanPhong) as GapEnd
+                        (SELECT StartDate FROM DateRange) as GapStart,
+                        DATEADD(DAY, -1, MIN(NgayNhanPhong)) as GapEnd
                     FROM BookedDates
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM BookedDates b2 
+                        WHERE b2.NgayNhanPhong < BookedDates.NgayNhanPhong
+                    )
                     UNION ALL
-                    -- Xử lý trường hợp không có booking nào
+                    -- Khoảng trống giữa các booking
+                    SELECT 
+                        DATEADD(DAY, 1, NgayTraPhong) as GapStart,
+                        DATEADD(DAY, -1, NextCheckIn) as GapEnd
+                    FROM (
+                        SELECT 
+                            NgayNhanPhong,
+                            NgayTraPhong,
+                            LEAD(NgayNhanPhong) OVER (ORDER BY NgayNhanPhong) as NextCheckIn
+                        FROM BookedDates
+                    ) AS BookedDatesWithNext
+                    WHERE NextCheckIn IS NOT NULL
+                    UNION ALL
+                    -- Khoảng trống sau booking cuối cùng
+                    SELECT 
+                        DATEADD(DAY, 1, MAX(NgayTraPhong)) as GapStart,
+                        (SELECT EndDate FROM DateRange) as GapEnd
+                    FROM BookedDates
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM BookedDates b2 
+                        WHERE b2.NgayNhanPhong > BookedDates.NgayNhanPhong
+                    )
+                    UNION ALL
+                    -- Trường hợp không có booking nào
                     SELECT 
                         StartDate,
                         EndDate
@@ -703,44 +732,56 @@ exports.suggestAlternativeDates = async (req, res) => {
                     WHERE NOT EXISTS (SELECT 1 FROM BookedDates)
                 ),
                 ValidRanges AS (
-                    -- Lọc các khoảng trống có đủ số ngày
                     SELECT 
                         GapStart,
                         GapEnd,
-                        DATEDIFF(DAY, GapStart, GapEnd) as Duration
+                        DATEDIFF(DAY, GapStart, GapEnd) + 1 as AvailableDuration
                     FROM AvailableRanges
-                    WHERE DATEDIFF(DAY, GapStart, GapEnd) >= DATEDIFF(DAY, @NgayNhanPhong, @NgayTraPhong)
+                    WHERE DATEDIFF(DAY, GapStart, GapEnd) + 1 >= @originalDuration
                 ),
                 SuggestedDates AS (
-                    -- Tạo các gợi ý từ các khoảng trống
+                    -- Before suggestions
+                    SELECT 
+                        DATEADD(DAY, -@originalDuration, GapEnd) as CheckInDate,
+                        GapEnd as CheckOutDate,
+                        'before' as Period,
+                        @originalDuration as Duration,
+                        ABS(DATEDIFF(DAY, DATEADD(DAY, -@originalDuration, GapEnd), @NgayNhanPhong)) as DaysFromOriginal
+                    FROM ValidRanges
+                    WHERE GapEnd <= @NgayNhanPhong
+                    AND DATEDIFF(DAY, GapStart, GapEnd) >= @originalDuration
+                    AND NOT EXISTS (
+                        SELECT 1 FROM BookedDates b
+                        WHERE b.NgayNhanPhong < GapEnd
+                        AND b.NgayTraPhong > DATEADD(DAY, -@originalDuration, GapEnd)
+                    )
+                    UNION ALL
+                    -- After suggestions
                     SELECT 
                         GapStart as CheckInDate,
-                        DATEADD(DAY, DATEDIFF(DAY, @NgayNhanPhong, @NgayTraPhong), GapStart) as CheckOutDate,
-                        CASE 
-                            WHEN GapStart < @NgayNhanPhong THEN 'before'
-                            ELSE 'after'
-                        END as Period,
-                        DATEDIFF(DAY, GapStart, GapEnd) as AvailableDuration,
-                        ABS(DATEDIFF(DAY, GapStart, @NgayNhanPhong)) as DaysFromOriginal,
-                        -- Thêm thông tin về khoảng thời gian có sẵn
-                        CASE 
-                            WHEN DATEDIFF(DAY, GapStart, GapEnd) >= DATEDIFF(DAY, @NgayNhanPhong, @NgayTraPhong) * 2 THEN 'extended'
-                            ELSE 'standard'
-                        END as AvailabilityType
+                        DATEADD(DAY, @originalDuration, GapStart) as CheckOutDate,
+                        'after' as Period,
+                        @originalDuration as Duration,
+                        ABS(DATEDIFF(DAY, GapStart, @NgayNhanPhong)) as DaysFromOriginal
                     FROM ValidRanges
-                    WHERE DATEADD(DAY, DATEDIFF(DAY, @NgayNhanPhong, @NgayTraPhong), GapStart) <= GapEnd
+                    WHERE DATEADD(DAY, @originalDuration, GapStart) <= GapEnd
+                    AND GapStart > @NgayTraPhong
+                    AND NOT EXISTS (
+                        SELECT 1 FROM BookedDates b
+                        WHERE b.NgayNhanPhong < DATEADD(DAY, @originalDuration, GapStart)
+                        AND b.NgayTraPhong > GapStart
+                    )
                 )
                 SELECT 
                     CheckInDate,
                     CheckOutDate,
                     Period,
-                    AvailableDuration,
-                    DaysFromOriginal,
-                    AvailabilityType
+                    Duration,
+                    DaysFromOriginal
                 FROM SuggestedDates
                 ORDER BY 
                     CASE 
-                        WHEN Period = 'before' THEN 1
+                        WHEN Period = 'after' THEN 1
                         ELSE 2
                     END,
                     DaysFromOriginal
@@ -750,36 +791,46 @@ exports.suggestAlternativeDates = async (req, res) => {
             checkIn: date.CheckInDate,
             checkOut: date.CheckOutDate,
             period: date.Period,
-            availableDuration: date.AvailableDuration,
-            daysFromOriginal: date.DaysFromOriginal,
-            availabilityType: date.AvailabilityType
+            duration: date.Duration,
+            daysFromOriginal: date.DaysFromOriginal
         }));
 
-        res.json({
+        const response = {
             success: true,
             data: {
                 originalDates: {
                     checkIn: NgayNhanPhong,
                     checkOut: NgayTraPhong,
-                    duration: Math.ceil((new Date(NgayTraPhong) - new Date(NgayNhanPhong)) / (1000 * 60 * 60 * 24))
+                    duration: originalDuration
                 },
                 suggestions
             }
-        });
+        };
+
+        if (res && res.json) {
+            return res.json(response);
+        }
+        return response;
     } catch (err) {
         console.error('Lỗi suggestAlternativeDates:', err);
-        res.status(500).json({ 
+        const errorResponse = { 
             success: false, 
             message: 'Lỗi server khi tìm kiếm thời gian thay thế' 
-        });
+        };
+        if (res && res.json) {
+            return res.status(500).json(errorResponse);
+        }
+        return errorResponse;
     }
 };
 
 
-// Tim loai phong tren thanh Search Home Page
+
+
+// Tim loai phong trong trang booking (tất cả khách sạn)
 exports.searchAvailableRooms = async (req, res) => {
     try {
-        const { startDate, endDate, numberOfGuests, location } = req.query;
+        const { startDate, endDate, numberOfGuests } = req.body;
 
         // Validate required parameters
         if (!startDate || !endDate || !numberOfGuests) {
@@ -789,7 +840,7 @@ exports.searchAvailableRooms = async (req, res) => {
             });
         }
 
-        // Validate dates
+        // Validate dates and guests
         const checkIn = new Date(startDate);
         const checkOut = new Date(endDate);
         if (isNaN(checkIn.getTime()) || isNaN(checkOut.getTime())) {
@@ -806,7 +857,6 @@ exports.searchAvailableRooms = async (req, res) => {
             });
         }
 
-        // Validate number of guests
         const guests = parseInt(numberOfGuests);
         if (isNaN(guests) || guests < 1) {
             return res.status(400).json({
@@ -817,39 +867,11 @@ exports.searchAvailableRooms = async (req, res) => {
 
         const pool = await poolPromise;
 
-        // Search hotels with available rooms
-        const result = await pool.request()
-            .input('startDate', sql.Date, startDate)
-            .input('endDate', sql.Date, endDate)
+        // First, get all hotels and their room types
+        const hotelsResult = await pool.request()
             .input('numberOfGuests', sql.Int, guests)
-            .input('location', sql.NVarChar, location ? `%${location}%` : '%')
             .query(`
-                WITH AvailableRooms AS (
-                    SELECT
-                        p.MaPhong,      -- Cần MaPhong để định danh phòng cụ thể
-                        p.MaKS,
-                        p.MaLoaiPhong,
-                        p.MaCauHinhGiuong, -- Cần để JOIN và lấy thông tin cấu hình giường
-                        (chg.SoGiuongDoi * 2 + chg.SoGiuongDon) as MaxGuestsPerRoom -- Sức chứa của phòng này
-                    FROM Phong p
-                    JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
-                    WHERE p.TrangThaiPhong != N'Bảo trì'
-                    AND (chg.SoGiuongDoi * 2 + chg.SoGiuongDon) >= @numberOfGuests -- Lọc những phòng đủ sức chứa
-                    AND NOT EXISTS ( -- Kiểm tra xem phòng này có bị đặt trong khoảng thời gian đó không
-                        SELECT 1 FROM Booking b
-                        WHERE b.MaPhong = p.MaPhong -- Liên kết với phòng cụ thể đang xét
-                        AND b.TrangThaiBooking != N'Đã hủy'
-                        AND (
-                            b.NgayNhanPhong < @endDate -- Chồng chéo khi ngày nhận của booking < ngày trả yêu cầu
-                            AND b.NgayTraPhong > @startDate -- Và ngày trả của booking > ngày nhận yêu cầu
-                        )
-                        AND (
-                            b.TrangThaiBooking != N'Tạm giữ'
-                            OR (b.TrangThaiBooking = N'Tạm giữ' AND b.ThoiGianGiuCho IS NOT NULL AND DATEDIFF(MINUTE, b.ThoiGianGiuCho, GETDATE()) <= 15)
-                        )
-                    )
-                )
-                SELECT
+                SELECT DISTINCT
                     ks.MaKS,
                     ks.TenKS,
                     ks.DiaChi,
@@ -863,32 +885,59 @@ exports.searchAvailableRooms = async (req, res) => {
                     lp.GiaCoSo,
                     lp.DienTich,
                     lp.TienNghi,
-                    chg.TenCauHinh as CauHinhGiuong, -- Thông tin cấu hình giường của loại phòng này (nếu tất cả phòng cùng loại có cùng cấu hình)
-                                                    -- Nếu muốn hiển thị tất cả cấu hình giường có thể, cần GROUP BY khác
+                    chg.TenCauHinh as CauHinhGiuong,
                     chg.SoGiuongDoi,
-                    chg.SoGiuongDon,
-                    COUNT(ar.MaPhong) as SoPhongTrong, -- Đếm số phòng cụ thể còn trống
-                    MIN(lp.GiaCoSo) as GiaThapNhat     -- Giá thấp nhất của loại phòng này tại khách sạn này
+                    chg.SoGiuongDon
                 FROM KhachSan ks
-                JOIN LoaiPhong lp ON ks.MaKS = lp.MaKS -- Giả sử LoaiPhong cũng có MaKS, hoặc JOIN qua Phong
-                JOIN AvailableRooms ar ON lp.MaLoaiPhong = ar.MaLoaiPhong AND ks.MaKS = ar.MaKS -- Join AvailableRooms với LoaiPhong và KhachSan
-                JOIN CauHinhGiuong chg ON ar.MaCauHinhGiuong = chg.MaCauHinhGiuong -- Lấy thông tin cấu hình giường từ các phòng thực sự trống
-                WHERE
-                    (ks.DiaChi COLLATE Latin1_General_CI_AI LIKE @location OR ks.TenKS COLLATE Latin1_General_CI_AI LIKE @location)
-                    -- Điều kiện ar.MaxGuestsPerRoom >= @numberOfGuests đã được xử lý trong CTE, không cần ở đây nữa
-                GROUP BY
-                    ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao,
-                    ks.LoaiHinh, ks.MoTaChung, ks.Latitude, ks.Longitude,
-                    lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo, lp.DienTich,
-                    lp.TienNghi,
-                    chg.TenCauHinh, chg.SoGiuongDoi, chg.SoGiuongDon -- Group theo cả cấu hình giường
-                HAVING COUNT(ar.MaPhong) > 0 -- Đảm bảo có ít nhất một phòng trống cho tổ hợp này
-                ORDER BY ks.HangSao DESC, GiaThapNhat ASC, SoPhongTrong DESC;
+                JOIN LoaiPhong lp ON ks.MaKS = lp.MaKS
+                JOIN Phong p ON lp.MaLoaiPhong = p.MaLoaiPhong
+                JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
+                WHERE (chg.SoGiuongDoi * 2 + chg.SoGiuongDon) >= @numberOfGuests
+                ORDER BY ks.HangSao DESC, lp.GiaCoSo ASC;
             `);
+
+        // Then, check availability for each room type
+        const availableRoomsResult = await pool.request()
+            .input('startDate', sql.Date, startDate)
+            .input('endDate', sql.Date, endDate)
+            .input('numberOfGuests', sql.Int, guests)
+            .query(`
+                WITH AvailableRooms AS (
+                    SELECT
+                        p.MaKS,
+                        p.MaLoaiPhong,
+                        COUNT(*) as SoPhongTrong
+                    FROM Phong p
+                    JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
+                    WHERE p.TrangThaiPhong != N'Bảo trì'
+                    AND (chg.SoGiuongDoi * 2 + chg.SoGiuongDon) >= @numberOfGuests
+                    AND NOT EXISTS (
+                        SELECT 1 FROM Booking b
+                        WHERE b.MaPhong = p.MaPhong
+                        AND b.TrangThaiBooking != N'Đã hủy'
+                        AND (
+                            b.NgayNhanPhong < @endDate
+                            AND b.NgayTraPhong > @startDate
+                        )
+                        AND (
+                            b.TrangThaiBooking != N'Tạm giữ'
+                            OR (b.TrangThaiBooking = N'Tạm giữ' AND b.ThoiGianGiuCho IS NOT NULL AND DATEDIFF(MINUTE, b.ThoiGianGiuCho, GETDATE()) <= 15)
+                        )
+                    )
+                    GROUP BY p.MaKS, p.MaLoaiPhong
+                )
+                SELECT * FROM AvailableRooms;
+            `);
+
+        // Create a map of available rooms
+        const availableRoomsMap = new Map();
+        availableRoomsResult.recordset.forEach(room => {
+            availableRoomsMap.set(`${room.MaKS}-${room.MaLoaiPhong}`, room.SoPhongTrong);
+        });
 
         // Format response
         const hotels = {};
-        result.recordset.forEach(record => {
+        for (const record of hotelsResult.recordset) {
             if (!hotels[record.MaKS]) {
                 hotels[record.MaKS] = {
                     MaKS: record.MaKS,
@@ -903,7 +952,10 @@ exports.searchAvailableRooms = async (req, res) => {
                 };
             }
 
-            hotels[record.MaKS].roomTypes.push({
+            const roomKey = `${record.MaKS}-${record.MaLoaiPhong}`;
+            const availableRooms = availableRoomsMap.get(roomKey) || 0;
+
+            const roomType = {
                 MaLoaiPhong: record.MaLoaiPhong,
                 TenLoaiPhong: record.TenLoaiPhong,
                 GiaCoSo: record.GiaCoSo,
@@ -912,9 +964,30 @@ exports.searchAvailableRooms = async (req, res) => {
                 CauHinhGiuong: record.CauHinhGiuong,
                 SoGiuongDoi: record.SoGiuongDoi,
                 SoGiuongDon: record.SoGiuongDon,
-                SoPhongTrong: record.SoPhongTrong
-            });
-        });
+                SoPhongTrong: availableRooms
+            };
+
+            // If no rooms available, get alternative dates
+            if (availableRooms === 0) {
+                try {
+                    const alternativeDatesResult = await exports.suggestAlternativeDates({
+                        body: {
+                            NgayNhanPhong: startDate,
+                            NgayTraPhong: endDate,
+                            MaLoaiPhong: record.MaLoaiPhong
+                        }
+                    });
+
+                    if (alternativeDatesResult && alternativeDatesResult.success) {
+                        roomType.alternativeDates = alternativeDatesResult.data.suggestions;
+                    }
+                } catch (error) {
+                    console.error('Error getting alternative dates:', error);
+                }
+            }
+
+            hotels[record.MaKS].roomTypes.push(roomType);
+        }
 
         res.json({
             success: true,
