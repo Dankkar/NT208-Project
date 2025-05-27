@@ -95,7 +95,7 @@
 
 <script setup>
 import { reactive, ref, computed, onMounted, onUnmounted } from 'vue'
-import Navbar from '../components/Navbar.vue'
+import Navbar from '../components/NavBar.vue'
 import HeroSection from '../components/HeroSection.vue'
 import Post from '../components/Post.vue'
 import Footer from '../components/Footer.vue'
