@@ -1,6 +1,6 @@
 <template>
   <div class="template">
-    <NavbarLogin bgFixed="true" style="position: fixed !important; z-index: 100;" />
+    <Navbar bgFixed="true" style="position: fixed !important; z-index: 100;" />
     <div class="py-5"></div>
      <div  v-if="showTitle"  class="d-flex align-items-center" :style="{
       backgroundColor: bgColor,
@@ -15,7 +15,7 @@
 
 <script setup>
 
-import NavbarLogin from '@/components/Navbar-Login.vue'
+import Navbar from '@/components/NavBar.vue'
 import Footer from '@/components/Footer.vue'
 
 

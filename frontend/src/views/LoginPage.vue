@@ -1,6 +1,14 @@
 <!-- src/views/LoginPage.vue -->
 <template>
   <div class="login-page">
+    <router-link class="logo-wrapper" to="/homepage">
+      <Logo
+        :src="logoSrc"
+        alt="UIT_Logo"
+        hoverFilter="brightness(0.8)" 
+        width="50px"
+      />
+    </router-link>
     <div class="form-card">
       <h2 class="form-title">Sign in to CHILLCHILL</h2>
 

@@ -14,6 +14,11 @@ const {authenticateToken, isAdmin} = require('../middlewares/auth');
 const { LocationSuggestLimiter } = require('../middlewares/rateLimiter')
 
 const router = express.Router();
+
+//GET /hotels
+router.get('/', getAllHotels);
+//GET /hotels/:MaKS
+router.get('/:MaKS', getHotelById);
 //GET /featured
 router.get('/featured', getFeaturedHotels);
 //POST /hotels
@@ -29,8 +34,7 @@ router.post('/', authenticateToken, isAdmin,
  //GET /hotels/nguoi-quan-ly/:MaKH
 router.get('/nguoi-quan-ly/:MaKH', authenticateToken, isAdmin, getHotelsByNguoiQuanLy);
     
-//GET /hotels
-router.get('/', authenticateToken, getAllHotels);
+
     
 //GET /hotels/suggest-locations
 router.get('/suggest-locations', LocationSuggestLimiter, suggestLocations);
@@ -41,8 +45,7 @@ router.put('/:MaKS', authenticateToken, isAdmin, updateHotel);
 //DELETE /hotels/:MaKS
 router.delete('/:MaKS', authenticateToken, isAdmin, deleteHotel);
 
-//GET /hotels/:MaKS
-router.get('/:MaKS', authenticateToken, getHotelById);
+
 
 
 
