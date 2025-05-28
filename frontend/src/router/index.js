@@ -10,6 +10,7 @@ import Dashboard from '../views/Dashboard.vue'
 import RatingDetails from '../views/RatingDetails.vue'
 import Reserve from '../views/Reserve.vue'
 import BookingProcess from '../views/BookingProcess.vue'
+import vueCard1 from '../components/vueCard1.vue'
 
 
 const routes = [

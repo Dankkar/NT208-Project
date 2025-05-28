@@ -7,47 +7,38 @@
   >
     <div class="container page-content-container py-4">
       <HeroSection
-        :image-url="bannerImageUrl"
+        :image-url="bannerImageUrl" 
         height="300px"
         :overlay-opacity="0"
-      >
-      </HeroSection>
+      />
 
       <h2 class="text-center fw-bold mt-4 mb-4 display-6">BOOK YOUR STAY</h2>
 
       <BookingProgressIndicator
-        :current-step="currentStep"
-        :max-completed-step="maxCompletedStep"
-        @navigate-to-step="goToStep"
+        :current-step="bookingStore.currentStep" 
+        :max-completed-step="bookingStore.maxCompletedStep" 
+        @navigate-to-step="handleNavigateToStep" 
         class="mb-4 mb-md-5"
       />
 
       <div class="booking-steps-content">
-        <div :key="currentStep">
+        <div :key="bookingStore.currentStep"> 
           <Step1_SearchForm
-            v-if="currentStep === 1"
-            @search-submitted="handleSearchSubmitted"
+            v-if="bookingStore.currentStep === 1"
+            @search-submitted="handleSearchFromStep1" 
           />
-          <!-- <div v-if="currentStep === 2" class="text-center py-5">
-            <h4 class="text-muted">Step 2: Select Room (Placeholder)</h4>
-            <p>Search Params: {{ searchCriteria }}</p>
-            <button class="btn btn-primary mt-3" @click="mockGoToNextStepFromStep2">Mock Select Room & Proceed</button>
-          </div> -->
-
           <Step2_RoomSelection
-            v-if="currentStep === 2"
-            :search-params="searchCriteria"
-            @view-packages-clicked="mockGoToNextStepFromStep2"
-            />
-          <div v-if="currentStep === 3" class="text-center py-5">
-            <h4 class="text-muted">Step 3: Guest Info (Placeholder)</h4>
-            <p>Selected Room/Package: {{ selectedRoomAndPackage }}</p>
-            <button class="btn btn-primary mt-3" @click="mockGoToNextStepFromStep3">Mock Submit Guest Info & Proceed</button>
-          </div>
-          <div v-if="currentStep === 4" class="text-center py-5">
-            <h4 class="text-muted">Step 4: Confirmation (Placeholder)</h4>
-            <p>Final Details: {{ finalBookingDetails }}</p>
-          </div>
+            v-if="bookingStore.currentStep === 2"
+            @rooms-finalize="handleRoomSelectionFromStep2"
+          />
+          <Step3_GuestInfo
+            v-if="bookingStore.currentStep === 3"
+            @guest-info-submitted="handleGuestInfoFromStep3"
+          />
+          <Step4_Confirmation
+            v-if="bookingStore.currentStep === 4"
+            :final-booking-details="bookingStore.dataForStep4" 
+          />
         </div>
       </div>
     </div>
@@ -55,78 +46,65 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue'; // Chỉ cần computed nếu bạn muốn tạo computed prop từ store state
 import Layout from '@/components/Layout.vue';
 import HeroSection from '@/components/HeroSection.vue';
 import BookingProgressIndicator from '@/components/booking/BookingProgressIndicator.vue';
 import Step1_SearchForm from '@/components/booking/steps/Step1_SearchForm.vue';
-import Step2_RoomSelection from '../components/booking/steps/Step2_RoomSelection.vue';
+import Step2_RoomSelection from '@/components/booking/steps/Step2_RoomSelection.vue'; // Đường dẫn của bạn
+import Step3_GuestInfo from '@/components/booking/steps/Step3_GuestInfo.vue';     // Đường dẫn của bạn
+import Step4_Confirmation from '@/components/booking/steps/Step4_Confirmation.vue'; // Đường dẫn của bạn
 
 import defaultBannerImage from '@/assets/mountain.jpg';
-import axios from 'axios';
 
-const bannerImageUrl = ref(defaultBannerImage);
+//
+// Import store
+//
+import { useBookingStore } from '@/store/bookingStore'; // Đảm bảo đường dẫn đúng
 
-const currentStep = ref(1);
-const maxCompletedStep = ref(0);
-const searchCriteria = ref(null);
-const selectedRoomAndPackage = ref(null);
-const guestInformation = ref(null);
-const finalBookingDetails = ref(null);
+const bookingStore = useBookingStore();
 
-async function handleSearchSubmitted(data) {
-  console.log('Search submitted with data:', data);
-
-  try {
-    const res = await axios.get('http://localhost:5000/api/bookings/search?startDate=' + data.startDate + '&endDate=' + data.endDate + '&numberOfGuests=' + data.numberOfGuests);
-    console.log('Response from search:', res.data);
-  } catch (error) {
-    console.error('Error fetching rooms:', error);
-    return;
-  }
+const bannerImageUrl = ref(defaultBannerImage); // Cái này có thể giữ lại cục bộ
 
 
 
-  searchCriteria.value = data;
-  currentStep.value = 2;
-  if (maxCompletedStep.value < 1) maxCompletedStep.value = 1;
+//
+// Hàm xử lý sự kiện từ các component con, giờ sẽ gọi actions của store
+//
+async function handleSearchFromStep1(data) {
+  console.log('BP: Search submitted', data);
+  await bookingStore.setSearchCriteriaAndFetchRooms(data); // Gọi action
   scrollToTopOfSteps();
 }
-function mockGoToNextStepFromStep2() {
-    selectedRoomAndPackage.value = { room: 'Deluxe Mock', package: 'Best Price Mock' };
-    currentStep.value = 3;
-    if (maxCompletedStep.value < 2) maxCompletedStep.value = 2;
-    scrollToTopOfSteps();
-}
-function mockGoToNextStepFromStep3() {
-    guestInformation.value = { name: 'Mock User', email: 'mock@example.com'};
-    finalBookingDetails.value = { bookingRef: 'MOCK123', details: 'All mocked up!'};
-    currentStep.value = 4;
-    if (maxCompletedStep.value < 3) maxCompletedStep.value = 3;
-    scrollToTopOfSteps();
-}
-function goToStep(stepId) {
-  if (stepId <= currentStep.value || stepId <= maxCompletedStep.value + 1) {
-    if (stepId < currentStep.value) {
-      if (stepId < 2) { searchCriteria.value = null; selectedRoomAndPackage.value = null; guestInformation.value = null; finalBookingDetails.value = null; maxCompletedStep.value = 0;}
-      if (stepId < 3) { selectedRoomAndPackage.value = null; guestInformation.value = null; finalBookingDetails.value = null; maxCompletedStep.value = Math.min(maxCompletedStep.value, 1); }
-      if (stepId < 4) { guestInformation.value = null; finalBookingDetails.value = null; maxCompletedStep.value = Math.min(maxCompletedStep.value, 2);}
-    }
-    currentStep.value = stepId;
-    scrollToTopOfSteps();
-  }
+
+async function handleRoomSelectionFromStep2(data) { // data là { hotelInfo (tinh gọn), roomInfo }
+  console.log('BP: Room selection finalized', data);
+  bookingStore.selectRoomAndHotel(data); // Gọi action
+  scrollToTopOfSteps();
 }
 
+async function handleGuestInfoFromStep3(data) { // data là { bookingSummary, guestAndPaymentInfo }
+  console.log('BP: Guest info and payment submitted', data);
+  bookingStore.submitGuestAndPaymentInfo(data); // Gọi action
+  scrollToTopOfSteps();
+}
+
+function handleNavigateToStep(stepId) {
+  bookingStore.navigateToStep(stepId);
+  scrollToTopOfSteps();
+}
+
+//
+// Hàm scroll giữ nguyên
+//
 function scrollToTopOfSteps() {
   const contentContainer = document.querySelector('.page-content-container');
   if (contentContainer) {
-    const navbarElement = document.querySelector('.navbar-login'); 
+    const navbarElement = document.querySelector('.navbar-login');
     const navbarHeight = navbarElement ? navbarElement.offsetHeight : 0;
-    
     const elementRect = contentContainer.getBoundingClientRect();
     const absoluteElementTop = elementRect.top + window.pageYOffset;
-    const offsetPosition = absoluteElementTop - navbarHeight -10;
-
+    const offsetPosition = absoluteElementTop - navbarHeight - 10;
     window.scrollTo({
       top: offsetPosition < 0 ? 0 : offsetPosition,
       behavior: 'smooth'
@@ -139,7 +117,7 @@ function scrollToTopOfSteps() {
 
 <style scoped>
 .page-content-container {
-
+  /* Style nếu cần */
 }
 .booking-steps-content {
   min-height: 40vh;
