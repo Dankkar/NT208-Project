@@ -6,15 +6,45 @@ USE QUANLYKHACHSAN
 CREATE TABLE NguoiDung (
     MaKH INT PRIMARY KEY IDENTITY(1,1),         -- Mã Khách Hàng (PK) - Dùng INT IDENTITY cho tiện
     LoaiUser NVARCHAR(50) NOT NULL,             -- Loại người dùng (Admin, KhachHang, QuanLyKS)
-    HoTen NVARCHAR(100) NOT NULL,               -- Họ tên
+    HoTen NVARCHAR(100),						-- Họ tên
     Email NVARCHAR(100) UNIQUE NOT NULL,        -- Email (UNIQUE)
-    SDT NVARCHAR(20) UNIQUE,                    -- Số điện thoại (UNIQUE)
+    SDT NVARCHAR(20),							-- Số điện thoại
     MatKhauHash NVARCHAR(255) NOT NULL,         -- Nên lưu Hash mật khẩu, không lưu trực tiếp
     NgaySinh DATE,                              -- Ngày sinh
     GioiTinh NVARCHAR(10),                      -- Giới tính
-    CCCD NVARCHAR(20) UNIQUE,                   -- Căn cước công dân (UNIQUE)
+    CCCD NVARCHAR(20),							-- Căn cước công dân
     NgayTao DATETIME2 DEFAULT GETDATE()         -- Ngày tạo tài khoản
 );
+
+--1. Tạo unique filtered index chỉ trên SDT IS NOT NULL
+CREATE UNIQUE INDEX UX_NguoiDung_SDT_NotNull
+  ON NguoiDung(SDT)
+  WHERE SDT IS NOT NULL;
+
+  --2. Tạo unique filtered index chỉ trên CCCD IS NOT NULL
+CREATE UNIQUE INDEX UX_NguoiDung_CCCD_NotNull
+  ON NguoiDung(CCCD)
+  WHERE CCCD IS NOT NULL;
+
+ALTER TABLE NguoiDung
+    ADD IsProfileCompleted AS
+    (
+        CONVERT(BIT, -- Ensure the result is BIT
+            CASE
+                WHEN HoTen IS NOT NULL AND HoTen <> N''          -- HoTen is filled
+                 AND SDT IS NOT NULL AND SDT <> N''              -- SDT is filled
+                 AND NgaySinh IS NOT NULL                        -- NgaySinh is filled
+                 AND GioiTinh IS NOT NULL AND GioiTinh <> N''    -- GioiTinh is filled
+                 AND CCCD IS NOT NULL AND CCCD <> N''            -- CCCD is filled
+                THEN 1  -- All required profile fields are filled
+                ELSE 0  -- At least one required profile field is missing
+            END
+        )
+	 )
+
+ALTER TABLE NguoiDung
+ADD IsActive BIT DEFAULT 1 NOT NULL
+
 
 -- Bảng Khách Sạn (Hotel)
 CREATE TABLE KhachSan (
@@ -226,6 +256,72 @@ DELETE FROM KhuyenMai;
 DELETE FROM NguoiDung;
 SELECT * FROM KhachSan
 SELECT * FROM LoaiPhong
+SELECT * FROM NguoiDung
+
+INSERT INTO KhachSan (TenKS, DiaChi, Latitude, Longitude, HangSao, LoaiHinh, MoTaCoSoVatChat, QuyDinh, MoTaChung)
+VALUES 
+(N'Khách Sạn Biển Xanh', N'123 Đường Biển, Nha Trang', 12.238791, 109.196748, 4.5, N'Khách Sạn', N'Hồ bơi, Gym, Spa', N'Không hút thuốc trong phòng', N'Khách sạn 4 sao gần biển, đầy đủ tiện nghi'),
+(N'Resort Núi Vàng', N'456 Đường Núi, Đà Lạt', 11.940420, 108.458312, 5.0, N'Resort', N'Sân golf, Hồ nước nóng', N'Thu cọc 500k khi check-in', N'Resort sang trọng giữa thiên nhiên xanh mát');
+
+INSERT INTO LoaiPhong (MaKS, TenLoaiPhong, SoGiuong, TienNghi, DienTich, GiaCoSo, MoTa)
+VALUES
+(1, N'Superior', 1, N'Máy lạnh, Wifi, Tủ lạnh', 25.0, 700000, N'Phòng có cửa sổ hướng biển'),
+(1, N'Deluxe', 2, N'Máy lạnh, Wifi, TV, Mini Bar', 35.0, 900000, N'Phòng rộng rãi, ban công view biển'),
+(2, N'Phòng Đôi VIP', 2, N'Máy lạnh, Wifi, Bồn tắm nước nóng', 40.0, 1500000, N'Phòng đôi cao cấp view đồi thông');
+
+
+INSERT INTO CauHinhGiuong (TenCauHinh, SoGiuongDoi, SoGiuongDon)
+VALUES
+(N'1 giường đôi', 1, 0),
+(N'2 giường đơn', 0, 2),
+(N'1 giường đôi + 1 giường đơn', 1, 1);
+
+
+INSERT INTO Phong (MaKS, MaLoaiPhong, MaCauHinhGiuong, SoPhong, Tang)
+VALUES
+(1, 1, 6, N'101', 1),
+(1, 2, 7, N'202', 2),
+(2, 3, 8, N'B101', 1);
+
+
+INSERT INTO LoaiDichVu (MaKS, TenLoaiDV, GiaDV, MoTaDV)
+VALUES
+(1, N'Dịch vụ giặt ủi', 50000, N'Giặt và ủi quần áo trong ngày'),
+(1, N'Đưa đón sân bay', 200000, N'Xe đưa đón tận nơi'),
+(2, N'Spa cao cấp', 300000, N'Spa trị liệu, thư giãn');
+
+
+INSERT INTO KhuyenMai (MaCodeKM, TenKM, MoTaKM, NgayBD, NgayKT, LoaiKM, GiaTriKM, DieuKienApDung)
+VALUES
+(N'SUMMER20', N'Khuyến mãi hè 20%', N'Giảm 20% cho tất cả booking từ 3 đêm trở lên', '2025-06-01', '2025-08-31', N'Giảm %', 20, N'Đặt tối thiểu 3 đêm');
+
+
+INSERT INTO Booking (MaKH, MaKS, MaPhong, NgayNhanPhong, NgayTraPhong, SoLuongKhach, YeuCauDacBiet, TongTienDuKien)
+VALUES
+(1, 1, 1, '2025-07-01 14:00', '2025-07-03 12:00', 2, N'Cần phòng tầng thấp', 1400000),
+(2, 2, 3, '2025-08-10 15:00', '2025-08-15 11:00', 2, N'Yêu cầu xe đưa đón', 7500000);
+
+
+INSERT INTO SuDungDichVu (MaDat, MaLoaiDV, SoLuong, GiaTaiThoiDiemSuDung)
+VALUES
+(1, 1, 2, 50000),
+(2, 3, 1, 300000);
+
+
+INSERT INTO HoaDon (MaDat, MaKH, MaKM, TongTienPhong, TongTienDichVu, TienGiamGia, ThueVAT, HinhThucTT, TrangThaiThanhToan)
+VALUES
+(1, 1, 1, 1400000, 100000, 280000, 150000, N'Thẻ tín dụng', N'Đã thanh toán'),
+(2, 2, NULL, 7500000, 300000, 0, 300000, N'Tiền mặt', N'Chưa thanh toán');
+
+INSERT INTO BaiDanhGia (MaKH, MaDat, MaKS, Sao, NoiDung)
+VALUES
+(1, 1, 1, 5, N'Phòng sạch sẽ, gần biển, nhân viên thân thiện'),
+(2, 2, 2, 4, N'Không gian yên tĩnh, thích hợp nghỉ dưỡng');
+
+SELECT * FROM KhachSan
+select * from LoaiPhong
+select * from Phong
+SELECT * FROM CauHinhGiuong
 -- Insert some common bed configurations
 INSERT INTO CauHinhGiuong (TenCauHinh, SoGiuongDoi, SoGiuongDon) VALUES
 (N'1 giường đôi', 1, 0),
@@ -234,6 +330,8 @@ INSERT INTO CauHinhGiuong (TenCauHinh, SoGiuongDoi, SoGiuongDon) VALUES
 (N'1 giường đôi + 1 giường đơn', 1, 1),
 (N'2 giường đôi', 2, 0);
 SELECT * FROM LoaiPhong
+SELECT * FROM NguoiDung
+SELECT * FROM KhachSan
 
 DROP TABLE BaiDanhGia;
 DROP TABLE HoaDon;
@@ -253,3 +351,14 @@ DROP TABLE KhachSan;
 
 -- Bảng khuyến mãi
 DROP TABLE KhuyenMai;
+
+update NguoiDung
+set LoaiUser = 'Admin'
+
+select * from LoaiPhong
+delete from NguoiDung
+
+
+
+
+
