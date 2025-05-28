@@ -100,7 +100,8 @@ exports.register = async (req, res) => {
       maxAge: 1 * 60 * 60 * 1000 // 1 giờ
     });
 
-    res.status(201).json({ 
+    return res.status(201).json({ 
+      success: true,
       message: 'Đăng ký thành công',
       user: {
         MaKH,
@@ -116,7 +117,7 @@ exports.register = async (req, res) => {
         message: 'Thông tin đã tồn tại trong hệ thống'
       });
     }
-    res.status(500).json({ 
+    return res.status(500).json({ 
       success: false,
       message: 'Lỗi server'
     });

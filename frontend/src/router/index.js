@@ -25,6 +25,7 @@ import EditRoomTypePage from '../views/admin/branches/EditRoomTypePage.vue'
 import FindUserPage    from '../views/admin/users/FindUserPage.vue'
 import EditUserPage from '../views/admin/users/EditUserPage.vue'
 
+
 const routes = [
   { path: '/login', name: 'Login', component: LoginPage },
   { path: '/signup',name: 'Signup', component: SignupPage },

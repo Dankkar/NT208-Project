@@ -8,16 +8,17 @@
     ]"
     ref="navbarRef"
   >
-    <!-- Nội dung Navbar giữ nguyên: MenuButton, Logo, navbar-collapse -->
-    <div style="width: 7%;">
+    <!-- MenuButton - controls a mobile menu/offcanvas -->
+    <div style="width: 7%; z-index: 10;"> <!-- z-index to keep it above centered logo -->
       <MenuButton
-        :textColor="computedTextColor"
-        :colorHover="computedColorHover"
-        :items="isMobile ? fullItems : baseItems"
+        :textColor="computedMenuButtonTextColor"
+        :colorHover="computedMenuButtonColorHover"
+        :items="menuButtonNavigationItems"
       />
     </div>
 
-    <router-link class="logo-wrapper" to="/homepage" style="width : 70px;">
+    <!-- Logo -->
+    <router-link class="logo-wrapper" to="/homepage">
       <Logo
         :src="logoSrc"
         alt="UIT_Logo"
@@ -26,59 +27,89 @@
       />
     </router-link>
 
+    <!-- Desktop Navigation Items -->
     <div class="collapse navbar-collapse justify-content-end d-lg-flex d-none" id="mainNav">
      <ul class="navbar-nav">
-      <router-link class="nav-link" to="/hotels">
-        <Button
-          content="HOTEL"
-          :textColor="computedTextColor"
-          :colorHover="computedColorHover"
-        />
-      </router-link>
-      <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+      <!-- HOTEL Link -->
+      <li class="nav-item">
+        <router-link class="nav-link" to="/hotels">
           <Button
-            content="ROOM BOOKING"
-            isDropdown
-            :textColor="computedTextColor"
-            :colorHover="computedColorHover"
-          />
-        </a>
-        <ul class="dropdown-menu">
-          <li><a class="dropdown-item" href="#">By City</a></li>
-          <li><a class="dropdown-item" href="#">By Date</a></li>
-        </ul>
-      </li>
-      <li class="nav-item" v-if="!isLoggedIn">
-        <router-link class="nav-link" to="/login">
-          <Button
-            content="LOGIN"
-            :textColor="computedTextColor"
-            :colorHover="computedColorHover"
+            content="HOTEL"
+            :textColor="computedDesktopButtonTextColor"
+            :colorHover="computedDesktopButtonColorHover"
+            :bgColorOnHover="computedDesktopButtonBgColorHover"
           />
         </router-link>
       </li>
-      <li class="nav-item dropdown" v-if="isLoggedIn">
-        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+      <!-- RATINGS Link -->
+      <li class="nav-item">
+        <router-link class="nav-link" to="/ratings">
+          <Button
+            content="RATINGS"
+            :textColor="computedDesktopButtonTextColor"
+            :colorHover="computedDesktopButtonColorHover"
+            :bgColorOnHover="computedDesktopButtonBgColorHover"
+          />
+        </router-link>
+      </li>
+      <!-- ROOM BOOKING Dropdown -->
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" id="roomBookingDesktopDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <Button
+            content="ROOM BOOKING"
+            isDropdown
+            :textColor="computedDesktopButtonTextColor"
+            :colorHover="computedDesktopButtonColorHover"
+            :bgColorOnHover="computedDesktopButtonBgColorHover"
+            :bgActiveColor="activeDropdownButtonBgColor"
+            :textActiveColor="activeDropdownButtonTextColor"
+          />
+        </a>
+        <ul class="dropdown-menu" aria-labelledby="roomBookingDesktopDropdown">
+          <li><router-link class="dropdown-item" to="/room-booking/by-city">By City</router-link></li>
+          <li><router-link class="dropdown-item" to="/room-booking/by-date">By Date</router-link></li>
+        </ul>
+      </li>
+      <!-- LOGIN (if not authenticated) -->
+      <li class="nav-item" v-if="!authStore.isAuthenticated">
+        <router-link class="nav-link" to="/login">
+          <Button
+            content="LOGIN"
+            :textColor="computedDesktopButtonTextColor"
+            :colorHover="computedDesktopButtonColorHover"
+            :bgColorOnHover="computedDesktopButtonBgColorHover"
+          />
+        </router-link>
+      </li>
+      <!-- MY ACCOUNT Dropdown (if authenticated) -->
+      <li class="nav-item dropdown" v-if="authStore.isAuthenticated">
+        <a class="nav-link dropdown-toggle" href="#" id="myAccountDesktopDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
           <Button
             content="MY ACCOUNT"
             isDropdown
-            :textColor="computedTextColor"
-            :colorHover="computedColorHover"
+            :textColor="computedDesktopButtonTextColor"
+            :colorHover="computedDesktopButtonColorHover"
+            :bgColorOnHover="computedDesktopButtonBgColorHover"
+            :bgActiveColor="activeDropdownButtonBgColor"
+            :textActiveColor="activeDropdownButtonTextColor"
           />
         </a>
-        <ul class="dropdown-menu">
+        <ul class="dropdown-menu" aria-labelledby="myAccountDesktopDropdown">
           <li><router-link class="dropdown-item" to="/profile">Profile</router-link></li>
           <li><router-link class="dropdown-item" to="/bookinghistory">Booking History</router-link></li>
+          <!-- <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="#" @click.prevent="handleLogout">Logout</a></li> -->
         </ul>
       </li>
+      <!-- RESERVE -->
       <li class="nav-item">
         <router-link class="nav-link" to="/bookingprocess">
           <Button
             content="RESERVE"
-            :textColor="computedTextColor"
-            :colorHover="computedColorHover"
-            block
+            :textColor="computedDesktopButtonTextColor"
+            :colorHover="computedDesktopButtonColorHover"
+            :bgColorOnHover="computedDesktopButtonBgColorHover"
+            :isPrimary="true"
           />
         </router-link>
       </li>
@@ -89,181 +120,237 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useRoute } from 'vue-router' // Import useRoute
-import Button from './Button.vue'
-import MenuButton from './MenuButton.vue'
+import { useRoute, useRouter } from 'vue-router' // Import useRoute and useRouter
+import Button from './Button.vue'       // Assuming Button.vue can handle new props
+import MenuButton from './MenuButton.vue' // Assuming MenuButton.vue takes structured items
 import Logo from './Logo.vue'
 import logouitwhite from '../assets/Logo_UIT_white.jpg'
 import logouitblue from '../assets/Logo_UIT_blue.jpg'
-import { useAuth } from '../utils/auth'
+import { useAuthStore } from '../store/authStore' // Using Pinia Auth Store
 
-const route = useRoute(); // Sử dụng useRoute để truy cập thông tin route hiện tại
+const route = useRoute();
+const router = useRouter(); // For logout navigation
 const navbarRef = ref(null);
-const {isLoggedIn, checkLogin} = useAuth()
+const authStore = useAuthStore();
 
 const props = defineProps({
-  // bgFixed có thể không cần nữa nếu theme được quyết định bởi route.meta hoặc trạng thái cuộn
-  // Hoặc bạn có thể giữ lại nếu muốn override cho một trường hợp cụ thể nào đó
-  bgFixed: { type: Boolean, default: false }
-})
+  bgFixed: { type: Boolean, default: false } // Override for specific fixed background cases
+});
 
-// Các biến trạng thái cho scroll và visibility
-const internalShowBg = ref(false); // Thay thế cho showBg trực tiếp, để có thể bị override
+// Scroll and visibility state
+const internalShowBg = ref(false);
 const lastScrollPosition = ref(0);
 const navbarVisible = ref(true);
 const isAtTop = ref(true);
-const scrollThreshold = 5;
-const navbarHeight = ref(60);
+const scrollThreshold = 5; // Min scroll distance to trigger hide/show
+const navbarHeight = ref(60); // Initial estimate, updated on mount
 
-const isMobile = ref(false);
-const baseItems = [ 'Stay', 'Dine', 'See & Do' ];
-const fullItems = [ 'Stay', 'Dine', 'See & Do', 'Ratings', 'Room Booking', 'My Account', 'Reserve' ];
+// --- Navbar Behavior Configuration ---
+const currentNavbarBehavior = computed(() => route.meta.navbarBehavior || 'default');
 
-// Xác định hành vi Navbar dựa trên route.meta
-const currentNavbarBehavior = computed(() => route.meta.navbarBehavior || 'default'); // 'default' nếu không có meta
-
-// Tính toán các class động
 const navbarPositionClass = computed(() => {
-  if (currentNavbarBehavior.value === 'homepage') {
-    return 'position-absolute';
-  }
+  // 'stickyWithHideOnScroll' and 'simpleFixed' should be fixed to the top.
   if (currentNavbarBehavior.value === 'stickyWithHideOnScroll' || currentNavbarBehavior.value === 'simpleFixed') {
-    return 'position-fixed top-0 start-0'; // Luôn cố định ở trên cho các behavior này
+    return 'position-fixed top-0 start-0';
   }
-  return 'position-absolute'; // Default
+  // 'homepage' or 'default' behavior might be absolute or defined by parent.
+  return 'position-absolute';
 });
 
+// Determines if navbar should have a solid background
 const actualShowBg = computed(() => {
-  if (props.bgFixed) return true; // props.bgFixed luôn override
+  if (props.bgFixed) return true; // bgFixed prop overrides other logic
+
   if (currentNavbarBehavior.value === 'homepage') {
-    return internalShowBg.value; // Dùng internalShowBg cho homepage
+    return internalShowBg.value; // Background appears after scrolling past hero section
   }
+  // For fixed/sticky navbars, show background immediately or after a very small scroll
   if (currentNavbarBehavior.value === 'stickyWithHideOnScroll' || currentNavbarBehavior.value === 'simpleFixed') {
-    // Cho navbar fixed/sticky, có thể muốn nó luôn có bg sau khi cuộn 1 chút, hoặc ngay lập tức
-    return currentScrollPosition.value > 10 || lastScrollPosition.value > 10 ; // Ví dụ: luôn có bg sau khi cuộn qua 10px
+    return currentScrollPosition.value > 10 || !isAtTop.value;
   }
   return internalShowBg.value; // Default
 });
-
 
 const navbarThemeClass = computed(() => {
   return actualShowBg.value ? 'bg-white shadow-sm navbar-light' : 'bg-transparent navbar-dark';
 });
 
-const computedTextColor = computed(() => actualShowBg.value ? '#212529' : '#fff');
-const computedColorHover = computed(() => actualShowBg.value ? '#0d6efd' : 'black');
-
-const logoSrc = computed(() => actualShowBg.value ? logouitblue : logouitwhite);
-
-
+// Determines if navbar should be hidden (slid up)
 const shouldHideNavbar = computed(() => {
   if (currentNavbarBehavior.value === 'stickyWithHideOnScroll') {
     return !navbarVisible.value && !isAtTop.value;
   }
-  return false; // Homepage và các behavior khác không ẩn kiểu này
+  return false; // Other behaviors don't hide this way
 });
 
-const currentScrollPosition = ref(0); // Lưu trữ vị trí cuộn hiện tại
+// --- Dynamic Styling for Buttons ---
+// Desktop Nav Buttons
+const computedDesktopButtonTextColor = computed(() => actualShowBg.value ? '#212529' : '#fff'); // Dark text on light_bg, White text on transparent_bg
+const computedDesktopButtonColorHover = computed(() => actualShowBg.value ? '#0056b3' : 'black'); // Darker blue on light_bg, Lighter white/grey on transparent_bg (for text)
+const computedDesktopButtonBgColorHover = computed(() => actualShowBg.value ? 'rgba(0, 123, 255, 0.1)' : 'rgba(255, 255, 255, 0.1)'); // Subtle background tint on hover
+
+// Active state for dropdown buttons (like "MY ACCOUNT" in the image when navbar is transparent)
+const activeDropdownButtonBgColor = computed(() => actualShowBg.value ? 'rgba(0, 123, 255, 0.15)' : '#fff'); // Brighter blue tint on light_bg, Solid white on transparent_bg
+const activeDropdownButtonTextColor = computed(() => actualShowBg.value ? '#0056b3' : '#212529');    // Darker blue on light_bg, Dark text on transparent_bg
+
+// MenuButton (Hamburger)
+const computedMenuButtonTextColor = computed(() => actualShowBg.value ? '#212529' : '#fff');
+const computedMenuButtonColorHover = computed(() => actualShowBg.value ? '#0056b3' : 'rgba(255, 255, 255, 0.7)');
+
+const logoSrc = computed(() => actualShowBg.value ? logouitblue : logouitwhite);
+
+// --- Menu Items for MenuButton (Mobile Navigation) ---
+const menuButtonNavigationItems = computed(() => {
+  const baseItems = [
+    { label: 'Home', path: '/homepage', icon: 'bi-house' },
+    { label: 'Hotels', path: '/hotels', icon: 'bi-building' },
+    { label: 'Ratings', path: '/ratings', icon: 'bi-star' },
+    { type: 'divider' },
+    {
+      label: 'Room Booking',
+      icon: 'bi-calendar-check',
+      subItems: [
+        { label: 'By City', path: '/room-booking/by-city' },
+        { label: 'By Date', path: '/room-booking/by-date' },
+      ],
+    },
+    { label: 'Reserve', path: '/bookingprocess', icon: 'bi-bookmark-plus' },
+  ];
+
+  if (authStore.isAuthenticated) {
+    return [
+      ...baseItems,
+      { type: 'divider' },
+      {
+        label: 'My Account',
+        icon: 'bi-person',
+        subItems: [
+          { label: 'Profile', path: '/profile' },
+          { label: 'Booking History', path: '/bookinghistory' },
+        ],
+      },
+      { label: 'Logout', action: handleLogout, icon: 'bi-box-arrow-right' },
+    ];
+  } else {
+    return [
+      ...baseItems,
+      { type: 'divider' },
+      { label: 'Login', path: '/login', icon: 'bi-box-arrow-in-right' },
+    ];
+  }
+});
+
+// --- Scroll Handling Logic ---
+const currentScrollPosition = ref(0);
 
 const handleScroll = () => {
   currentScrollPosition.value = window.pageYOffset || document.documentElement.scrollTop;
 
-  // Logic cho internalShowBg (thay đổi background cho homepage)
+  // Logic for internalShowBg (controls background change, typically for 'homepage' behavior)
   if (currentNavbarBehavior.value === 'homepage') {
-    const heroHeightPercentage = 0.2;
+    const heroHeightPercentage = 0.2; // e.g., 20% of viewport height
     const heroScrollThreshold = window.innerHeight * heroHeightPercentage;
     internalShowBg.value = currentScrollPosition.value > heroScrollThreshold;
+  } else {
+     // For other modes, internalShowBg might not be the primary driver for actualShowBg.
+     // However, setting it can be a fallback. For 'simpleFixed' it might always be true after a small scroll.
+    internalShowBg.value = currentScrollPosition.value > 10;
   }
-  // Với các behavior khác, actualShowBg sẽ tự tính toán
 
-  // Logic cho ẩn/hiện Navbar (chỉ cho 'stickyWithHideOnScroll')
+  // Logic for hiding/showing Navbar ('stickyWithHideOnScroll' behavior)
   if (currentNavbarBehavior.value === 'stickyWithHideOnScroll') {
-    isAtTop.value = currentScrollPosition.value < navbarHeight.value / 2;
+    isAtTop.value = currentScrollPosition.value < navbarHeight.value / 3; // More sensitive check for "at top"
 
+    // Debounce or avoid reacting to tiny scrolls if not at the very top
     if (Math.abs(currentScrollPosition.value - lastScrollPosition.value) < scrollThreshold && !isAtTop.value) {
       return;
     }
 
-    if (currentScrollPosition.value < scrollThreshold) {
+    if (isAtTop.value || currentScrollPosition.value < scrollThreshold ) { // Always show if at top or scrolled very little
       navbarVisible.value = true;
     } else if (currentScrollPosition.value > lastScrollPosition.value && currentScrollPosition.value > navbarHeight.value) {
+      // Scrolling Down and past navbar height
       navbarVisible.value = false;
     } else if (currentScrollPosition.value < lastScrollPosition.value) {
+      // Scrolling Up
       navbarVisible.value = true;
     }
   } else {
-    // Với các behavior khác (ví dụ: homepage), navbar luôn hiển thị
+    // For other behaviors (e.g., 'homepage', 'simpleFixed', 'default'), navbar is always visible.
     navbarVisible.value = true;
   }
 
   lastScrollPosition.value = currentScrollPosition.value <= 0 ? 0 : currentScrollPosition.value;
 };
 
+// --- Logout ---
+async function handleLogout() {
+  await authStore.logout();
+  router.push('/login'); // Or '/homepage'
+}
 
-const checkMobile = () => { isMobile.value = window.innerWidth < 992; };
-
+// --- Lifecycle Hooks ---
 onMounted(() => {
-  if (navbarRef.value) { navbarHeight.value = navbarRef.value.offsetHeight; }
-  checkLogin();
-  checkMobile();
+  if (navbarRef.value) {
+    navbarHeight.value = navbarRef.value.offsetHeight;
+  }
+  authStore.initializeAuth(); // Make sure auth state is initialized if needed
   window.addEventListener('scroll', handleScroll, { passive: true });
-  window.addEventListener('resize', checkMobile);
-  handleScroll(); // Gọi lần đầu để set trạng thái ban đầu
+  handleScroll(); // Call once to set initial state based on current scroll/route
 
-  // Đặt lại trạng thái cuộn khi route thay đổi, đặc biệt nếu là Single Page Application (SPA)
-  // và người dùng điều hướng giữa các trang mà không tải lại toàn bộ.
-  watch(() => route.path, () => {
+  watch(() => route.fullPath, () => {
       lastScrollPosition.value = 0;
-      currentScrollPosition.value = 0; // Đặt lại vị trí cuộn cho logic handleScroll mới
-      // scrollTopIfNeeded(); // Hàm này cuộn lên đầu trang mới nếu cần
+      currentScrollPosition.value = 0;
+      internalShowBg.value = false; // Reset for new page context
+      isAtTop.value = true;         // Assume at top for new page
+      // window.scrollTo(0,0); // If you want to scroll to top on every route change
+      // Ensure navbar visibility is reset correctly based on the new route's behavior
+      if (currentNavbarBehavior.value !== 'stickyWithHideOnScroll') {
+          navbarVisible.value = true;
+      }
       handleScroll(); // Re-evaluate Navbar state for the new page
-  });
-
+  }, { immediate: true }); // Immediate for initial route
 });
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll);
-  window.removeEventListener('resize', checkMobile);
 });
-
-// Hàm ví dụ để cuộn lên đầu trang khi route thay đổi (tùy chọn)
-// const scrollTopIfNeeded = () => {
-//   if (window.scrollY > 0) {
-//     window.scrollTo({ top: 0, behavior: 'smooth' }); // hoặc 'auto'
-//   }
-// };
 </script>
 
 <style scoped>
 header.navbar {
   transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
               box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-              transform 0.3s ease-in-out;
-  z-index: 1030; /* Quan trọng cho position-fixed */
+              transform 0.35s ease-in-out; /* Smoother transform */
+  z-index: 1030;
 }
 
 .navbar-hidden {
   transform: translateY(-100%);
 }
 
-.navbar.position-fixed {
-  /* Đã có top-0 start-0 từ class bootstrap */
-}
-
 .nav-link, .navbar-toggler {
   transition: color 0.4s;
-  height: 50px;
+  padding: 0.5rem 0.75rem; /* Typical Bootstrap padding */
+  height: auto; /* Allow natural height based on content */
 }
 
-.nav-link > * {
-  width: 100%;
-  height: 100%;
+/* Wrapper for Button inside nav-link to ensure flex alignment if Button itself isn't display:flex */
+.nav-link > :deep(button), 
+.nav-link > .btn-component-wrapper { /* If your Button has a wrapper */
   display: flex;
   align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  border: none; /* Ensure buttons inside links don't look like form buttons */
+  background: transparent;
+  padding: 0;
 }
 
+
 .nav-link.dropdown-toggle::after {
-  display: none !important;
+  display: none !important; /* Assuming Button component handles dropdown caret */
 }
 
 .logo-wrapper {
@@ -273,6 +360,20 @@ header.navbar {
   transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
-  z-index: 1;
+  z-index: 1; /* Behind MenuButton if they overlap on very small screens */
+}
+
+/* Dropdown menu styling */
+.dropdown-menu {
+  margin-top: 0.125rem; /* Small gap from toggle */
+  box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);
+  border: none;
+}
+.dropdown-item {
+  padding: 0.5rem 1rem;
+}
+.dropdown-item:active { /* Bootstrap's default active color */
+  background-color: #0d6efd;
+  color: #fff;
 }
 </style>

@@ -1,24 +1,25 @@
 <!-- src/pages/Profile.vue -->
 <template>
-    <Layout title="THÔNG TIN NGƯỜI DÙNG">
+  <Layout :title="pageTitle">
     <section class="account-info-section container py-5 position-relative">
-      <!-- 1. Loading -->
-      <div v-if="loading" class="text-center py-5">
+      <!-- 1. Loading: While auth state is being checked or user data is being fetched initially -->
+      <div v-if="authStore.isLoadingAuth && !authStore.currentUser" class="text-center py-5">
         <div class="spinner-border text-primary" role="status">
           <span class="visually-hidden">Loading...</span>
         </div>
       </div>
 
-      <!-- 2. Lỗi (ví dụ: người dùng không được phép, API lỗi) -->
-      <div v-else-if="error && !userDetails" class="alert alert-danger">
-        <p>{{ error }}</p>
-        <p v-if="isUnauthorizedError">
-          Vui lòng <router-link to="/login">đăng nhập</router-link> để tiếp tục.
+      <!-- 2. Error: If there was an error fetching auth state or user data -->
+      <div v-else-if="authStore.getAuthError && !authStore.currentUser" class="alert alert-danger">
+        <p>{{ authStore.getAuthError }}</p>
+        <!-- Offer login if it seems like an auth-related error (e.g., 401 was part of error) -->
+        <p v-if="isAuthRelatedError(authStore.getAuthError)">
+          Vui lòng <router-link :to="{ name: 'Login', query: { redirect: '/profile' } }">đăng nhập</router-link> để tiếp tục.
         </p>
       </div>
 
-      <!-- 3. Hiển thị thông tin người dùng nếu đã đăng nhập VÀ có userDetails -->
-      <div v-else-if="isLoggedIn && userDetails" class="user-profile-content">
+      <!-- 3. User Info: If currentUser exists in the store -->
+      <div v-else-if="authStore.currentUser" class="user-profile-content">
         <!-- Thông tin cá nhân -->
         <UserInfoCard
           title="Thông tin cá nhân"
@@ -30,9 +31,9 @@
               <i class="bi bi-person-circle fs-1"></i>
             </div>
             <div>
-              <p class="mb-1"><strong>Họ tên:</strong> {{ userDetails.HoTen }}</p>
-              <p class="mb-1"><strong>Giới tính:</strong> {{ userDetails.GioiTinh }}</p>
-              <p class="mb-1"><strong>Ngày sinh:</strong> {{ userDetails.NgaySinh ? new Date(userDetails.NgaySinh).toLocaleDateString() : '' }}</p>
+              <p class="mb-1"><strong>Họ tên:</strong> {{ authStore.currentUser.HoTen }}</p>
+              <p class="mb-1"><strong>Giới tính:</strong> {{ authStore.currentUser.GioiTinh || 'Chưa cập nhật' }}</p>
+              <p class="mb-1"><strong>Ngày sinh:</strong> {{ authStore.currentUser.NgaySinh ? new Date(authStore.currentUser.NgaySinh).toLocaleDateString() : 'Chưa cập nhật' }}</p>
             </div>
           </div>
         </UserInfoCard>
@@ -43,8 +44,8 @@
           :onEdit="() => handleEdit('contact')"
           :highlight="highlight.contact"
         >
-          <p class="mb-1"><strong>Email:</strong> {{ userDetails.Email }}</p>
-          <p class="mb-1"><strong>SĐT:</strong> {{ userDetails.SDT }}</p>
+          <p class="mb-1"><strong>Email:</strong> {{ authStore.currentUser.Email }}</p>
+          <p class="mb-1"><strong>SĐT:</strong> {{ authStore.currentUser.SDT || 'Chưa cập nhật' }}</p>
         </UserInfoCard>
 
         <!-- Thông tin định danh -->
@@ -53,7 +54,7 @@
           :onEdit="() => handleEdit('cccd')"
           :highlight="highlight.cccd"
         >
-          <p class="mb-1"><strong>CCCD:</strong> {{ userDetails.CCCD }}</p>
+          <p class="mb-1"><strong>CCCD:</strong> {{ authStore.currentUser.CCCD || 'Chưa cập nhật' }}</p>
         </UserInfoCard>
 
         <!-- Nút Log out -->
@@ -61,7 +62,7 @@
           <Button
             content="LOG OUT"
             textColor="white"
-            @click="logoutAndRedirect"
+            @click="handleLogout"
             borderRadius="0px"
             backgroundColor="black"
             textAlign="center"
@@ -72,22 +73,22 @@
         </div>
       </div>
 
-      <!-- 4. Trường hợp người dùng chưa đăng nhập -->
-      <div v-else-if="!isLoggedIn" class="text-center py-5">
+      <!-- 4. Not Authenticated: If not loading, no error, no user, and not authenticated -->
+      <div v-else-if="!authStore.isAuthenticated && !authStore.isLoadingAuth && !authStore.getAuthError" class="text-center py-5">
         <p>
-          Vui lòng <router-link to="/login">đăng nhập</router-link> để xem thông tin cá nhân của bạn.
+          Vui lòng <router-link :to="{ name: 'Login', query: { redirect: '/profile' } }">đăng nhập</router-link> để xem thông tin cá nhân của bạn.
         </p>
       </div>
-
-      <!-- Fallback: Nếu isLoggedIn true nhưng không có userDetails (có thể đang đợi API /me hoặc API lỗi nhẹ) -->
+      
+      <!-- 5. Fallback: Catch-all for unexpected states (e.g., authenticated but no user data, and not loading/erroring) -->
       <div v-else class="text-center py-5">
-         <p>Không thể tải thông tin người dùng. Vui lòng thử lại sau.</p>
+         <p>Không thể tải thông tin người dùng. Vui lòng thử lại sau hoặc <router-link :to="{ name: 'Login', query: { redirect: '/profile' } }">đăng nhập lại</router-link>.</p>
       </div>
     </section>
 
     <!-- Modal Edit -->
     <EditUserModal
-      v-if="showModal && userDetails"
+      v-if="showModal && authStore.currentUser"
       :user="editedUser"
       :section="editSection"
       @close="handleModalClose"
@@ -97,27 +98,21 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
 import { useRouter } from 'vue-router';
 import Layout from '../components/Layout.vue';
 import Button from '../components/Button.vue';
 import EditUserModal from '@/components/EditUserModal.vue';
 import UserInfoCard from '@/components/UserInfoCard.vue';
-import { useAuth } from '../utils/auth'; // Hook xác thực của chúng ta
+import { useAuthStore } from '../store/authStore';
 
+const authStore = useAuthStore();
 const router = useRouter();
-const { isLoggedIn, currentUserRole, logout, checkLogin } = useAuth(); // Lấy thêm currentUserRole và checkLogin
-
-// State riêng cho component Profile
-const userDetails = ref(null); // Thông tin chi tiết từ /api/users/me
-const loading = ref(true);
-const error = ref('');
-const isUnauthorizedError = ref(false); // Để xử lý cụ thể lỗi 401
 
 const showModal = ref(false);
 const editSection = ref('');
-const editedUser = ref({}); // Dữ liệu để edit, sẽ là bản copy của userDetails
+const editedUser = ref({}); // Data for editing, copied from authStore.currentUser
 
 const highlight = ref({
   personal: false,
@@ -126,76 +121,44 @@ const highlight = ref({
 });
 
 const pageTitle = computed(() => {
-  if (isLoggedIn.value && userDetails.value) return `THÔNG TIN NGƯỜI DÙNG: ${userDetails.value.HoTen}`;
+  if (authStore.currentUser) {
+    return `THÔNG TIN NGƯỜI DÙNG: ${authStore.currentUser.HoTen}`;
+  }
   return 'TRANG CÁ NHÂN';
 });
 
-// Hàm tải dữ liệu người dùng chi tiết
-async function fetchUserDetails() {
-  if (!isLoggedIn.value) {
-    loading.value = false;
-    // isUnauthorizedError.value = true; // Không cần thiết vì v-else-if="!isLoggedIn" sẽ xử lý
-    error.value = 'Bạn cần đăng nhập để xem thông tin này.';
-    return;
-  }
+// Helper to check if an error message suggests an authentication issue
+const isAuthRelatedError = (errorMsg) => {
+  if (!errorMsg) return false;
+  const lowerError = errorMsg.toLowerCase();
+  return lowerError.includes('unauthorized') || lowerError.includes('401') || lowerError.includes('đăng nhập');
+};
 
-  loading.value = true;
-  error.value = '';
-  isUnauthorizedError.value = false;
-  try {
-    const res = await axios.get('http://localhost:5000/api/users/me', {
-      withCredentials: true,
-    });
-    if (res.data && typeof res.data === 'object' && Object.keys(res.data).length > 0) {
-      userDetails.value = res.data; // Dữ liệu này KHÔNG chứa loaiUSER (dựa trên hình ảnh)
-    } else {
-      userDetails.value = null;
-      error.value = 'Không nhận được dữ liệu người dùng hợp lệ.';
-    }
-  } catch (err) {
-    console.error("Lỗi khi lấy thông tin chi tiết người dùng:", err);
-    if (err.response) {
-      error.value = err.response.data?.message || `Lỗi ${err.response.status}: Không thể tải dữ liệu.`;
-      if (err.response.status === 401) {
-        isUnauthorizedError.value = true;
-        // Nếu bị 401, có thể gọi lại checkLogin từ useAuth để nó dọn dẹp trạng thái
-        await checkLogin(); // Điều này sẽ set isLoggedIn = false nếu session không hợp lệ
-      }
-    } else {
-      error.value = 'Lỗi kết nối mạng hoặc server không phản hồi.';
-    }
-    userDetails.value = null;
-  } finally {
-    loading.value = false;
-  }
-}
-
-onMounted(() => {
-  fetchUserDetails();
-});
-
-// Watcher để theo dõi thay đổi trạng thái đăng nhập (ví dụ: người dùng logout từ tab khác)
-// và tải lại dữ liệu nếu cần.
-watch(isLoggedIn, (newValue, oldValue) => {
-  if (newValue && !oldValue) { // User vừa đăng nhập
-    fetchUserDetails();
-  } else if (!newValue && oldValue) { // User vừa logout
-    userDetails.value = null; // Xóa dữ liệu cũ
-    error.value = '';
-    isUnauthorizedError.value = false;
+onMounted(async () => {
+  // If authenticated (e.g., token exists from previous session) but currentUser data is not in store,
+  // try to fetch it. The initializeAuth action in the store might also do this.
+  if (authStore.isAuthenticated && !authStore.currentUser) {
+    console.log('ProfilePage: currentUser not in store, attempting to fetch...');
+    await authStore.fetchCurrentUser(); // This might set isLoadingAuth and authError in store
+  } else if (!authStore.isAuthenticated) {
+    // If not authenticated at all, redirect to login.
+    // Add a redirect query parameter so user comes back to profile after login.
+    console.log('ProfilePage: User not authenticated, redirecting to login.');
+    router.push({ name: 'Login', query: { redirect: router.currentRoute.value.fullPath } });
   }
 });
 
-
-async function logoutAndRedirect() {
-  await logout(); // Hàm logout từ useAuth đã xử lý việc xóa token và set isLoggedIn=false
-  router.push('/homepage'); // Hoặc '/login'
+async function handleLogout() {
+  await authStore.logout();
+  // Redirect to homepage or login page after logout
+  router.push('/homepage');
 }
 
 function handleEdit(section) {
-  if (!userDetails.value) return;
+  if (!authStore.currentUser) return; // Should not happen if button is shown
   editSection.value = section;
-  editedUser.value = { ...userDetails.value };
+  // Create a deep copy for editing to avoid mutating store state directly
+  editedUser.value = JSON.parse(JSON.stringify(authStore.currentUser));
   showModal.value = true;
 }
 
@@ -204,60 +167,52 @@ function handleModalClose() {
 }
 
 async function handleModalSave({ section, data }) {
-  if (!isLoggedIn.value || !userDetails.value) {
-    error.value = "Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.";
-    isUnauthorizedError.value = true;
-    showModal.value = false;
-    await checkLogin(); // Có thể redirect hoặc dọn dẹp
-    return;
-  }
-  loading.value = true;
-  error.value = '';
+  // Use store's loading and error states if available, or manage locally
+  // authStore.setLoading(true); // Or a more specific loading state
+  // authStore.clearError();
+  const tempLoading = ref(true); // Local loading for this operation
+  
   try {
-    const res = await axios.put('http://localhost:5000/api/users/me', data, {
+    await axios.put('http://localhost:5000/api/users/me', data, {
       withCredentials: true,
     });
-    // Cập nhật userDetails với data mới nhất từ server (có thể không bao gồm loaiUSER)
-    userDetails.value = res.data;
-
-    // currentUserRole từ useAuth KHÔNG tự động cập nhật từ PUT này
-    // vì token ở client không thay đổi sau PUT.
-    // Nếu backend CÓ thay đổi `loaiUSER` và bạn muốn nó phản ánh ngay lập tức mà không cần logout/login,
-    // thì API PUT /me này cũng phải trả về token MỚI chứa loaiUSER mới,
-    // hoặc trả về loaiUSER mới trong response body, và bạn phải cập nhật nó vào currentUserRole.value.
-    // Hoặc đơn giản hơn là yêu cầu người dùng đăng nhập lại để token mới được lấy.
-
+    // After successful update, fetch the latest user info to update the store
+    await authStore.fetchCurrentUser();
     showModal.value = false;
+
     highlight.value[section] = true;
     setTimeout(() => {
       highlight.value[section] = false;
     }, 2000);
+
   } catch (err) {
     console.error("Lỗi khi cập nhật thông tin:", err);
+    let errorMsg = 'Lỗi mạng hoặc server không phản hồi khi cập nhật.';
     if (err.response) {
-      error.value = err.response.data?.message || `Lỗi ${err.response.status}: Cập nhật thất bại.`;
+      errorMsg = err.response.data?.message || `Lỗi ${err.response.status}: Cập nhật thất bại.`;
       if (err.response.status === 401) {
-        isUnauthorizedError.value = true;
-        await checkLogin(); // Sẽ set isLoggedIn=false nếu cần và có thể redirect
-        router.push('/login');
+        // If unauthorized during update, treat as session expiry
+        authStore.setError(errorMsg + " Phiên của bạn có thể đã hết hạn."); // Set error in store
+        await authStore.logout(); // Logout
+        router.push({ name: 'Login', query: { redirect: router.currentRoute.value.fullPath } }); // Redirect to login
+        return; // Stop further processing
       }
-    } else {
-      error.value = 'Lỗi mạng hoặc server không phản hồi khi cập nhật.';
     }
+    authStore.setError(errorMsg); // Set error in store for general display
+    // Optionally, show error in modal or as a toast notification
   } finally {
-    loading.value = false;
+    tempLoading.value = false;
+    // authStore.setLoading(false);
   }
 }
 </script>
 
 <style scoped>
+.account-info-section {
+  /* padding-top: 120px; */ /* Removed fixed padding, adjust if needed based on Layout component */
+}
 .avatar-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: #eee;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 60px; height: 60px; border-radius: 50%; background: #eee;
+  display: flex; align-items: center; justify-content: center;
 }
 </style>
