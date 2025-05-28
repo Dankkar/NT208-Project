@@ -1,32 +1,36 @@
 const express = require('express');
 const { authenticateToken, isAdmin } = require('../middlewares/auth');
-const { 
-    getCurrentUser,
-    getAllUsers,
-    updateUser,
-    updateUserByAdmin,
-    deleteUser,
-    searchUser
+const {
+  getCurrentUser,
+  getAllUsers,
+  updateUser,
+  updateUserByAdmin,
+  deleteUser,
+  searchUser
 } = require('../controllers/userController');
 
 const router = express.Router();
 
-//GET /api/users/me
+// -------- AUTHENTICATED USER --------
+
+// GET /users/me - Lấy thông tin người dùng hiện tại
 router.get('/me', authenticateToken, getCurrentUser);
 
-//PUT /api/users/me
+// PUT /users/me - Cập nhật thông tin cá nhân
 router.put('/me', authenticateToken, updateUser);
 
-//GET /api/users
+// -------- ADMIN ONLY --------
+
+// GET /users/search - Tìm kiếm người dùng
+router.get('/search', authenticateToken, isAdmin, searchUser);
+
+// GET /users - Lấy tất cả user
 router.get('/', authenticateToken, isAdmin, getAllUsers);
 
-//PUT /api/users/:MaKH
+// PUT /users/:MaKH - Admin cập nhật user
 router.put('/:MaKH', authenticateToken, isAdmin, updateUserByAdmin);
 
-//DELETE /api/users/:MaKH
+// DELETE /users/:MaKH - Admin xóa user
 router.delete('/:MaKH', authenticateToken, isAdmin, deleteUser);
-
-//GET /api/users/search
-router.get('/search', authenticateToken, isAdmin, searchUser);
 
 module.exports = router;
