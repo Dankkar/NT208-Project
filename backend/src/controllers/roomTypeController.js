@@ -63,7 +63,7 @@ exports.getRoomTypesByHotel = async (req, res) => {
                 FROM LoaiPhong lp
                 LEFT JOIN Phong p ON lp.MaLoaiPhong = p.MaLoaiPhong
                 WHERE lp.MaKS = @MaKS
-                GROUP BY lp.MaLoaiPhong, lp.MaKS, lp.TenLoaiPhong, lp.TienNghi, 
+                GROUP BY lp.MaLoaiPhong, lp.MaKS, lp.TenLoaiPhong, lp.SoGiuong, lp.TienNghi, 
                          lp.DienTich, lp.GiaCoSo, lp.MoTa
                 ORDER BY lp.MaLoaiPhong DESC
                 OFFSET @offset ROWS
@@ -126,30 +126,30 @@ exports.updateRoomType = async (req, res) => {
     }
 }
 
-exports.deleteRoomType = async (req, res) => {
-    const { MaLoaiPhong } = req.params;
-    if(!MaLoaiPhong || isNaN(MaLoaiPhong))
-    {
-        return res.status(400).json({error: 'Mã loại phòng không hợp lệ'});
-    }
+// exports.deleteRoomType = async (req, res) => {
+//     const { MaLoaiPhong } = req.params;
+//     if(!MaLoaiPhong || isNaN(MaLoaiPhong))
+//     {
+//         return res.status(400).json({error: 'Mã loại phòng không hợp lệ'});
+//     }
 
-    try
-    {
-        const pool = await poolPromise;
-        const result = await pool.request()
-            .input('MaLoaiPhong', sql.Int, MaLoaiPhong)
-            .query(`
-                DELETE FROM LoaiPhong WHERE MaLoaiPhong = @MaLoaiPhong
-            `)
-        res.json({message: 'Loại phòng đã được xóa thành công'});
-    }
-    catch (err)
-    {
-        console.error('Lỗi deleteRoomType:', err);
-        res.status(500).json({error: 'Lỗi server'});
-    }
+//     try
+//     {
+//         const pool = await poolPromise;
+//         const result = await pool.request()
+//             .input('MaLoaiPhong', sql.Int, MaLoaiPhong)
+//             .query(`
+//                 DELETE FROM LoaiPhong WHERE MaLoaiPhong = @MaLoaiPhong
+//             `)
+//         res.json({message: 'Loại phòng đã được xóa thành công'});
+//     }
+//     catch (err)
+//     {
+//         console.error('Lỗi deleteRoomType:', err);
+//         res.status(500).json({error: 'Lỗi server'});
+//     }
     
-}
+// }
 
 exports.compareRoomTypes = async (req, res) => {
     const { type1, type2 } = req.params;

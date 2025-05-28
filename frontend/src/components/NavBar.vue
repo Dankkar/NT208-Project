@@ -17,7 +17,7 @@
       />
     </div>
 
-    <router-link class="logo-wrapper" to="/homepage">
+    <router-link class="logo-wrapper" to="/homepage" style="width : 70px;">
       <Logo
         :src="logoSrc"
         alt="UIT_Logo"

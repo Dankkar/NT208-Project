@@ -60,7 +60,7 @@
         </div>
         <button 
           type="submit" 
-          class="btn btn-login w-100 mb-3"
+          class="btn-login w-100 mb-3"
           :disabled="isLoading || !!emailError || !!passwordError"
         >
           <span v-if="isLoading" class="spinner-border spinner-border-sm me-2" role="status"></span>

@@ -6,15 +6,45 @@ USE QUANLYKHACHSAN
 CREATE TABLE NguoiDung (
     MaKH INT PRIMARY KEY IDENTITY(1,1),         -- Mã Khách Hàng (PK) - Dùng INT IDENTITY cho tiện
     LoaiUser NVARCHAR(50) NOT NULL,             -- Loại người dùng (Admin, KhachHang, QuanLyKS)
-    HoTen NVARCHAR(100) NOT NULL,               -- Họ tên
+    HoTen NVARCHAR(100),						-- Họ tên
     Email NVARCHAR(100) UNIQUE NOT NULL,        -- Email (UNIQUE)
-    SDT NVARCHAR(20) UNIQUE,                    -- Số điện thoại (UNIQUE)
+    SDT NVARCHAR(20),							-- Số điện thoại
     MatKhauHash NVARCHAR(255) NOT NULL,         -- Nên lưu Hash mật khẩu, không lưu trực tiếp
     NgaySinh DATE,                              -- Ngày sinh
     GioiTinh NVARCHAR(10),                      -- Giới tính
-    CCCD NVARCHAR(20) UNIQUE,                   -- Căn cước công dân (UNIQUE)
+    CCCD NVARCHAR(20),							-- Căn cước công dân
     NgayTao DATETIME2 DEFAULT GETDATE()         -- Ngày tạo tài khoản
 );
+
+--1. Tạo unique filtered index chỉ trên SDT IS NOT NULL
+CREATE UNIQUE INDEX UX_NguoiDung_SDT_NotNull
+  ON NguoiDung(SDT)
+  WHERE SDT IS NOT NULL;
+
+  --2. Tạo unique filtered index chỉ trên CCCD IS NOT NULL
+CREATE UNIQUE INDEX UX_NguoiDung_CCCD_NotNull
+  ON NguoiDung(CCCD)
+  WHERE CCCD IS NOT NULL;
+
+ALTER TABLE NguoiDung
+    ADD IsProfileCompleted AS
+    (
+        CONVERT(BIT, -- Ensure the result is BIT
+            CASE
+                WHEN HoTen IS NOT NULL AND HoTen <> N''          -- HoTen is filled
+                 AND SDT IS NOT NULL AND SDT <> N''              -- SDT is filled
+                 AND NgaySinh IS NOT NULL                        -- NgaySinh is filled
+                 AND GioiTinh IS NOT NULL AND GioiTinh <> N''    -- GioiTinh is filled
+                 AND CCCD IS NOT NULL AND CCCD <> N''            -- CCCD is filled
+                THEN 1  -- All required profile fields are filled
+                ELSE 0  -- At least one required profile field is missing
+            END
+        )
+	 )
+
+ALTER TABLE NguoiDung
+ADD IsActive BIT DEFAULT 1 NOT NULL
+
 
 -- Bảng Khách Sạn (Hotel)
 CREATE TABLE KhachSan (
@@ -226,6 +256,7 @@ DELETE FROM KhuyenMai;
 DELETE FROM NguoiDung;
 SELECT * FROM KhachSan
 SELECT * FROM LoaiPhong
+SELECT * FROM NguoiDung
 
 INSERT INTO KhachSan (TenKS, DiaChi, Latitude, Longitude, HangSao, LoaiHinh, MoTaCoSoVatChat, QuyDinh, MoTaChung)
 VALUES 
@@ -299,6 +330,8 @@ INSERT INTO CauHinhGiuong (TenCauHinh, SoGiuongDoi, SoGiuongDon) VALUES
 (N'1 giường đôi + 1 giường đơn', 1, 1),
 (N'2 giường đôi', 2, 0);
 SELECT * FROM LoaiPhong
+SELECT * FROM NguoiDung
+SELECT * FROM KhachSan
 
 DROP TABLE BaiDanhGia;
 DROP TABLE HoaDon;
@@ -318,4 +351,14 @@ DROP TABLE KhachSan;
 
 -- Bảng khuyến mãi
 DROP TABLE KhuyenMai;
+
+update NguoiDung
+set LoaiUser = 'Admin'
+
+select * from LoaiPhong
+delete from NguoiDung
+
+
+
+
 

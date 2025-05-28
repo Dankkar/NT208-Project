@@ -1,7 +1,7 @@
 <!-- src/components/HotelCard.vue -->
 <template>
-  <!-- Bọc toàn bộ card bằng router-link -->
-  <router-link :to="`/hotels/${hotel.MaKS}`" class="hotel-card-link text-decoration-none">
+  <!-- Sử dụng hotelSlug cho đường dẫn -->
+  <router-link :to="`/hotels/${hotelSlug}`" class="hotel-card-link text-decoration-none">
     <div class="card hotel-card h-100 shadow-sm">
       <div class="img-wrapper">
         <img
@@ -26,19 +26,14 @@
             <span class="rating-value fw-bold">{{ hotel.HangSao.toFixed(1) }}</span>
           </div>
         </div>
-        <!-- Bạn có thể bỏ nút này nếu click cả card đã điều hướng -->
-        <!--
-        <router-link :to="`/hotel/${hotel.MaKS}`" class="btn btn-sm btn-primary-theme mt-3 view-details-btn">
-          View Details
-        </router-link>
-        -->
       </div>
     </div>
   </router-link>
 </template>
 
 <script setup>
-import { defineProps } from 'vue';
+import { defineProps, computed } from 'vue';
+import { generateSlug } from '../utils/generateSlug.js'; // Import hàm generateSlug
 
 const props = defineProps({
   hotel: {
@@ -47,25 +42,35 @@ const props = defineProps({
   },
 });
 
+// Tạo computed property cho slug
+const hotelSlug = computed(() => {
+  // Đảm bảo hotel.TenKS và hotel.MaKS tồn tại
+  if (props.hotel && props.hotel.TenKS && props.hotel.MaKS) {
+    return generateSlug(props.hotel.TenKS, props.hotel.MaKS);
+  }
+  // Trả về ID nếu không có tên (phòng trường hợp)
+  return props.hotel ? String(props.hotel.MaKS) : '';
+});
+
 const formatCurrency = (value) => {
   if (value == null || isNaN(parseFloat(value))) {
-    return 'N/A'; // Hoặc 'Liên hệ' nếu giá không xác định
+    return 'N/A';
   }
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', minimumFractionDigits: 0 }).format(value);
 };
 </script>
 
 <style scoped>
-/* Thêm style này để loại bỏ gạch chân của link và đảm bảo card chiếm toàn bộ link */
+/* CSS của bạn giữ nguyên */
+/* ... */
 .hotel-card-link {
-  display: block; /* Quan trọng để router-link hoạt động như một block */
-  color: inherit; /* Kế thừa màu chữ để không bị xanh mặc định của link */
+  display: block;
+  color: inherit;
 }
 .hotel-card-link:hover {
-  text-decoration: none; /* Bỏ gạch chân khi hover */
+  text-decoration: none;
 }
 
-/* Giữ nguyên hoặc điều chỉnh các style khác của HotelCard từ file Ratings.vue hoặc style riêng của nó */
 .hotel-card {
   background-color: var(--card-bg, #ffffff);
   border: none;
@@ -101,7 +106,6 @@ const formatCurrency = (value) => {
   color: var(--text-dark, #212529);
   margin-bottom: 0.5rem;
   font-size: 1.1rem;
-  /* Ngăn chặn chữ quá dài bằng ellipsis */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -115,7 +119,7 @@ const formatCurrency = (value) => {
   text-overflow: ellipsis;
 }
 .hotel-card .location-text .bi {
-  vertical-align: middle; /* Căn icon cho đẹp hơn */
+  vertical-align: middle;
 }
 
 
@@ -136,7 +140,6 @@ const formatCurrency = (value) => {
 }
 
 .hotel-price {
-  /* color: var(--primary-theme-color, #0077b6); */
   font-size: 1rem;
   font-weight: 500;
 }
@@ -147,34 +150,12 @@ const formatCurrency = (value) => {
     font-size: 0.8rem;
 }
 
-/* CSS cho nút View Details (nếu bạn quyết định giữ lại) */
-.btn-primary-theme {
-  background-color: var(--primary-theme-color, #0077b6);
-  border-color: var(--primary-theme-color, #0077b6);
-  color: white; /* Thường nút primary có chữ trắng */
-  font-weight: 500;
-  padding: 0.4rem 0.8rem;
-  font-size: 0.875rem;
-  border-radius: 0.375rem;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
-}
-.btn-primary-theme:hover {
-  background-color: #005f8e;
-  border-color: #005f8e;
-}
-.view-details-btn {
-    min-width: 110px;
-}
-
-/* Bootstrap Icons (ví dụ, nếu bạn dùng CDN thì không cần thêm) */
 @import url("https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css");
 
-/* Biến màu (nếu chưa có trong file global) */
 :root {
   --primary-theme-color: #0077b6;
   --star-color: #ffc107;
   --card-bg: #ffffff;
   --text-dark: #212529;
 }
-
 </style>

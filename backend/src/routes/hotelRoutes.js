@@ -8,7 +8,8 @@ const {
     getHotelById,
     getAllHotels,
     getFeaturedHotels,
-    suggestLocations
+    suggestLocations,
+    getBasicHotelListForAdmin
 } = require('../controllers/hotelController');
 const {authenticateToken, isAdmin} = require('../middlewares/auth');
 const { LocationSuggestLimiter } = require('../middlewares/rateLimiter')
@@ -17,6 +18,7 @@ const router = express.Router();
 
 //GET /hotels
 router.get('/', getAllHotels);
+router.get('/list-basic', authenticateToken, isAdmin, getBasicHotelListForAdmin);
 //GET /hotels/:MaKS
 router.get('/:MaKS', getHotelById);
 //GET /featured
@@ -34,8 +36,6 @@ router.post('/', authenticateToken, isAdmin,
  //GET /hotels/nguoi-quan-ly/:MaKH
 router.get('/nguoi-quan-ly/:MaKH', authenticateToken, isAdmin, getHotelsByNguoiQuanLy);
     
-
-    
 //GET /hotels/suggest-locations
 router.get('/suggest-locations', LocationSuggestLimiter, suggestLocations);
     
@@ -43,10 +43,17 @@ router.get('/suggest-locations', LocationSuggestLimiter, suggestLocations);
 router.put('/:MaKS', authenticateToken, isAdmin, updateHotel);
 
 //DELETE /hotels/:MaKS
-router.delete('/:MaKS', authenticateToken, isAdmin, deleteHotel);
+// router.delete('/:MaKS', authenticateToken, isAdmin, deleteHotel);
 
-
-
-
+//POST /api/hotels (Admin tạo khách sạn mới)
+// router.post('/', authenticateToken, isAdmin,
+//     [
+//         check('TenKS', 'Tên khách sạn không được để trống').notEmpty(),
+//         check('DiaChi', 'Địa chỉ không được để trống').notEmpty(),
+//         check('HangSao', 'Hạng sao không được để trống').notEmpty(), // Nên là number
+//         check('LoaiHinh', 'Loại hình không được để trống').notEmpty(),
+//         check('MoTaCoSoVatChat', 'Mô tả cơ sở vật chất không được để trống').notEmpty(),
+//         check('QuyDinh', 'Quy định không được để trống').notEmpty(),
+//     ], createHotel);
 
 module.exports = router;

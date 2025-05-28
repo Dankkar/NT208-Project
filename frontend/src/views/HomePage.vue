@@ -1,7 +1,7 @@
   <!-- src/views/HomePage.vue -->
 <template>
   <div class="home-page">
-    <Navbar style="position: fixed !important;" />
+    <Navbar style="position: fixed !important" />
 
     <HeroSection
       :image-url="heroImageUrl"
@@ -95,7 +95,7 @@
 
 <script setup>
 import { reactive, ref, computed, onMounted, onUnmounted } from 'vue'
-import Navbar from '../components/Navbar.vue'
+import Navbar from '../components/NavBar.vue'
 import HeroSection from '../components/HeroSection.vue'
 import Post from '../components/Post.vue'
 import Footer from '../components/Footer.vue'

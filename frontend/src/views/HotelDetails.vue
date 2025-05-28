@@ -247,16 +247,26 @@ const goBack = () => {
 };
 
 onMounted(() => {
-  const hotelId = route.params.id;
-  if (hotelId) {
-    fetchHotelDetails(hotelId);
+  const slugFromRoute = route.params.id; // Bây giờ nó là slug, ví dụ: "resort-nui-vang-2"
+  let hotelIdToFetch = null;
+
+  if (slugFromRoute) {
+    // Trích xuất ID từ cuối slug
+    const parts = slugFromRoute.split('-');
+    const potentialId = parts[parts.length - 1];
+    if (!isNaN(parseInt(potentialId))) {
+      hotelIdToFetch = potentialId; // Giờ đây hotelIdToFetch là "2"
+    }
+  }
+
+  if (hotelIdToFetch) {
+    fetchHotelDetails(hotelIdToFetch); // Gọi fetch với ID đã trích xuất
   } else {
-    error.value = "Hotel ID is missing in the URL.";
+    error.value = "Invalid hotel identifier in URL.";
     loading.value = false;
-    console.error("Hotel ID is undefined in route params.");
+    console.error("Could not extract valid ID from slug:", slugFromRoute);
   }
 });
-
 </script>
 
 <style scoped>
