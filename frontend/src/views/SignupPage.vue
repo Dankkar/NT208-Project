@@ -138,17 +138,19 @@ async function checkEmailOnServer() {
     isCheckingEmail.value = false; // Ensure this is reset if format becomes invalid during typing
     return;
   }
-
+  console.log('Checking email on server 1:', formData.email);
   isCheckingEmail.value = true;
   emailAlreadyExists.value = false; // Assume not registered until confirmed
   // Clear only server-related email error, not format error
   if (errors.email && errors.email.includes('verify') || errors.email.includes('registered')) {
     errors.email = '';
   }
-  authStore.clearError(); // Clear global auth error if any
+  // authStore.clearError(); // Clear global auth error if any
+  console.log('Checking email on server 2:', formData.email);
 
   try {
     const response = await axios.post('http://localhost:5000/api/auth/check-email', { Email: formData.email });
+    console.log('Server response:', response.data);
     if (response.data.exists) {
       // errors.email = 'This email address is already registered.'; // Can be displayed via emailAlreadyExists flag too
       emailAlreadyExists.value = true;
@@ -164,6 +166,7 @@ async function checkEmailOnServer() {
   } finally {
     isCheckingEmail.value = false;
   }
+  console.log("isCheckingEmail after server check:", isCheckingEmail.value);
 }
 
 const debouncedValidateEmailFormatAndExistence = () => {

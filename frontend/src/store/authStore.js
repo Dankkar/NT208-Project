@@ -27,6 +27,7 @@ export const useAuthStore = defineStore('auth', {
         }, { withCredentials: true });
         await this.fetchCurrentUser();
         if (!this.user) {
+          console.error("Login succeeded but user data is null.");
           throw new Error("Login succeeded but failed to fetch user details.");
         }
         return { success: true };
@@ -65,6 +66,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async fetchCurrentUser() {
+      console.log("isAuthenticated:", this.isAuthenticated);
       this.isLoading = true;
       this.authError = null;
       try {
@@ -121,6 +123,9 @@ export const useAuthStore = defineStore('auth', {
           //
           await this.fetchCurrentUser();
           if (this.user) { // Nếu fetchCurrentUser thành công
+            this.$patch({ user: this.user, authError: null });
+            console.log('AuthStore Signup successful:', this.user);
+            console.log("isAuthenticated:", this.isAuthenticated);
             return { success: true };
           } else {
             //
@@ -142,6 +147,9 @@ export const useAuthStore = defineStore('auth', {
       } finally {
         this.isLoading = false;
       }
+    },
+    async clearError() {
+      this.authError = null;
     }
   },
   persist: {

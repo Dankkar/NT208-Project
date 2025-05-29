@@ -2,11 +2,7 @@
 <template>
   <Layout title="Room Booking History">
     <div class="page-container booking-history-page">
-<<<<<<< HEAD
       <div v-if="AuthStore.isLoadingAuth" class="loading-message text-center py-5"> <!-- Thêm class bootstrap nếu muốn -->
-=======
-      <div v-if="loading" class="loading-message text-center py-5"> <!-- Thêm class bootstrap nếu muốn -->
->>>>>>> d184f53ff5e42f72c3006ed48ec2a19a9b364019
         <div class="spinner-border text-primary" role="status">
           <span class="visually-hidden">Loading...</span>
         </div>
