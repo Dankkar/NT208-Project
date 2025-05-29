@@ -92,7 +92,7 @@
           </div>
 
           <!-- State 3: Booking Confirmation -->
-          <div v-else-if="type === 'bookingConfirmation'" class="content-booking-confirmation row flex-grow-1">
+          <div class="content-booking-confirmation row flex-grow-1">
             <div class="col-lg-7">
               <h5 class="card-title fw-bold text-black">{{ bookingConfirmationData.roomName }}</h5>
               <p class="small text-muted text-uppercase mb-0 fw-bold">DATE</p>
