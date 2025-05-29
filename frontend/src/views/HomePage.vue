@@ -54,6 +54,28 @@
       </form>
     </HeroSection>
 
+<!-- Search Result -->
+   <section class="featured py-5" v-if="isSearched">
+      <div class="container">
+        <h2 class="mb-4">Search Result</h2>
+        <div v-if="loading" class="text-center">
+          <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
+        <div v-else-if="error" class="alert alert-danger">
+          {{ error }}
+        </div>
+        <div v-else>
+          <Carousel :items="SearchedHotels">
+            <template #default="{ item: hotel }">
+              <HotelCard :hotel="hotel" />
+            </template>
+          </Carousel>
+        </div>
+      </div>
+    </section> 
+    <Feature/>
     <!-- FEATURED -->
     <section class="featured py-5">
       <div class="container">
@@ -67,11 +89,11 @@
           {{ error }}
         </div>
         <div v-else>
-          <FeaturedCarousel :items="featuredHotels">
+          <Carousel :items="featuredHotels">
             <template #default="{ item: hotel }">
               <HotelCard :hotel="hotel" />
             </template>
-          </FeaturedCarousel>
+          </Carousel>
         </div>
       </div>
     </section> 
@@ -99,17 +121,19 @@ import Navbar from '../components/NavBar.vue'
 import HeroSection from '../components/HeroSection.vue'
 import Post from '../components/Post.vue'
 import Footer from '../components/Footer.vue'
-import FeaturedCarousel from '../components/FeaturedCarousel.vue'
+import Carousel from '../components/Carousel.vue'
 import HotelCard from '../components/HotelCard.vue'
 import hotelService from '../services/hotelService'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import mountain from '../assets/mountain.jpg'
+import { useBookingStore } from '../store/bookingStore'
 
 
 const heroImageUrl = mountain
 const imageUrl = mountain
-
+const isSearched = ref(false)
+const bookingStore = useBookingStore()
 
 const search = reactive({
   location: '',
@@ -117,6 +141,8 @@ const search = reactive({
   checkOut: '',
   guests: ''
 })
+
+
 
 const featuredHotels = ref([])
 const loading = ref(true)
@@ -156,19 +182,26 @@ async function handleLocationInput() {
 }
 
 async function onSearch() {
-  try {
-    const response = await axios.get('http://localhost:5000/api/bookings/search', {
-      params: {
-        location: search.location,
-        startDate: search.checkIn,
-        endDate: search.checkOut,
-        numberOfGuests: search.guests
-      }
-    })
-    console.log('Search response:', response.data)
-  } catch (error) {
-    console.error('Error fetching search results:', error)
-  }
+
+  this.isSearched = true
+  
+
+
+  // try {
+  //   isSearched.value = true
+  //   const response = await axios.get('http://localhost:5000/api/bookings/search', {
+  //     params: {
+  //       location: search.location,
+  //       startDate: search.checkIn,
+  //       endDate: search.checkOut,
+  //       numberOfGuests: search.guests
+  //     }
+  //   })
+  //   hote
+  //   console.log('Search response:', response.data)
+  // } catch (error) {
+  //   console.error('Error fetching search results:', error)
+  // }
 }
 
 function formatPrice(price) {
