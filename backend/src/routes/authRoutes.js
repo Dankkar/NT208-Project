@@ -9,11 +9,15 @@ const {
     logout,
     googleLogin,
     changePassword,
-    initializeGuestSession
+    initializeGuestSession,
+    checkEmailExists
 } = require('../controllers/authController');
 const {authenticateToken} = require('../middlewares/auth');
 
 const router = express.Router();
+
+// Kiem tra email
+router.post('/check-email', checkEmailExists);
 
 // Dang ky
 router.post(

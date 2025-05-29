@@ -31,14 +31,38 @@ exports.initializeGuestSession = (req, res) => {
             sessionId: req.session.id
         });
     }
+  }
+//API kiem tra email ton tai truoc khi dang ky
+exports.checkEmailExists = async (req, res) => {
+  const { Email } = req.body;
+
+  if (!Email) {
+    return res.status(400).json({ success: false, message: 'Email is required.' });
+  }
+
+  try {
+    const pool = await poolPromise;
+    const emailExists = await pool.request()
+      .input('Email', sql.NVarChar, Email.toLowerCase())
+      .query(`SELECT MaKH FROM ${schema}.NguoiDung WHERE LOWER(Email) = LOWER(@Email)`);
+
+    if (emailExists.recordset.length > 0) {
+      return res.status(200).json({ success: true, exists: true, message: 'Email này đã tồn tại.' });
+    } else {
+      return res.status(200).json({ success: true, exists: false });
+    }
+  } catch (err) {
+    console.error('AuthController.checkEmailExists error:', err);
+    res.status(500).json({ success: false, message: 'Server error while checking email.' });
+  }
 };
 
 // API Dang ki
 exports.register = async (req, res) => {
   // 1. Lấy dữ liệu từ body
   const { 
-    HoTen, 
-    Email, 
+    HoTen,
+    Email,
     MatKhau,
     SDT,
     NgaySinh,
@@ -58,30 +82,6 @@ exports.register = async (req, res) => {
       return res.status(400).json({ 
         success: false,
         message: 'Email đã tồn tại'
-      });
-    }
-
-    // Kiểm tra SDT đã tồn tại
-    const phoneExists = await pool.request()
-      .input('SDT', sql.NVarChar, SDT)
-      .query(`SELECT MaKH FROM ${schema}.NguoiDung WHERE SDT = @SDT`);
-
-    if (phoneExists.recordset.length > 0) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'Số điện thoại đã tồn tại'
-      });
-    }
-
-    // Kiểm tra CCCD đã tồn tại
-    const cccdExists = await pool.request()
-      .input('CCCD', sql.NVarChar, CCCD)
-      .query(`SELECT MaKH FROM ${schema}.NguoiDung WHERE CCCD = @CCCD`);
-
-    if (cccdExists.recordset.length > 0) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'CCCD đã tồn tại'
       });
     }
 
@@ -133,16 +133,12 @@ exports.register = async (req, res) => {
       maxAge: 1 * 60 * 60 * 1000 // 1 giờ
     });
 
-    res.status(201).json({ 
+    return res.status(201).json({ 
+      success: true,
       message: 'Đăng ký thành công',
-      token,
       user: {
         MaKH,
-        HoTen,
         Email: Email.toLowerCase(),
-        SDT,
-        NgaySinh,
-        GioiTinh,
         role: 'KhachHang'
       }
     });
@@ -154,7 +150,7 @@ exports.register = async (req, res) => {
         message: 'Thông tin đã tồn tại trong hệ thống'
       });
     }
-    res.status(500).json({ 
+    return res.status(500).json({ 
       success: false,
       message: 'Lỗi server'
     });

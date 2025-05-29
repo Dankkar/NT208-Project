@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
+
 const {
     createRoomType,
     getRoomTypesByHotel,
     updateRoomType,
-    deleteRoomType,
-    compareRoomTypes
+    // deleteRoomType,
+    compareRoomTypes,
 } = require('../controllers/roomTypeController');
 
 const { authenticateToken, isAdmin, isStaff } = require('../middlewares/auth');
@@ -20,7 +21,7 @@ router.get('/hotel/:MaKS', authenticateToken, getRoomTypesByHotel);
 router.put('/:MaLoaiPhong', authenticateToken, isStaff, updateRoomType);
 
 //DELETE /roomTypes/:MaLoaiPhong
-router.delete('/:MaLoaiPhong', authenticateToken, isAdmin, deleteRoomType);
+// router.delete('/:MaLoaiPhong', authenticateToken, isAdmin, deleteRoomType);
 
 // Support both URL formats:
 // 1. /roomTypes/compare/1/2 (route params)

@@ -8,7 +8,7 @@
       'justify-content-center',
       'align-items-center',
       shadow ? 'shadow-sm' : '',
-      white ? 'bg-white text-dark' : 'text-dark'
+      white ? 'bg-white text-dark' : 'text-dark',
     ]"
     :style="{
       backgroundColor: white ? '#fff' : '#DDE3F6',
@@ -25,7 +25,7 @@
 <script setup>
 const props = defineProps({
    white: { type: Boolean, default: false }, 
-  shadow: { type: Boolean, default: false } 
+  shadow: { type: Boolean, default: false },
 })
 
 </script>

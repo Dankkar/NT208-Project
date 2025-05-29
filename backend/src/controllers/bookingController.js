@@ -72,40 +72,96 @@ exports.createBooking = async (req, res) => {
                 MaKhach = guestResult.recordset[0].MaKhach;
             }
 
+            // Get room price and calculate total
+            const roomPriceResult = await transaction.request()
+                .input('MaPhong', sql.Int, bookingInfo.MaPhong)
+                .query(`
+                    SELECT lp.GiaCoSo
+                    FROM Phong p
+                    JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
+                    WHERE p.MaPhong = @MaPhong
+                `);
+
+            if(roomPriceResult.recordset.length === 0) {
+                throw new Error("Không tìm thấy thông tin phòng");
+            }
+
+            const basePrice = roomPriceResult.recordset[0].GiaCoSo;
+
+            // Check and get promotion info if any
+            let promotion = null;
+            if (promotionCode) {
+                const promotionResult = await transaction.request()
+                    .input('MaCodeKM', sql.NVarChar, promotionCode)
+                    .input('currentDate', sql.DateTime, new Date())
+                    .query(`
+                        SELECT MaKM, LoaiKM, GiaTriKM
+                        FROM KhuyenMai
+                        WHERE MaCodeKM = @MaCodeKM
+                        AND IsActive = 1
+                        AND @currentDate BETWEEN NgayBD AND NgayKT
+                    `);
+
+                if (promotionResult.recordset.length > 0) {
+                    promotion = promotionResult.recordset[0];
+                }
+            }
+
+            // Get service details if any
+            let serviceDetails = [];
+            if (services && services.length > 0) {
+                const serviceIds = services.map(s => s.MaLoaiDV);
+                const serviceResult = await transaction.request()
+                    .input('serviceIds', sql.NVarChar, serviceIds.join(','))
+                    .query(`
+                        SELECT MaLoaiDV, TenLoaiDV, GiaDV
+                        FROM LoaiDichVu
+                        WHERE MaLoaiDV IN (SELECT value FROM STRING_SPLIT(@serviceIds, ','))
+                    `);
+
+                serviceDetails = serviceResult.recordset.map(service => ({
+                    ...service,
+                    quantity: services.find(s => s.MaLoaiDV === service.MaLoaiDV)?.quantity || 1
+                }));
+            }
+
+            // Calculate total price
+            const bookingDetails = {
+                basePrice,
+                checkIn: bookingInfo.NgayNhanPhong,
+                checkOut: bookingInfo.NgayTraPhong,
+                services: serviceDetails,
+                promotion: promotion
+            };
+
+            const priceDetails = PriceCalculationService.calculateTotalPrice(bookingDetails);
+            const TongTienDuKien = priceDetails.finalPrice;
+
             // Update booking status to confirmed
             await transaction.request()
                 .input('MaDat', sql.Int, bookingInfo.MaDat)
                 .input('MaKH', sql.Int, MaKH)
                 .input('MaKhach', sql.Int, MaKhach)
                 .input('TrangThaiBooking', sql.NVarChar, 'Đã xác nhận')
+                .input('TongTienDuKien', sql.Decimal(18, 2), TongTienDuKien)
                 .query(`
                     UPDATE Booking
                     SET MaKH = @MaKH,
                         MaKhach = @MaKhach,
                         TrangThaiBooking = @TrangThaiBooking,
-                        ThoiGianGiuCho = NULL
+                        ThoiGianGiuCho = NULL,
+                        TongTienDuKien = @TongTienDuKien
                     WHERE MaDat = @MaDat
                 `);
 
             // Add services if any
-            if (services && Array.isArray(services) && services.length > 0) {
-                for (const service of services) {
-                    // Normalize service object keys to uppercase
-                    const normalizedService = {
-                        MaLoaiDV: service.MaLoaiDV || service.MaLoaiDv,
-                        quantity: service.quantity,
-                        GiaDV: service.GiaDV
-                    };
-
-                    if (!normalizedService.MaLoaiDV || !normalizedService.quantity || !normalizedService.GiaDV) {
-                        throw new Error("Thông tin dịch vụ không hợp lệ");
-                    }
-
+            if (serviceDetails.length > 0) {
+                for (const service of serviceDetails) {
                     await transaction.request()
                         .input('MaDat', sql.Int, bookingInfo.MaDat)
-                        .input('MaLoaiDV', sql.Int, normalizedService.MaLoaiDV)
-                        .input('SoLuong', sql.Int, normalizedService.quantity)
-                        .input('GiaTaiThoiDiemSuDung', sql.Decimal(18, 2), normalizedService.GiaDV)
+                        .input('MaLoaiDV', sql.Int, service.MaLoaiDV)
+                        .input('SoLuong', sql.Int, service.quantity)
+                        .input('GiaTaiThoiDiemSuDung', sql.Decimal(18, 2), service.GiaDV)
                         .query(`
                             INSERT INTO SuDungDichVu
                             (MaDat, MaLoaiDV, SoLuong, GiaTaiThoiDiemSuDung)
@@ -135,8 +191,8 @@ exports.createBooking = async (req, res) => {
             const invoiceResult = await transaction.request()
                 .input('MaDat', sql.Int, bookingInfo.MaDat)
                 .input('MaKH', sql.Int, invoiceMaKH)
-                .input('MaKM', sql.Int, promotionCode || null)
-                .input('TongTienPhong', sql.Decimal(18, 2), bookingInfo.TongTienDuKien)
+                .input('MaKM', sql.Int, promotion?.MaKM || null)
+                .input('TongTienPhong', sql.Decimal(18, 2), TongTienDuKien)
                 .input('HinhThucTT', sql.NVarChar, paymentInfo.HinhThucTT)
                 .input('TrangThaiThanhToan', sql.NVarChar, 'Đã thanh toán')
                 .input('NgayThanhToan', sql.DateTime, nowVN)
@@ -173,7 +229,7 @@ exports.createBooking = async (req, res) => {
                     roomNumber: roomInfo.SoPhong,
                     checkIn: bookingInfo.NgayNhanPhong,
                     checkOut: bookingInfo.NgayTraPhong,
-                    totalPrice: bookingInfo.TongTienDuKien
+                    totalPrice: TongTienDuKien
                 };
                 await sendBookingConfirmation(emailInfo);
             } catch (emailErr) {
@@ -190,8 +246,9 @@ exports.createBooking = async (req, res) => {
                     MaDat: bookingInfo.MaDat,
                     MaHD: invoiceResult.recordset[0].MaHD,
                     guestInfo: currentUser ? null : guestInfo,
-                    services: services || [],
-                    paymentInfo
+                    services: serviceDetails,
+                    paymentInfo,
+                    priceDetails
                 }
             });
 
@@ -461,6 +518,7 @@ exports.sendBookingConfirmation = async (req, res) => {
         });
     }
 };
+
 //API: Admin xem toan bo don dat phong
 exports.getAllBookings = async (req, res) => {
     try {
@@ -1549,4 +1607,4 @@ exports.confirmBooking = async (req, res) => {
             message: "Lỗi hệ thống" 
         });
     }
-};
+}

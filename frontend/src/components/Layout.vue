@@ -1,6 +1,6 @@
 <template>
   <div class="template">
-    <Navbar bgFixed="true" style="position: fixed !important; z-index: 100;" />
+    <Navbar :bgFixed="true" style="position: fixed !important; z-index: 100;" />
     <div class="py-5"></div>
      <div  v-if="showTitle"  class="d-flex align-items-center" :style="{
       backgroundColor: bgColor,

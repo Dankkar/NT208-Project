@@ -1,4 +1,5 @@
 import { createApp } from 'vue'
+import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import 'flatpickr/dist/flatpickr.css';
@@ -8,8 +9,8 @@ import 'bootstrap/dist/css/bootstrap.min.css'
 import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 import 'bootstrap-icons/font/bootstrap-icons.css'
 import vue3GoogleLogin from 'vue3-google-login'
-import { createPinia } from 'pinia'
 import axios from 'axios'
+import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 
 // Configure axios defaults
 axios.defaults.baseURL = 'http://localhost:5000'
@@ -25,16 +26,24 @@ const initializeSession = async () => {
     }
 }
 
+// Initialize Pinia with persistence
+const pinia = createPinia()
+pinia.use(piniaPluginPersistedstate)
+
 // Create and configure app
 const app = createApp(App)
 
+// Register components
+app.component('Datepicker', Datepicker)
+
+// Use plugins
+app.use(router)
+app.use(vue3GoogleLogin, {
+    clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+})
+app.use(pinia)
+
 // Initialize session before mounting
 initializeSession().then(() => {
-    app.component('Datepicker', Datepicker)
-    app.use(router)
-    app.use(vue3GoogleLogin, {
-        clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-    })
-    app.use(createPinia())
     app.mount('#app')
 })
