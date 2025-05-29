@@ -78,31 +78,31 @@ exports.updateHotel = async (req, res) => {
     }
 };
 
-exports.deleteHotel = async (req, res) => {
-    const { MaKS } = req.params;
+// exports.deleteHotel = async (req, res) => {
+//     const { MaKS } = req.params;
     
-    if(!MaKS || isNaN(MaKS))
-        return res.status(400).json({error: 'Mã khách sạn không hợp lệ'});
+//     if(!MaKS || isNaN(MaKS))
+//         return res.status(400).json({error: 'Mã khách sạn không hợp lệ'});
 
-    try
-    {
-        const pool = await poolPromise;
+//     try
+//     {
+//         const pool = await poolPromise;
 
-        const result = await pool.request()
-            .input('MaKS', sql.Int, parseInt(MaKS))
-            .query(`DELETE FROM KhachSan WHERE MaKS = @MaKS`);
+//         const result = await pool.request()
+//             .input('MaKS', sql.Int, parseInt(MaKS))
+//             .query(`DELETE FROM KhachSan WHERE MaKS = @MaKS`);
             
-        if (result.rowsAffected[0] === 0) 
-            return res.status(404).json({error: 'Không tìm thấy khách sạn để xoá'});
+//         if (result.rowsAffected[0] === 0) 
+//             return res.status(404).json({error: 'Không tìm thấy khách sạn để xoá'});
 
-        res.json({message: 'Khách sạn đã được xóa thành công'});
-    }
-    catch (err)
-    {
-        console.error('Lỗi deleteHotel:', err);
-        res.status(500).json({error: 'Lỗi server'});
-    }
-};
+//         res.json({message: 'Khách sạn đã được xóa thành công'});
+//     }
+//     catch (err)
+//     {
+//         console.error('Lỗi deleteHotel:', err);
+//         res.status(500).json({error: 'Lỗi server'});
+//     }
+// };
 
 exports.getAllHotels = async (req, res) => {
     try {
@@ -333,3 +333,31 @@ exports.suggestLocations = async (req, res) => {
         });
     }
 }
+
+// HÀM MỚI: Lấy danh sách khách sạn cơ bản cho Admin (MaKS, TenKS)
+exports.getBasicHotelListForAdmin = async (req, res) => {
+    try {
+        // Middleware isAdmin đã kiểm tra quyền Admin rồi
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .query(`SELECT MaKS, TenKS FROM KhachSan ORDER BY TenKS ASC`); // Lấy MaKS và TenKS
+
+        if (result.recordset.length === 0) {
+            return res.status(200).json({
+                success: true,
+                data: [] // Trả về mảng rỗng nếu không có khách sạn nào
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            data: result.recordset
+        });
+    } catch (error) {
+        console.error("Lỗi trong hotelController.getBasicHotelListForAdmin:", error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi server khi lấy danh sách khách sạn cho admin.'
+        });
+    }
+};

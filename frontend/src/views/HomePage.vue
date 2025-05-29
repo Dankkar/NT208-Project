@@ -1,7 +1,7 @@
   <!-- src/views/HomePage.vue -->
 <template>
   <div class="home-page">
-    <Navbar style="position: fixed !important;" />
+    <Navbar style="position: fixed !important" />
 
     <HeroSection
       :image-url="heroImageUrl"
