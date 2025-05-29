@@ -15,6 +15,24 @@ const io = require('socket.io')(server, {
   }
 });
 
+// Session middleware
+const session = require('express-session');
+
+// Session configuration - using MemoryStore (default)
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'your-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    genid: function(req) {
+        return Date.now().toString(36) + Math.random().toString(36).substr(2);
+    },
+    cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+}));
+
 //middleware for cookies
 const cors = require('cors');
 const cookieParser = require('cookie-parser');  
