@@ -280,16 +280,9 @@ CREATE TABLE Guests (
     NgayTao DATETIME2 DEFAULT GETDATE()         -- Ngày tạo
 );
 
--- Thêm ràng buộc unique cho Email và SDT
-ALTER TABLE Guests
-ADD CONSTRAINT UQ_Guests_Email UNIQUE (Email),
-    CONSTRAINT UQ_Guests_SDT UNIQUE (SDT);
-
 -- Thêm cột MaKhach vào bảng Booking
 ALTER TABLE Booking
 ADD MaKhach INT NULL,
     CONSTRAINT FK_Booking_Guests FOREIGN KEY (MaKhach) REFERENCES Guests(MaKhach);
 
--- Thêm ràng buộc để đảm bảo có ít nhất một trong hai: MaKH hoặc MaKhach
-ALTER TABLE Booking
-ADD CONSTRAINT CK_Booking_User CHECK (MaKH IS NOT NULL OR MaKhach IS NOT NULL);
+
