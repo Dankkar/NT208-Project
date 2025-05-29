@@ -13,9 +13,11 @@ const {
     holdBooking,
     searchAvailableRooms,
     checkIn,
-    checkOut
+    checkOut,
+    updateBookingDetails,
+    confirmBooking,
 } = require('../controllers/bookingController');
-const { authenticateToken, isAdmin, isStaff } = require('../middlewares/auth');
+const { authenticateToken, isAdmin, isStaff, optionalAuthenticationToken } = require('../middlewares/auth');
 
 /**
  * @route   POST /api/bookings/search
@@ -43,14 +45,14 @@ router.get('/user/:MaKH', authenticateToken, getBookingByUser);
  * @desc    Tạo đơn đặt phòng mới
  * @access  Private
  */
-router.post('/', authenticateToken, createBooking);
+router.post('/', optionalAuthenticationToken, createBooking);
 
 /**
  * @route   POST /api/bookings/hold
  * @desc    Đặt phòng và giữ chỗ
- * @access  Private
+ * @access  Public
  */
-router.post('/hold', authenticateToken, holdBooking);
+router.post('/hold', holdBooking);
 
 /**
  * @route   GET /api/bookings/:MaDat
@@ -93,5 +95,19 @@ router.put('/:MaDat/check-in', authenticateToken, isStaff, checkIn);
  * @access  Private
  */
 router.put('/:MaDat/check-out', authenticateToken, isStaff, checkOut);
+
+/**
+ * @route   PUT /api/bookings/:MaDat/details
+ * @desc    Update booking with customer and service details
+ * @access  Public
+ */
+router.put('/:MaDat/details', optionalAuthenticationToken, updateBookingDetails);
+
+/**
+ * @route   PUT /api/bookings/:MaDat/confirm
+ * @desc    Confirm and finalize the booking
+ * @access  Public
+ */
+router.put('/:MaDat/confirm', optionalAuthenticationToken, confirmBooking);
 
 module.exports = router;

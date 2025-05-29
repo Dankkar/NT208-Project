@@ -9,16 +9,32 @@ import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 import 'bootstrap-icons/font/bootstrap-icons.css'
 import vue3GoogleLogin from 'vue3-google-login'
 import { createPinia } from 'pinia'
+import axios from 'axios'
 
+// Configure axios defaults
+axios.defaults.baseURL = 'http://localhost:5000'
+axios.defaults.withCredentials = true // Important for session handling
 
+// Initialize session
+const initializeSession = async () => {
+    try {
+        await axios.get('/api/auth/init-session')
+        console.log('Session initialized successfully')
+    } catch (error) {
+        console.error('Error initializing session:', error)
+    }
+}
 
-
+// Create and configure app
 const app = createApp(App)
-app.component('Datepicker', Datepicker);
-app.use(router)
-app.use(vue3GoogleLogin, {
-  clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-})
-app.use(createPinia())
 
-app.mount('#app')
+// Initialize session before mounting
+initializeSession().then(() => {
+    app.component('Datepicker', Datepicker)
+    app.use(router)
+    app.use(vue3GoogleLogin, {
+        clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+    })
+    app.use(createPinia())
+    app.mount('#app')
+})

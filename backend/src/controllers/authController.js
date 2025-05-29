@@ -7,6 +7,32 @@ const {OAuth2Client} = require('google-auth-library');
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const schema = 'dbo';
 
+// Initialize session for guest users
+exports.initializeGuestSession = (req, res) => {
+    if (!req.session.id) {
+        req.session.regenerate((err) => {
+            if (err) {
+                console.error('Error regenerating session:', err);
+                return res.status(500).json({ 
+                    success: false,
+                    message: 'Lỗi khởi tạo phiên'
+                });
+            }
+            res.status(200).json({ 
+                success: true,
+                message: 'Phiên khách đã được khởi tạo',
+                sessionId: req.session.id
+            });
+        });
+    } else {
+        res.status(200).json({ 
+            success: true,
+            message: 'Phiên đã tồn tại',
+            sessionId: req.session.id
+        });
+    }
+};
+
 // API Dang ki
 exports.register = async (req, res) => {
   // 1. Lấy dữ liệu từ body
@@ -92,9 +118,17 @@ exports.register = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
+
+    // Set session data
+    req.session.user = {
+      MaKH,
+      Email: Email.toLowerCase(),
+      role: 'KhachHang'
+    };
+
     res.cookie('access_token', token, {
       httpOnly: true,
-      secure: false, // đổi thành true nếu dùng HTTPS
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
       maxAge: 1 * 60 * 60 * 1000 // 1 giờ
     });
@@ -135,7 +169,7 @@ exports.login = async (req, res) => {
     const pool = await poolPromise;
     const result = await pool.request()
       .input('Email', sql.NVarChar, Email)
-      .query(`SELECT MaKH, Email, MatKhauHash, LoaiUser FROM NguoiDung WHERE Email = @Email`);
+      .query(`SELECT MaKH, Email, MatKhauHash, LoaiUser, HoTen FROM NguoiDung WHERE Email = @Email`);
 
     if (result.recordset.length === 0) {
       return res.status(400).json({ 
@@ -156,19 +190,45 @@ exports.login = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { MaKH: user.MaKH, Email : user.Email, role: user.LoaiUser },
+      { MaKH: user.MaKH, Email: user.Email, role: user.LoaiUser },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
-    res.cookie('access_token', token, {
-      httpOnly: true,
-      secure: false,
-      sameSite: 'strict',
-      maxAge: 1 * 60 * 60 * 1000,
+
+    // Regenerate session on login
+    req.session.regenerate((err) => {
+      if (err) {
+        console.error('Error regenerating session:', err);
+        return res.status(500).json({ 
+          success: false,
+          message: 'Lỗi đăng nhập'
+        });
+      }
+
+      // Set session data
+      req.session.user = {
+        MaKH: user.MaKH,
+        Email: user.Email,
+        role: user.LoaiUser
+      };
+
+      res.cookie('access_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 1 * 60 * 60 * 1000,
+      });
+
+      res.status(200).json({ 
+        message: 'Đăng nhập thành công',
+        user: {
+          MaKH: user.MaKH,
+          HoTen: user.HoTen,
+          Email: user.Email,
+          role: user.LoaiUser
+        }
+      });
     });
-
-    res.status(200).json({ message: 'Đăng nhập thành công' });
-
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Lỗi server.' });
@@ -282,12 +342,24 @@ exports.resetPassword = async (req, res) => {
 
 // Dang xuat
 exports.logout = (req, res) => {
+  // Clear session data
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Error destroying session:', err);
+      return res.status(500).json({ 
+        success: false,
+        message: 'Lỗi khi đăng xuất'
+      });
+    }
+  });
+
   res.clearCookie('access_token', {
     httpOnly: true,
-    secure: false,
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'Strict'
   });
-res.status(200).json({ message: 'Đăng xuất thành công' });
+
+  res.status(200).json({ message: 'Đăng xuất thành công' });
 }
 
 exports.deleteUser = async (req, res) => {
