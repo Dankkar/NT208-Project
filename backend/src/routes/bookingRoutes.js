@@ -1,3 +1,21 @@
+const express = require('express');
+const router = express.Router();
+const { 
+    searchAvailableRooms,
+    suggestAlternativeDates,
+    getAllBookings,
+    getBookingByUser,
+    holdBooking,
+    createBooking,
+    calculatePrice,
+    sendBookingConfirmation,
+    checkIn,
+    checkOut,
+    getBookingById,
+    cancelBooking
+} = require('../controllers/bookingController');
+const { authenticateToken, isAdmin, isStaff } = require('../middlewares/auth');
+
 // 1. PUBLIC
 router.get('/search', searchAvailableRooms);
 router.post('/suggest-dates', suggestAlternativeDates);
@@ -21,3 +39,5 @@ router.put('/:MaDat/check-out', authenticateToken, isStaff, checkOut);
 // 6. MAIN ROUTE BY ID — đặt sau tất cả cụ thể hơn
 router.get('/:MaDat', authenticateToken, getBookingById);
 router.put('/:MaDat', authenticateToken, cancelBooking);
+
+module.exports = router;
