@@ -11,6 +11,8 @@ import RatingDetails from '../views/RatingDetails.vue'
 import Reserve from '../views/Reserve.vue'
 import BookingProcess from '../views/BookingProcess.vue'
 import vueCard1 from '../components/vueCard1.vue'
+import vueCard from '../components/vueCard.vue'
+import BookingHistory from '../views/BookingHistory.vue'
 
 
 const routes = [
@@ -25,6 +27,9 @@ const routes = [
   {path:'/ratingdetails', name: "RatingDetails", component:RatingDetails, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
   {path: '/reserve', name: 'Reserve', component: Reserve, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
   {path: '/BookingProcess', name: 'BookingProcess', component: BookingProcess, meta: {navbarBehavior: 'stickyWithHideOnScroll'}}, 
+  {path: '/BookingHistory', name: 'BookingHistory', component: BookingHistory, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
+  {path: '/vueCard', name: 'vueCard', component: vueCard},
+
 ]
 
 export default createRouter({
