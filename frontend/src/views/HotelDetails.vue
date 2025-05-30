@@ -1,6 +1,7 @@
 <!-- src/pages/HotelDetails.vue -->
 <template>
-     <Navbar
+     <div>
+      <Navbar
     bgFixed="true"
     style="position: fixed !important; top: 0; width: 100%; z-index: 100;"
     />
@@ -124,13 +125,14 @@
         <button @click="goBack" class="btn btn-primary mt-3">Go Back</button>
       </div>
     </div>
+     </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
-import Navbar from '../components/Navbar.vue';
+import Navbar from '../components/NavBar.vue';
 
 const route = useRoute();
 const router = useRouter();

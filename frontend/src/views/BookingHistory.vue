@@ -2,7 +2,7 @@
 <template>
   <Layout title="Room Booking History">
     <div class="page-container booking-history-page">
-      <div v-if="loading" class="loading-message text-center py-5"> <!-- Thêm class bootstrap nếu muốn -->
+      <div v-if="AuthStore.isLoadingAuth" class="loading-message text-center py-5"> <!-- Thêm class bootstrap nếu muốn -->
         <div class="spinner-border text-primary" role="status">
           <span class="visually-hidden">Loading...</span>
         </div>
@@ -62,7 +62,7 @@
 import { ref, onMounted } from 'vue';
 import Layout from '../components/Layout.vue';
 import axios from 'axios'; // Bỏ nếu không dùng để fetch user nữa
-import { useAuth } from '../utils/auth'; // Bỏ nếu không dùng
+import { useAuthStore } from '../store/authStore';
 import alienImageUrl from'../assets/mountain.jpg';
 
 const user = ref(null);
@@ -70,12 +70,15 @@ const loading = ref(true);
 const error = ref('');
 const bookings = ref([]);
 
+const AuthStore = useAuthStore();
+
 
 const fetchBookings = async () => {
   loading.value = true; // Set loading true khi bắt đầu fetch
   error.value = null; // Reset error
   try {
     // Simulate API call
+    console.log('Fetching booking history...', AuthStore.isLoadingAuth);
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Gán dữ liệu giả lập
