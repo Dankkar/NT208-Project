@@ -128,8 +128,11 @@ CREATE TABLE KhuyenMai (
 
 -- Bảng Đặt Phòng (Booking) - Tích hợp thông tin hủy
 CREATE TABLE Booking (
-    MaDat INT PRIMARY KEY IDENTITY(1,1),          -- Mã Đặt phòng (PK)
-    MaKH INT,                           -- Mã Khách hàng (FK)
+    MaDat INT PRIMARY KEY IDENTITY(1,1),
+    MaKH INT NULL,                      -- Mã Khách hàng (FK) - NULL cho guest
+    MaKhach INT NULL,                   -- Mã Khách (FK) - NULL cho logged-in user
+    TrangThaiBooking NVARCHAR(50) DEFAULT N'Tạm giữ',
+    ThoiGianGiuCho DATETIME2 NULL,      -- Thời gian giữ chỗ
     MaKS INT NOT NULL,                           -- Mã Khách sạn (FK) - Booking này ở KS nào
     MaPhong INT NULL,                         -- Mã phòng CỤ THỂ được đặt (FK, NULL) - Theo ERD gốc (chỉ đặt 1 phòng)
     NgayDat DATETIME2 DEFAULT GETDATE(),         -- Ngày thực hiện đặt phòng
@@ -138,16 +141,16 @@ CREATE TABLE Booking (
     SoLuongKhach INT DEFAULT 1 CHECK(SoLuongKhach > 0), -- Số lượng khách
     YeuCauDacBiet NVARCHAR(MAX),                 -- Yêu cầu thêm
     TongTienDuKien DECIMAL(18, 2),               -- Tổng tiền dự kiến (có thể tính toán lại khi checkout)
-    TrangThaiBooking NVARCHAR(50) DEFAULT N'Đã xác nhận', -- Trạng thái (Tạm giữ, Đã xác nhận, Đã nhận phòng, Đã trả phòng, Đã hủy)
     NgayHuy DATETIME2 NULL,                      -- Ngày hủy (nếu có)
     LyDoHuy NVARCHAR(255) NULL,                  -- Lý do hủy
     TienHoanTra DECIMAL(18, 2) NULL,             -- Số tiền hoàn lại khi hủy (nếu có)
-    ThoiGianGiuCho DATETIME2 NULL,               -- Thời gian giữ chỗ
 
-    CONSTRAINT FK_Booking_NguoiDung FOREIGN KEY (MaKH) REFERENCES NguoiDung(MaKH), -- Không nên CASCADE delete user
-    CONSTRAINT FK_Booking_KhachSan FOREIGN KEY (MaKS) REFERENCES KhachSan(MaKS),  -- Không nên CASCADE delete KS
-    -- CONSTRAINT FK_Booking_Phong FOREIGN KEY (MaPhong) REFERENCES Phong(MaPhong) ON DELETE SET NULL, -- Nếu phòng bị xóa, booking không trỏ đến phòng nữa
-    CONSTRAINT CK_Booking_NgayTra CHECK (NgayTraPhong > NgayNhanPhong) -- Ngày trả > ngày nhận
+    CONSTRAINT FK_Booking_NguoiDung FOREIGN KEY (MaKH) REFERENCES NguoiDung(MaKH),
+    CONSTRAINT FK_Booking_Guests FOREIGN KEY (MaKhach) REFERENCES Guests(MaKhach),
+    CONSTRAINT FK_Booking_KhachSan FOREIGN KEY (MaKS) REFERENCES KhachSan(MaKS),
+    CONSTRAINT CK_Booking_User CHECK (MaKH IS NOT NULL OR MaKhach IS NOT NULL),
+    CONSTRAINT CK_Booking_NgayTra CHECK (NgayTraPhong > NgayNhanPhong),
+    CONSTRAINT FK_Booking_Phong FOREIGN KEY (MaPhong) REFERENCES Phong(MaPhong) ON DELETE SET NULL
 );
 
 -- Bảng Chi Tiết Đặt Phòng (Nếu cần đặt nhiều phòng cho 1 Booking)
@@ -352,13 +355,21 @@ DROP TABLE KhachSan;
 -- Bảng khuyến mãi
 DROP TABLE KhuyenMai;
 
-update NguoiDung
-set LoaiUser = 'Admin'
+-- Bảng Khách (Guests) - Cho người dùng chưa đăng ký
+CREATE TABLE Guests (
+    MaKhach INT PRIMARY KEY IDENTITY(1,1),      -- Mã Khách (PK)
+    HoTen NVARCHAR(100) NOT NULL,               -- Họ tên
+    Email NVARCHAR(100) NOT NULL,               -- Email
+    SDT NVARCHAR(20) NOT NULL,                  -- Số điện thoại
+    CCCD NVARCHAR(20) NULL,                     -- Căn cước công dân (Optional)
+    NgaySinh DATE NULL,                         -- Ngày sinh (Optional)
+    GioiTinh NVARCHAR(10) NULL,                 -- Giới tính (Optional)
+    NgayTao DATETIME2 DEFAULT GETDATE()         -- Ngày tạo
+);
 
-select * from LoaiPhong
-delete from NguoiDung
-
-
-
+-- Thêm cột MaKhach vào bảng Booking
+ALTER TABLE Booking
+ADD MaKhach INT NULL,
+    CONSTRAINT FK_Booking_Guests FOREIGN KEY (MaKhach) REFERENCES Guests(MaKhach);
 
 

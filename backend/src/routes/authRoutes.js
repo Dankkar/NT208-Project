@@ -9,6 +9,7 @@ const {
     logout,
     googleLogin,
     changePassword,
+    initializeGuestSession,
     checkEmailExists
 } = require('../controllers/authController');
 const {authenticateToken} = require('../middlewares/auth');
@@ -117,6 +118,7 @@ router.post('/logout', logout);
 //Đăng nhập bằng google
 router.post('/google', googleLogin);
 
-
+// In authRoutes.js
+router.get('/init-session', initializeGuestSession);
 
 module.exports = router;
