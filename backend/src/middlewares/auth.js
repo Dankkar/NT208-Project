@@ -64,8 +64,19 @@ const isStaff = (req, res, next) => {
     }
 };
 
+function optionalAuthenticationToken(req, res, next){
+    const token = req.cookies?.access_token;
+    if(!token) return next(); // khong co token -> guest
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+        if(!err) req.user = user; // co user thi set
+        return next();
+    });
+}
+
 module.exports = {
     authenticateToken,
     isAdmin,
-    isStaff
+    isStaff,
+    optionalAuthenticationToken
 }; 

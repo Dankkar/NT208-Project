@@ -59,6 +59,63 @@ exports.sendBookingConfirmation = async (booking) => {
     }
 };
 
+exports.sendBookingNotificationToManager = async (managerInfo) => {
+    const mailOptions = {
+        from: `"Hotel Booking System" <${process.env.SMTP_USER}>`,
+        to: managerInfo.managerEmail,
+        subject: `🔔 Đơn đặt phòng mới tại ${managerInfo.hotelName}`,
+        html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+                <h2 style="color: #2c3e50; text-align: center;">📋 Thông báo đơn đặt phòng mới</h2>
+                
+                <p>Kính gửi <strong>${managerInfo.managerName}</strong>,</p>
+                
+                <p>Bạn có một đơn đặt phòng mới tại <strong>${managerInfo.hotelName}</strong> với thông tin chi tiết như sau:</p>
+                
+                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                    <h3 style="color: #495057; margin-top: 0;">Chi tiết đặt phòng:</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="margin-bottom: 8px;"><strong>🆔 Mã đặt phòng:</strong> #${managerInfo.bookingId}</li>
+                        <li style="margin-bottom: 8px;"><strong>👤 Tên khách hàng:</strong> ${managerInfo.guestName}</li>
+                        <li style="margin-bottom: 8px;"><strong>🏨 Khách sạn:</strong> ${managerInfo.hotelName}</li>
+                        <li style="margin-bottom: 8px;"><strong>🚪 Số phòng:</strong> ${managerInfo.roomNumber}</li>
+                        <li style="margin-bottom: 8px;"><strong>📅 Check-in:</strong> ${moment(managerInfo.checkIn).format('DD/MM/YYYY')}</li>
+                        <li style="margin-bottom: 8px;"><strong>📅 Check-out:</strong> ${moment(managerInfo.checkOut).format('DD/MM/YYYY')}</li>
+                        <li style="margin-bottom: 8px;"><strong>💰 Tổng tiền:</strong> <span style="color: #28a745; font-weight: bold;">${managerInfo.totalPrice.toLocaleString('vi-VN')} VNĐ</span></li>
+                    </ul>
+                </div>
+                
+                <div style="background-color: #e7f3ff; padding: 15px; border-radius: 5px; border-left: 4px solid #007bff;">
+                    <p style="margin: 0;"><strong>📌 Lưu ý quan trọng:</strong></p>
+                    <p style="margin: 5px 0 0 0;">Vui lòng truy cập hệ thống quản lý để xem chi tiết đơn đặt phòng và chuẩn bị phòng cho khách hàng.</p>
+                </div>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="#" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                        🔍 Xem chi tiết đơn đặt phòng
+                    </a>
+                </div>
+                
+                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                
+                <p style="color: #6c757d; font-size: 14px; text-align: center;">
+                    Email này được gửi tự động từ <strong>Hotel Booking System</strong><br>
+                    Thời gian: ${moment().format('DD/MM/YYYY HH:mm:ss')}
+                </p>
+            </div>
+        `
+    };
+
+    try {
+        const info = await transporter.sendMail(mailOptions);
+        console.log(`Đã gửi email thông báo booking mới cho quản lý ${managerInfo.managerName} (${managerInfo.managerEmail})`);
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        console.error('Lỗi khi gửi email thông báo cho quản lý:', error);
+        throw new Error(`Lỗi khi gửi email thông báo: ${error.message}`);
+    }
+};
+
 exports.sendNewBookingToManager = async (managerEmail, hotelName, maDat) => {
     const mailOptions = {
         from: `"Hotel Booking" <${process.env.SMTP_USER}>`,

@@ -13,13 +13,13 @@
       </div>
       <div class="divider mb-3"></div>
 
-      <form @submit.prevent="() => handleRegistration(false)"> <!-- false = không skip -->
+      <form @submit.prevent="() => handleRegistration(false)">
         <!-- Họ Tên -->
         <div class="mb-3 cp-input-group">
           <label for="hoTen" class="form-label">Full Name <span class="text-danger">*</span></label>
           <input id="hoTen" v-model="profileData.HoTen" type="text" class="form-control cp-input"
                  :class="{ 'is-invalid': formErrors.HoTen }" placeholder="Enter your full name"
-                 @input="() => validateField('HoTen')" /> <!-- required sẽ do isProfileFormValid xử lý -->
+                 @input="() => validateField('HoTen')" />
           <div v-if="formErrors.HoTen" class="invalid-feedback d-block">{{ formErrors.HoTen }}</div>
         </div>
         <!-- Số Điện Thoại -->
@@ -53,19 +53,16 @@
             <option value="">Select Gender</option>
             <option value="Nam">Nam (Male)</option>
             <option value="Nữ">Nữ (Female)</option>
-            <!-- <option value="Khác">Khác (Other)</option> // Bỏ Khác nếu hình ảnh không có -->
           </select>
            <div v-if="formErrors.GioiTinh" class="invalid-feedback d-block">{{ formErrors.GioiTinh }}</div>
         </div>
 
-        <!-- Nút "Complete Profile & Continue" (submit chính của form) -->
         <button type="submit" class="btn btn-primary w-100 cp-btn mb-2" :disabled="isLoading || !isProfileFormValidAndNotEmpty">
           <span v-if="isLoading && !isSkipping" class="spinner-border spinner-border-sm me-2" role="status"></span>
           {{ (isLoading && !isSkipping) ? 'Registering...' : 'Complete Profile & Continue' }}
         </button>
       </form>
 
-      <!-- Nút "Skip for now & Continue" -->
       <button type="button" class="btn btn-secondary w-100 cp-btn" @click="() => handleRegistration(true)" :disabled="isLoading">
         <span v-if="isLoading && isSkipping" class="spinner-border spinner-border-sm me-2" role="status"></span>
         {{ (isLoading && isSkipping) ? 'Processing...' : 'Skip for now & Continue' }}
@@ -82,14 +79,18 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue';
-import axios from 'axios';
+// import axios from 'axios'; // Remove: No longer making direct axios calls for auth here
 import { useRouter } from 'vue-router';
 import { useSignupStore } from '../store/signupStore';
-import { useAuth } from '../utils/auth';
+import { useAuthStore } from '../store/authStore'; // Import the auth store
 
 const router = useRouter();
 const signupStore = useSignupStore();
-const { login, checkLogin } = useAuth();
+const authStore = useAuthStore(); // Instantiate the auth store
+
+// Remove useAuth if it was only for login/checkLogin here
+// import { useAuth } from '../utils/auth';
+// const { login, checkLogin } = useAuth(); // Remove
 
 const profileData = reactive({
   HoTen: signupStore.profileDetails.HoTen || '',
@@ -101,18 +102,16 @@ const profileData = reactive({
 
 const formErrors = reactive({ HoTen: '', SDT: '', CCCD: '', NgaySinh: '', GioiTinh: '' });
 const isLoading = ref(false);
-const isSkipping = ref(false); // Cờ mới để phân biệt khi nào nút skip được nhấn
+const isSkipping = ref(false);
 const alertMessage = ref('');
 const alertType = ref('');
 
-// VALIDATION LOGIC (giữ nguyên)
+// VALIDATION LOGIC (remains the same)
 function validateField(fieldName, isSkippingCheck = false) {
   formErrors[fieldName] = '';
-  // Nếu đang skip, không validate các trường bắt buộc này
   if (isSkippingCheck && (fieldName === 'HoTen' || fieldName === 'SDT' || fieldName === 'CCCD')) {
     return;
   }
-
   if (fieldName === 'HoTen' && !profileData.HoTen?.trim()) formErrors.HoTen = 'Full name is required.';
   if (fieldName === 'SDT') {
     const sdtRegex = /^(0[3|5|7|8|9])+([0-9]{8})\b$/;
@@ -127,34 +126,27 @@ function validateField(fieldName, isSkippingCheck = false) {
   if (fieldName === 'NgaySinh' && profileData.NgaySinh && new Date(profileData.NgaySinh) >= new Date()) {
     formErrors.NgaySinh = 'Date of birth cannot be today or in the future.';
   }
-   if (fieldName === 'GioiTinh' && profileData.GioiTinh && !['Nam', 'Nữ'].includes(profileData.GioiTinh) ) {
-       // Không cần thiết nếu <select> chỉ có option hợp lệ
-       // formErrors.GioiTinh = 'Invalid gender.';
-   }
 }
 
 const isProfileFormValidAndNotEmpty = computed(() => {
-  // Điều kiện này dành cho nút "Complete Profile & Continue"
   return !formErrors.HoTen && !formErrors.SDT && !formErrors.CCCD && !formErrors.NgaySinh && !formErrors.GioiTinh &&
          profileData.HoTen?.trim() && profileData.SDT?.trim() && profileData.CCCD?.trim();
 });
 
 onMounted(() => {
   if (!signupStore.email || !signupStore.password) {
-    showAlert('Session data missing. Please start from Step 1.', 'warning');
-    router.replace('/signup');
-  } else {
-      // Tải lại dữ liệu từ store nếu có
-      profileData.HoTen = signupStore.profileDetails.HoTen || '';
-      profileData.SDT = signupStore.profileDetails.SDT || '';
-      profileData.CCCD = signupStore.profileDetails.CCCD || '';
-      profileData.NgaySinh = signupStore.profileDetails.NgaySinh || '';
-      profileData.GioiTinh = signupStore.profileDetails.GioiTinh || '';
-      // Validate lại nếu có dữ liệu sẵn
-      ['HoTen', 'SDT', 'CCCD', 'NgaySinh', 'GioiTinh'].forEach(field => {
-        if (profileData[field]) validateField(field);
-    });
+    showAlert('Signup data missing. Please start from the first step.', 'warning');
+    setTimeout(() => router.replace('/signup'), 2000); // Give user time to read
+    return;
   }
+  profileData.HoTen = signupStore.profileDetails.HoTen || '';
+  profileData.SDT = signupStore.profileDetails.SDT || '';
+  profileData.CCCD = signupStore.profileDetails.CCCD || '';
+  profileData.NgaySinh = signupStore.profileDetails.NgaySinh || '';
+  profileData.GioiTinh = signupStore.profileDetails.GioiTinh || '';
+  ['HoTen', 'SDT', 'CCCD', 'NgaySinh', 'GioiTinh'].forEach(field => {
+    if (profileData[field]) validateField(field);
+  });
 });
 
 function showAlert(message, type = 'danger') {
@@ -166,8 +158,8 @@ async function handleRegistration(skippedProfile = false) {
   isSkipping.value = skippedProfile;
   isLoading.value = true;
   alertMessage.value = '';
+  authStore.clearError(); // Clear any previous auth errors from the store
 
-  // 1) Validate như cũ
   if (!skippedProfile) {
     ['HoTen', 'SDT', 'CCCD'].forEach(field => validateField(field));
     if (profileData.NgaySinh) validateField('NgaySinh');
@@ -180,7 +172,6 @@ async function handleRegistration(skippedProfile = false) {
     }
   }
 
-  // 2) Lưu vào store
   signupStore.setProfileDetails({
     HoTen: profileData.HoTen.trim(),
     SDT: profileData.SDT.trim(),
@@ -194,52 +185,40 @@ async function handleRegistration(skippedProfile = false) {
     finalPayload.HoTen = null;
     finalPayload.SDT = null;
     finalPayload.CCCD = null;
+    // NgaySinh and GioiTinh are already set to null if empty by signupStore.setProfileDetails
+    // or will be passed as their values if provided.
   }
 
   try {
-    // 3) Gọi register
-    await axios.post(
-      'http://localhost:5000/api/auth/register',
-      finalPayload,
-      { withCredentials: true }
-    );
+    // Use the signup action from authStore
+    const signupResult = await authStore.signup(finalPayload);
 
-    // 4) Nếu không throw, coi là thành công
-    showAlert(
-      skippedProfile
-        ? 'Account base created. You can complete your profile later.'
-        : 'Account created and profile completed!',
-      'success'
-    );
-
-    // 5) Delay nhỏ để user đọc alert
-    await new Promise(res => setTimeout(res, 1000));
-
-    // 6) Tự login
-    alertMessage.value = 'Attempting to log you in…';
-    alertType.value = 'alert-info';
-
-    const loginResult = await login(finalPayload.Email, finalPayload.MatKhau);
-    if (loginResult.success) {
-      signupStore.clearSignupData();
-      showAlert('Redirecting to homepage…', 'info');
-      return router.push('/homepage');
-    } else {
+    if (signupResult.success) {
+      // Signup in store was successful, user should be logged in
+      // (authStore.signup calls fetchCurrentUser)
       showAlert(
-        loginResult.message || 'Auto-login failed. Please log in manually.',
-        'danger'
+        skippedProfile
+          ? 'Account base created. You can complete your profile later. Redirecting...'
+          : 'Account created and profile completed! Redirecting...',
+        'success'
       );
-      signupStore.clearSignupData();
-      return router.push('/login');
+      
+      signupStore.clearSignupData(); // Clear sensitive data from signupStore
+      
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Delay for user to read message
+      router.push('/homepage'); // Navigate to homepage or dashboard
+
+    } else {
+      // Signup failed, authStore.authError should be set, and message is in signupResult
+      showAlert(signupResult.message || 'Registration failed. Please try again.', 'danger');
     }
 
   } catch (err) {
-    // 7) Bắt mọi lỗi từ register
-    console.error('Registration error:', err);
-    showAlert(
-      err.response?.data?.message || 'Registration failed. Please try again.',
-      'danger'
-    );
+    // This catch block is for unexpected errors if authStore.signup itself throws
+    // an error not caught by its own try/catch (unlikely for Promise rejections).
+    // The authStore.signup action should return {success: false, message: ...} for API errors.
+    console.error('Unexpected error during registration process in component:', err);
+    showAlert( 'An unexpected error occurred. Please try again.', 'danger');
   } finally {
     isLoading.value = false;
     isSkipping.value = false;
@@ -248,7 +227,7 @@ async function handleRegistration(skippedProfile = false) {
 </script>
 
 <style scoped>
-/* Đảm bảo .signup-page có position: relative */
+/* Styles remain the same */
 .signup-page {
   display: flex;
   flex-direction: column; /* Logo ở trên */
@@ -263,11 +242,10 @@ async function handleRegistration(skippedProfile = false) {
 .cp-form-card { /* ... các style cho form card ... */
   background: #fff; max-width: 430px; width: 100%; padding: 1.8rem 2.2rem; border-radius: 12px;
   box-shadow: 0 6px 20px rgba(0,0,0,0.08); z-index: 1;
-  /* Bỏ height: 700px; để nó tự co dãn theo nội dung */
-  margin-top: 20px; /* Tăng margin top để chừa chỗ cho logo nếu logo ở trên */
+  margin-top: 20px; 
 }
-.cp-form-title { /* ... */ margin-bottom: 0.4rem; font-size: 1.5rem; font-weight: 600; text-align: center; color: #333;}
-.form-subtitle.cp-form-subtitle { /* ... */ margin-bottom: 1.3rem; font-size: 0.85rem; text-align: center; color: #666;}
+.cp-form-title { margin-bottom: 0.4rem; font-size: 1.5rem; font-weight: 600; text-align: center; color: #333;}
+.form-subtitle.cp-form-subtitle { margin-bottom: 1.3rem; font-size: 0.85rem; text-align: center; color: #666;}
 .divider {display: flex; align-items: center; margin: 1.3rem 0;}
 .divider .line { flex: 1; height: 1px; background: #ccc; }
 .cp-input-group { margin-bottom: 0.9rem !important; }
@@ -280,10 +258,10 @@ async function handleRegistration(skippedProfile = false) {
 .form-select.cp-input { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 0.7rem center; background-size: 14px 10px;}
 .invalid-feedback.d-block { display: block; width: 100%; margin-top: .2rem; font-size: .78em; color: #dc3545;}
 .cp-btn { padding: 0.65rem 0; font-size: 0.9rem; font-weight: 500; border-radius: 6px; transition: opacity .15s ease-in-out; width: 100%;}
-.cp-btn.btn-primary { background-color: #0d6efd; color: white; border: 1px solid #0d6efd;} /* Bootstrap Primary Blue */
+.cp-btn.btn-primary { background-color: #0d6efd; color: white; border: 1px solid #0d6efd;}
 .cp-btn.btn-primary:hover:not(:disabled) { background-color: #0b5ed7; border-color: #0a58ca;}
 .cp-btn.btn-primary:disabled { opacity: 0.65; cursor: not-allowed;}
-.cp-btn.btn-secondary { background-color: #6c757d; color: white; border: 1px solid #6c757d; } /* Bootstrap Secondary Gray */
+.cp-btn.btn-secondary { background-color: #6c757d; color: white; border: 1px solid #6c757d; }
 .cp-btn.btn-secondary:hover { background-color: #5a6268; border-color: #545b62;}
 .alert { padding: 0.7rem 1rem; margin-bottom: 1.2rem; border-radius: 6px; font-size: 0.85rem;}
 .alert-success { background-color: #d1e7dd; border: 1px solid #badbcc; color: #0f5132; }
@@ -292,5 +270,4 @@ async function handleRegistration(skippedProfile = false) {
 .card-footer { margin-top: 1rem; text-align: center; font-size: 0.9rem;}
 .card-footer a { color: #0d6efd; text-decoration: none;}
 .card-footer a:hover { text-decoration: underline;}
-
 </style>
