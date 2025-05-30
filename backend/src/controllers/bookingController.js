@@ -1,7 +1,7 @@
 // backend/src/controllers/bookingController.js
 
 const { poolPromise, sql } = require('../database/db');
-const { sendReviewRequestEmail, sendBookingConfirmation } = require('../utils/emailService');
+const { sendReviewRequestEmail, sendBookingConfirmation, sendBookingNotificationToManager } = require('../utils/emailService');
 const PriceCalculationService = require('../services/priceCalculationService');
 
 
@@ -172,9 +172,9 @@ exports.createBooking = async (req, res) => {
             }
 
             // Get guest account ID
-            const guestAccountResult = await transaction.request()
-                .query('SELECT MaKH FROM GuestAccount');
-            const guestAccountId = guestAccountResult.recordset[0].MaKH;
+            // const guestAccountResult = await transaction.request()
+            //     .query('SELECT MaKH FROM GuestAccount');
+            // const guestAccountId = guestAccountResult.recordset[0].MaKH;
 
             // Determine which MaKH to use for the invoice
             let invoiceMaKH;
@@ -234,6 +234,40 @@ exports.createBooking = async (req, res) => {
                 await sendBookingConfirmation(emailInfo);
             } catch (emailErr) {
                 console.error('Error sending confirmation email:', emailErr);
+            }
+
+            // Send email notification to hotel manager
+            try {
+                const hotelManagerResult = await pool.request()
+                    .input('MaKS', sql.Int, bookingInfo.MaKS)
+                    .query(`
+                        SELECT ks.MaNguoiQuanLy, nd.HoTen as TenQuanLy, nd.Email as EmailQuanLy
+                        FROM KhachSan ks
+                        LEFT JOIN NguoiDung nd ON ks.MaNguoiQuanLy = nd.MaKH
+                        WHERE ks.MaKS = @MaKS AND nd.Email IS NOT NULL
+                    `);
+
+                if (hotelManagerResult.recordset.length > 0 && hotelManagerResult.recordset[0].MaNguoiQuanLy) {
+                    const managerInfo = hotelManagerResult.recordset[0];
+                    
+                    // Send email notification to hotel manager
+                    const managerEmailInfo = {
+                        managerEmail: managerInfo.EmailQuanLy,
+                        managerName: managerInfo.TenQuanLy,
+                        bookingId: bookingInfo.MaDat,
+                        hotelName: roomInfo.TenKS,
+                        roomNumber: roomInfo.SoPhong,
+                        guestName: currentUser ? currentUser.HoTen : guestInfo.HoTen,
+                        checkIn: bookingInfo.NgayNhanPhong,
+                        checkOut: bookingInfo.NgayTraPhong,
+                        totalPrice: TongTienDuKien
+                    };
+                    
+                    await sendBookingNotificationToManager(managerEmailInfo);
+                    console.log(`Email notification sent to hotel manager ${managerInfo.TenQuanLy} for booking ${bookingInfo.MaDat}`);
+                }
+            } catch (notificationErr) {
+                console.error('Error sending email notification to hotel manager:', notificationErr);
             }
 
             // Clear booking info from session

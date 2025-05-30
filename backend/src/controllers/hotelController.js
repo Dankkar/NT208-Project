@@ -706,27 +706,21 @@ exports.suggestAlternativeDates = async (req, res) => {
 // HÀM MỚI: Lấy danh sách khách sạn cơ bản cho Admin (MaKS, TenKS)
 exports.getBasicHotelListForAdmin = async (req, res) => {
     try {
-        // Middleware isAdmin đã kiểm tra quyền Admin rồi
         const pool = await poolPromise;
-        const result = await pool.request()
-            .query(`SELECT MaKS, TenKS FROM KhachSan ORDER BY TenKS ASC`); // Lấy MaKS và TenKS
+        const result = await pool.request().query(`
+            SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh,
+                   nd.HoTen AS NguoiQuanLy
+            FROM KhachSan ks
+            LEFT JOIN NguoiDung nd ON ks.MaNguoiQuanLy = nd.MaKH
+            ORDER BY ks.HangSao DESC
+        `);
 
-        if (result.recordset.length === 0) {
-            return res.status(200).json({
-                success: true,
-                data: [] // Trả về mảng rỗng nếu không có khách sạn nào
-            });
-        }
-
-        res.status(200).json({
+        res.json({
             success: true,
             data: result.recordset
         });
-    } catch (error) {
-        console.error("Lỗi trong hotelController.getBasicHotelListForAdmin:", error);
-        res.status(500).json({
-            success: false,
-            message: 'Lỗi server khi lấy danh sách khách sạn cho admin.'
-        });
+    } catch (err) {
+        console.error('Lỗi getBasicHotelListForAdmin:', err);
+        res.status(500).json({ error: 'Lỗi hệ thống' });
     }
 };
