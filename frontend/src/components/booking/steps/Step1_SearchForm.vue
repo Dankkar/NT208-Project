@@ -1,3 +1,4 @@
+<!-- src/components/booking/steps/Step1_SearchForm.vue -->
 <template>
   <div class="step1-search-form container-fluid py-4">
     <form @submit.prevent="handleSearch" class="needs-validation" novalidate>
@@ -6,13 +7,9 @@
           <div class="card shadow-sm border">
             <div class="card-body">
               <div class="row">
-                <!-- Lịch bên trái -->
                 <div class="col-md-7 border-end mb-4 mb-md-0">
                   <div class="mb-3">
                     <div class="d-flex flex-wrap mt-2 justify-content-between">
-                      <!-- <div>
-                        <strong class="text-uppercase">Dates of stay</strong>
-                      </div> -->
                       <div class="d-flex align-items-center flex-column">
                         <strong class="small">Check-In:</strong>
                         <div class="small text-dark">{{ formattedCheckIn }}</div>
@@ -30,16 +27,13 @@
                   <div >
                     <Datepicker
                       v-model="selectedDates"
-                      :range="true"
                       inline
                       auto-apply
                       :min-date="new Date()"
-                      :format="formatDate"
+                      :range="{ minRange: 2 }"
                       :multi-calendars="2"
                       :clearable="false"
                       :enable-time-picker="false"
-
-                      
                       class="datepicker-wrapper d-flex flex-wrap justify-content-center"
                     />
                     <div v-if="formSubmitted && errors.selectedDates" class="text-danger small mt-2">
@@ -49,7 +43,6 @@
                   </div>
                 </div>
 
-                <!-- Khách bên phải -->
                 <div class="col-md-5">
                   <h6 class="text-uppercase small fw-bold my-3">No . Room & Guest</h6>
                   <div class="bg-light p-3 rounded">
@@ -67,9 +60,6 @@
               </div>
 
               <div class="text-center mt-4 py-4 border-top">
-                <!-- <button type="submit" class="btn btn-dark btn-lg text-uppercase px-5 fw-bold">
-                  Check Availability
-                </button> -->
                 <Button
                   content="CHECK AVAILABILITY"
                   type="submit"
@@ -90,18 +80,38 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue';
+import { ref, reactive, computed, watch } from 'vue'; // Thêm watch nếu bạn muốn đồng bộ state cục bộ với store
 import Button from '../../Button.vue';
-import { format, differenceInCalendarDays } from 'date-fns';
+import Datepicker from '@vuepic/vue-datepicker'; // Import Datepicker
+import '@vuepic/vue-datepicker/dist/main.css';   // Import CSS cho Datepicker
+import { format, differenceInCalendarDays, parseISO } from 'date-fns'; // parseISO nếu cần
+import { useBookingStore } from '@/store/bookingStore'; // IMPORT STORE
 
-const emit = defineEmits(['search-submitted']);
-const selectedDates = ref([]);
-const searchParams = reactive({ adults: 1 });
+const bookingStore = useBookingStore(); // Khởi tạo store
+
+// Bỏ emit vì sẽ gọi action của store
+// const emit = defineEmits(['search-submitted']);
+
+const selectedDates = ref(
+  //
+  // Khởi tạo selectedDates từ store nếu có giá trị (khi người dùng quay lại bước này)
+  //
+  bookingStore.rawSearchCriteria && bookingStore.rawSearchCriteria.startDate && bookingStore.rawSearchCriteria.endDate
+    ? [parseISO(bookingStore.rawSearchCriteria.startDate), parseISO(bookingStore.rawSearchCriteria.endDate)]
+    : []
+);
+const searchParams = reactive({
+  //
+  // Khởi tạo adults từ store nếu có
+  //
+  adults: bookingStore.rawSearchCriteria?.numberOfGuests || 1
+});
+
 const formSubmitted = ref(false);
 const errors = reactive({ selectedDates: '', adults: '' });
 const ratesText = ref('Rates shown in S$');
 
-const formattedCheckIn = computed(() => 
+const formattedCheckIn = computed(() =>
   selectedDates.value?.[0] ? format(selectedDates.value[0], 'EEE, d MMM yyyy') : '–'
 );
 const formattedCheckOut = computed(() =>
@@ -109,13 +119,30 @@ const formattedCheckOut = computed(() =>
 );
 const durationText = computed(() => {
    if (selectedDates.value?.[0] && selectedDates.value?.[1]) {
-    const start = new Date(selectedDates.value[0]);
-    const end = new Date(selectedDates.value[1]);
+    const start = selectedDates.value[0]; // Datepicker trả về Date objects
+    const end = selectedDates.value[1];
     const nights = differenceInCalendarDays(end, start);
+    if (nights < 0) return '–'; // Đảm bảo checkout sau checkin
     return `${nights + 1}D, ${nights}N`;
   }
   return '–';
 });
+
+//
+// Theo dõi nếu rawSearchCriteria trong store thay đổi (ví dụ khi reset), cập nhật lại state cục bộ
+//
+watch(() => bookingStore.rawSearchCriteria, (newCriteria) => {
+  if (newCriteria) {
+    selectedDates.value = newCriteria.startDate && newCriteria.endDate
+      ? [parseISO(newCriteria.startDate), parseISO(newCriteria.endDate)]
+      : [];
+    searchParams.adults = newCriteria.numberOfGuests || 1;
+  } else { // Reset nếu criteria trong store là null
+    selectedDates.value = [];
+    searchParams.adults = 1;
+  }
+}, { deep: true });
+
 
 function increment(type) {
   if (type === 'adults') searchParams.adults = Math.min(searchParams.adults + 1, 10);
@@ -133,7 +160,11 @@ function validateField(field) {
     if (!start || !end) {
       errors.selectedDates = 'Please select both check-in and check-out dates.';
       isValid = false;
-    } else errors.selectedDates = '';
+    } else if (differenceInCalendarDays(end, start) < 0) {
+      errors.selectedDates = 'Check-out date must be after check-in date.';
+      isValid = false;
+    }
+    else errors.selectedDates = '';
   }
   if (field === 'adults') {
     if (searchParams.adults < 1) {
@@ -148,19 +179,20 @@ function validateForm() {
   return validateField('selectedDates') && validateField('adults');
 }
 
-function handleSearch() {
+async function handleSearch() { // Thay đổi thành async vì action trong store có thể là async
   formSubmitted.value = true;
   if (!validateForm()) return;
   const [checkIn, checkOut] = selectedDates.value || [];
+
   const searchData = {
     startDate: checkIn ? format(checkIn, 'yyyy-MM-dd') : null,
     endDate: checkOut ? format(checkOut, 'yyyy-MM-dd') : null,
     numberOfGuests: searchParams.adults,
   };
-  emit('search-submitted', searchData);
+
+  await bookingStore.setSearchCriteriaAndFetchRooms(searchData);
 }
 </script>
-
 
 <style>
 ::v-deep(.datepicker-wrapper > div:empty) {
@@ -174,25 +206,11 @@ function handleSearch() {
 }
 </style>
 
-
 <style scoped>
-.datepicker-wrapper {
-  max-width: 100%;
-  overflow-x: auto;
-}
-
+.datepicker-wrapper { max-width: 100%; overflow-x: auto; }
 @media (min-width: 619px) and (max-width: 754px) {
-  .datepicker-wrapper {
-    margin-left: 7%;
-  }
+  .datepicker-wrapper { margin-left: 7%; }
 }
-
-.card {
-  background-color: #FFF9F9;
-}
-
-
-.datepicker-wrapper > div:not(:empty) {
-  flex: 1 1 auto;
-}
+.card { background-color: #FFF9F9; }
+.datepicker-wrapper > div:not(:empty) { flex: 1 1 auto; }
 </style>

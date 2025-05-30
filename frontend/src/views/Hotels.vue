@@ -1,7 +1,7 @@
 --- START OF FILE Ratings.vue (Improved UI) ---
 <template>
   <div class="ratings-page">
-    <Layout title="Ratings and Reviews">
+    <Layout title="Hotels">
       <main class="page-content container">
         <!-- Sort Controls -->
         <div class="sort-controls-wrapper d-flex justify-content-end align-items-center mb-4">

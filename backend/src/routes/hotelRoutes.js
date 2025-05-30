@@ -8,7 +8,8 @@ const {
   getHotelById,
   getAllHotels,
   getFeaturedHotels,
-  suggestLocations
+  suggestLocations,
+  getBasicHotelListForAdmin
 } = require('../controllers/hotelController');
 const { authenticateToken, isAdmin } = require('../middlewares/auth');
 const { LocationSuggestLimiter } = require('../middlewares/rateLimiter');
@@ -27,7 +28,6 @@ router.get('/suggest-locations', LocationSuggestLimiter, suggestLocations);
 router.get('/', getAllHotels);
 
 // ----------- ADMIN ROUTES (PRIVATE) -----------
-
 // GET /hotels/nguoi-quan-ly/:MaKH - khách sạn theo người quản lý
 router.get('/nguoi-quan-ly/:MaKH', authenticateToken, isAdmin, getHotelsByNguoiQuanLy);
 
@@ -50,8 +50,11 @@ router.post(
 // PUT /hotels/:MaKS - cập nhật
 router.put('/:MaKS', authenticateToken, isAdmin, updateHotel);
 
-// DELETE /hotels/:MaKS - xóa
-router.delete('/:MaKS', authenticateToken, isAdmin, deleteHotel);
+// // DELETE /hotels/:MaKS - xóa
+// router.delete('/:MaKS', authenticateToken, isAdmin, deleteHotel);
+
+// GET /hotels/list-basic - danh sách khách sạn (admin)
+router.get('/list-basic', authenticateToken, isAdmin, getBasicHotelListForAdmin);
 
 // GET /hotels/:MaKS - chi tiết khách sạn
 router.get('/:MaKS', getHotelById);

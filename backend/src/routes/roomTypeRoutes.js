@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
+
 const {
   createRoomType,
   getRoomTypesByHotel,
   updateRoomType,
-  deleteRoomType,
+  //deleteRoomType,
   compareRoomTypes
 } = require('../controllers/roomTypeController');
 const { authenticateToken, isAdmin, isStaff } = require('../middlewares/auth');
@@ -29,6 +30,6 @@ router.post('/', authenticateToken, isAdmin, createRoomType);
 router.put('/:MaLoaiPhong', authenticateToken, isStaff, updateRoomType);
 
 // DELETE /roomTypes/:MaLoaiPhong - Xóa loại phòng
-router.delete('/:MaLoaiPhong', authenticateToken, isAdmin, deleteRoomType);
+//router.delete('/:MaLoaiPhong', authenticateToken, isAdmin, deleteRoomType);
 
 module.exports = router;

@@ -1,13 +1,42 @@
 <template>
-  <div class="custom-card-wrapper border-0 shadow-md w-100">
+  <div class="custom-card-wrapper border-1 shadow-md w-100">
     <div class="card d-flex flex-md-row overflow-hidden ">
       <div class="custom-card__image-container col-md-4 d-flex align-items-center justify-content-center p-3 bg-white">
         <img :src="imageUrl" alt="Card Image" class="img-fluid custom-card__image" />
       </div>
       <div class="col-md-8">
         <div class="card-body custom-card__content-bg d-flex flex-column h-100">
+          
+          <div v-if="type === 'roomOffer'" class="content-booking-confirmation row flex-grow-1 mb-2">
+            <div class="col-lg-7">
+              <h5 class="card-title fw-bold text-black">{{ bookingConfirmationData.roomName }}</h5>
+              <p class="small text-muted text-uppercase mb-0 fw-bold">DATE</p>
+              <p class="mb-2">{{ bookingConfirmationData.dateRange }}</p>
+              <p class="small text-muted text-uppercase mb-0 fw-bold">BOOKING REFERENCE</p>
+              <p class="mb-2">{{ bookingConfirmationData.bookingReference }}</p>
+              <p class="small text-muted text-uppercase mb-0 fw-bold">CITY</p>
+              <p class="mb-2">{{ bookingConfirmationData.city }}</p>
+              <p class="small text-muted text-uppercase mb-0 fw-bold">ADDRESS</p>
+              <p class="mb-2">{{ bookingConfirmationData.address }}</p>
+            </div>
+            <div class="col-lg-5 d-flex flex-column">
+              <p class="fw-bold text-black h6">Details</p>
+              <p class="small mb-1">Name: {{ bookingConfirmationData.userDetails.name }}</p>
+              <p class="small mb-1">Email: {{ bookingConfirmationData.userDetails.email }}</p>
+              <p class="small mb-2">Mobile: {{ bookingConfirmationData.userDetails.mobile }}</p>
+              <img v-if="bookingConfirmationData.qrCodeUrl" :src="bookingConfirmationData.qrCodeUrl" alt="QR Code" class="mb-3" style="width: 100px; height: 100px;" />
+              <div class="mt-auto d-flex flex-column flex-sm-row gap-2">
+                <button class="btn btn-dark btn-sm text-uppercase flex-fill">Direction</button>
+                <button class="btn btn-dark btn-sm text-uppercase flex-fill">Reschedule</button>
+                <button class="btn btn-dark btn-sm text-uppercase flex-fill">Share QR</button>
+              </div>
+            </div>
+          </div>
+
+
+
           <!-- State 1: Room Offer -->
-          <div v-if="type === 'roomOffer'" class="content-room-offer d-flex flex-column flex-grow-1">
+          <div v-if="type === '!roomOffer'" class="content-room-offer d-flex flex-column flex-grow-1">
             <div>
               <h5 class="card-title fw-bold text-black">{{ roomOfferData.name }}</h5>
               <p class="text-muted small mb-2">Up to {{ roomOfferData.guests }} guests</p>
@@ -171,7 +200,7 @@ const props = defineProps({
         email: 'uit@edu.vn',
         mobile: '0123456789'
       },
-      qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=Example' // Placeholder QR
+      qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=Example'
     })
   }
 });
