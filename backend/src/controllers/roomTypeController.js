@@ -64,7 +64,7 @@ exports.getRoomTypesByHotel = async (req, res) => {
                 LEFT JOIN Phong p ON lp.MaLoaiPhong = p.MaLoaiPhong
                 WHERE lp.MaKS = @MaKS
                 GROUP BY lp.MaLoaiPhong, lp.MaKS, lp.TenLoaiPhong, lp.SoGiuong, lp.TienNghi, 
-                         lp.DienTich, lp.GiaCoSo, lp.MoTa
+                         lp.DienTich, lp.GiaCoSo, lp.MoTa, lp.IsActive
                 ORDER BY lp.MaLoaiPhong DESC
                 OFFSET @offset ROWS
                 FETCH NEXT @limit ROWS ONLY

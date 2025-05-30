@@ -17,6 +17,9 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
+      clearError() {
+      this.authError = null;
+      },
     async login(credentials) {
       this.isLoading = true;
       this.authError = null;

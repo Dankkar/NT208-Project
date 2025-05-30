@@ -7,7 +7,7 @@ CREATE TABLE NguoiDung (
     MaKH INT PRIMARY KEY IDENTITY(1,1),         -- Mã Khách Hàng (PK) - Dùng INT IDENTITY cho tiện
     LoaiUser NVARCHAR(50) NOT NULL,             -- Loại người dùng (Admin, KhachHang, QuanLyKS)
     HoTen NVARCHAR(100),						-- Họ tên
-    Email NVARCHAR(100) UNIQUE NOT NULL,        -- Email (UNIQUE)
+    Email NVARCHAR(100),						-- Email
     SDT NVARCHAR(20),							-- Số điện thoại
     MatKhauHash NVARCHAR(255) NOT NULL,         -- Nên lưu Hash mật khẩu, không lưu trực tiếp
     NgaySinh DATE,                              -- Ngày sinh
@@ -62,6 +62,9 @@ CREATE TABLE KhachSan (
     CONSTRAINT FK_KhachSan_NguoiQuanLy FOREIGN KEY (MaNguoiQuanLy) REFERENCES NguoiDung(MaKH) ON DELETE SET NULL -- Nếu người quản lý bị xóa, KS không có quản lý
 );
 
+ALTER TABLE KhachSan
+ADD IsActive BIT DEFAULT 1 NOT NULL
+
 -- Bảng Loại Phòng (RoomType) - Đã tách để đạt BCNF
 CREATE TABLE LoaiPhong (
     MaLoaiPhong INT PRIMARY KEY IDENTITY(1,1),   -- Mã Loại Phòng (PK)
@@ -74,6 +77,9 @@ CREATE TABLE LoaiPhong (
     MoTa NVARCHAR(MAX),                         -- Mô tả thêm
     CONSTRAINT FK_LoaiPhong_KhachSan FOREIGN KEY (MaKS) REFERENCES KhachSan(MaKS) ON DELETE CASCADE -- Nếu KS bị xóa, các loại phòng cũng bị xóa
 );
+
+ALTER TABLE LoaiPhong
+ADD IsActive BIT DEFAULT 1 NOT NULL
 
 -- Bảng Cấu Hình Giường (Bed Configuration)
 CREATE TABLE CauHinhGiuong (
@@ -99,7 +105,8 @@ CREATE TABLE Phong (
     CONSTRAINT UQ_Phong_SoPhong_MaKS UNIQUE (MaKS, SoPhong)
 );
 
-
+ALTER TABLE Phong
+ADD IsActive BIT DEFAULT 1 NOT NULL
 
 -- Bảng Loại Dịch Vụ (ServiceType) - Đổi tên từ DICHVU và tách để đạt BCNF
 CREATE TABLE LoaiDichVu (

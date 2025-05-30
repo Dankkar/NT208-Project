@@ -88,7 +88,7 @@
 import { reactive, computed, ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useSignupStore } from '../store/signupStore'; // For passing credentials to next step
-import { useAuthStore } from '@/store/authStore';    // For global errors or auth state if needed
+import { useAuthStore } from '@/store/authStore';    // For global errors or auth state if needed}
 import axios from 'axios';
 import Logo from '../components/Logo.vue';
 import uit_logo from '../assets/Logo_UIT_blue.jpg';
