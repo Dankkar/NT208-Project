@@ -134,8 +134,19 @@ exports.createBooking = async (req, res) => {
                 promotion: promotion
             };
 
+            console.log('Booking details for price calculation:', {
+                basePrice,
+                checkIn: bookingInfo.NgayNhanPhong,
+                checkOut: bookingInfo.NgayTraPhong,
+                services: serviceDetails,
+                promotion: promotion
+            });
+
             const priceDetails = PriceCalculationService.calculateTotalPrice(bookingDetails);
+            console.log('Price calculation result:', priceDetails);
+            
             const TongTienDuKien = priceDetails.finalPrice;
+            console.log('TongTienDuKien:', TongTienDuKien);
 
             // Update booking status to confirmed
             await transaction.request()
