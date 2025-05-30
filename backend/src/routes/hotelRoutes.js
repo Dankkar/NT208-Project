@@ -3,7 +3,7 @@ const { check } = require('express-validator');
 const {
   createHotel,
   updateHotel,
-//   deleteHotel,
+  deleteHotel,
   getHotelsByNguoiQuanLy,
   getHotelById,
   getAllHotels,

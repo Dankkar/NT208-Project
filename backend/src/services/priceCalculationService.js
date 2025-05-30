@@ -29,8 +29,12 @@ class PriceCalculationService {
      */
     static calculateServicesPrice(services, nights) {
         return services.reduce((total, service) => {
-            const servicePrice = service.price * (service.isPerNight ? nights : 1);
-            return total + servicePrice;
+            // Support both old structure and new database structure
+            const servicePrice = (service.GiaDV || service.price || 0);
+            const quantity = service.quantity || 1;
+            const serviceTotal = servicePrice * quantity;
+            
+            return total + serviceTotal;
         }, 0);
     }
 
@@ -64,12 +68,40 @@ class PriceCalculationService {
      * @returns {Object} - Kết quả tính giá
      */
     static calculateTotalPrice(bookingDetails) {
+        // Validation
+        if (!bookingDetails.basePrice || bookingDetails.basePrice <= 0) {
+            throw new Error('Base price is required and must be greater than 0');
+        }
+        
+        if (!bookingDetails.checkIn || !bookingDetails.checkOut) {
+            throw new Error('Check-in and check-out dates are required');
+        }
+
         const nights = this.calculateNights(bookingDetails.checkIn, bookingDetails.checkOut);
         const roomPrice = this.calculateRoomPrice(bookingDetails.basePrice, nights);
         const servicesPrice = this.calculateServicesPrice(bookingDetails.services || [], nights);
         
+        console.log('Price calculation breakdown:', {
+            nights,
+            basePrice: bookingDetails.basePrice,
+            roomPrice,
+            servicesPrice,
+            services: bookingDetails.services
+        });
+        
         const subtotal = roomPrice + servicesPrice;
         const finalPrice = this.applyPromotion(subtotal, bookingDetails.promotion);
+
+        // Ensure final price is not NaN
+        if (isNaN(finalPrice)) {
+            console.error('Final price is NaN!', {
+                roomPrice,
+                servicesPrice,
+                subtotal,
+                promotion: bookingDetails.promotion
+            });
+            throw new Error('Failed to calculate final price - result is NaN');
+        }
 
         return {
             nights,

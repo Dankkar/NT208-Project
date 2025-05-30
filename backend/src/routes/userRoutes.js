@@ -2,24 +2,25 @@ const express = require('express');
 const { authenticateToken, isAdmin } = require('../middlewares/auth');
 const { 
     getCurrentUser,
-    getAllUsers,
+    //getAllUsers,
     updateUser,
     updateUserByAdmin,
-    deleteUser,
+    //deleteUser,
     searchUser,
     getUserByIdForAdmin
 } = require('../controllers/userController');
 
 const router = express.Router();
 
-//GET /api/users/me
+// -------- AUTHENTICATED USER --------
+
+// GET /users/me - Lấy thông tin người dùng hiện tại
 router.get('/me', authenticateToken, getCurrentUser);
 
-//PUT /api/users/me
+// PUT /users/me - Cập nhật thông tin cá nhân
 router.put('/me', authenticateToken, updateUser);
 
-//GET /api/users
-router.get('/', authenticateToken, isAdmin, getAllUsers);
+// -------- ADMIN ONLY --------
 
 //PUT /api/users/:MaKH
 router.put('/:MaKH', authenticateToken, isAdmin, updateUserByAdmin);

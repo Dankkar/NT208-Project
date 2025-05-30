@@ -1,19 +1,17 @@
-//backend/src/routes/bookingRoutes.js
-
 const express = require('express');
 const router = express.Router();
 const { 
-    createBooking,
-    getBookingById,
-    cancelBooking,
+    searchAvailableRooms,
+    getAllBookings,
     getBookingByUser,
+    holdBooking,
+    createBooking,
     calculatePrice,
     sendBookingConfirmation,
-    getAllBookings,
-    holdBooking,
-    searchAvailableRooms,
     checkIn,
     checkOut,
+    getBookingById,
+    cancelBooking,
     updateBookingDetails,
     confirmBooking,
 } = require('../controllers/bookingController');
@@ -89,11 +87,17 @@ router.post('/:MaDat/confirmations', authenticateToken, sendBookingConfirmation)
  */
 router.put('/:MaDat/check-in', authenticateToken, isStaff, checkIn);
 
-/**
- * @route   PUT /api/bookings/:MaDat/check-out
- * @desc    Check-out đơn đặt phòng
- * @access  Private
- */
+// 3. USER booking
+router.get('/user/:MaKH', authenticateToken, getBookingByUser);
+
+// 4. CREATE / HOLD booking
+router.post('/hold', authenticateToken, holdBooking);
+router.post('/', authenticateToken, createBooking);
+
+// 5. SUB-ROUTES FOR SPECIFIC BOOKING — đặt trước :MaDat
+router.get('/:MaDat/price', authenticateToken, calculatePrice);
+router.post('/:MaDat/confirmations', authenticateToken, sendBookingConfirmation);
+router.put('/:MaDat/check-in', authenticateToken, isStaff, checkIn);
 router.put('/:MaDat/check-out', authenticateToken, isStaff, checkOut);
 
 /**
