@@ -130,8 +130,14 @@ exports.createBooking = async (req, res) => {
                 basePrice,
                 checkIn: bookingInfo.NgayNhanPhong,
                 checkOut: bookingInfo.NgayTraPhong,
-                services: serviceDetails,
-                promotion: promotion
+                services: serviceDetails.map(service => ({
+                    price: service.GiaDV,
+                    isPerNight: false // Mặc định dịch vụ không tính theo đêm
+                })),
+                promotion: promotion ? {
+                    type: promotion.LoaiKM === 'Phần trăm' ? 'PERCENTAGE' : 'FIXED',
+                    value: promotion.GiaTriKM
+                } : null
             };
 
             const priceDetails = PriceCalculationService.calculateTotalPrice(bookingDetails);
@@ -210,10 +216,11 @@ exports.createBooking = async (req, res) => {
             const roomInfoResult = await pool.request()
                 .input('MaDat', sql.Int, bookingInfo.MaDat)
                 .query(`
-                    SELECT p.SoPhong, ks.TenKS
+                    SELECT p.SoPhong, ks.TenKS, nd.HoTen, nd.Email
                     FROM Booking b
                     JOIN Phong p ON b.MaPhong = p.MaPhong
                     JOIN KhachSan ks ON b.MaKS = ks.MaKS
+                    LEFT JOIN NguoiDung nd ON b.MaKH = nd.MaKH
                     WHERE b.MaDat = @MaDat
                 `);
 
@@ -223,7 +230,7 @@ exports.createBooking = async (req, res) => {
             try {
                 const emailInfo = {
                     guestEmail: currentUser ? currentUser.Email : guestInfo.Email,
-                    guestName: currentUser ? currentUser.HoTen : guestInfo.HoTen,
+                    guestName: currentUser ? roomInfo.HoTen : guestInfo.HoTen,
                     bookingId: bookingInfo.MaDat,
                     hotelName: roomInfo.TenKS,
                     roomNumber: roomInfo.SoPhong,
@@ -1558,10 +1565,11 @@ exports.confirmBooking = async (req, res) => {
             const roomInfoResult = await pool.request()
                 .input('MaDat', sql.Int, MaDat)
                 .query(`
-                    SELECT p.SoPhong, ks.TenKS
+                    SELECT p.SoPhong, ks.TenKS, nd.HoTen, nd.Email
                     FROM Booking b
                     JOIN Phong p ON b.MaPhong = p.MaPhong
                     JOIN KhachSan ks ON b.MaKS = ks.MaKS
+                    LEFT JOIN NguoiDung nd ON b.MaKH = nd.MaKH
                     WHERE b.MaDat = @MaDat
                 `);
 
@@ -1571,7 +1579,7 @@ exports.confirmBooking = async (req, res) => {
             try {
                 const emailInfo = {
                     guestEmail: currentUser ? currentUser.Email : bookingInfo.guestInfo.Email,
-                    guestName: currentUser ? currentUser.HoTen : bookingInfo.guestInfo.HoTen,
+                    guestName: currentUser ? roomInfo.HoTen : bookingInfo.guestInfo.HoTen,
                     bookingId: MaDat,
                     hotelName: roomInfo.TenKS,
                     roomNumber: roomInfo.SoPhong,

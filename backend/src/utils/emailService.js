@@ -38,6 +38,8 @@ exports.sendBookingConfirmation = async (booking) => {
             <p>Kính gửi ${booking.guestName},</p>
             <p>Chúng tôi xin xác nhận đặt phòng của bạn đã được thực hiện thành công với thông tin sau:</p>
             <ul>
+                <li>Mã đặt phòng: #${booking.bookingId}</li>
+                <li>Khách sạn: ${booking.hotelName}</li>
                 <li>Số phòng: ${booking.roomNumber}</li>
                 <li>Ngày check-in: ${moment(booking.checkIn).format('DD/MM/YYYY')}</li>
                 <li>Ngày check-out: ${moment(booking.checkOut).format('DD/MM/YYYY')}</li>
