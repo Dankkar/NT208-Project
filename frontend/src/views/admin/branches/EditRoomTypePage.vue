@@ -130,7 +130,7 @@ async function fetchRoomTypeDetails(id) {
 }
 async function fetchHotelNameForDisplay(hotelId){
     try {
-        const hotelRes = await axios.get(`http://localhost:5000/api/hotels/${hotelId}/name-only`, { withCredentials: true });
+        const hotelRes = await axios.get(`http://localhost:5000/api/hotels/${hotelId}`, { withCredentials: true });
         if(hotelRes.data && hotelRes.data.success){
             originalHotelName.value = hotelRes.data.data.TenKS;
         }

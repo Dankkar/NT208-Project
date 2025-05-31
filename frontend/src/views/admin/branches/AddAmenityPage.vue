@@ -2,7 +2,7 @@
 <template>
   <div>
     <h1 class="mb-4 fw-bold text-center">Add New Amenity/Service</h1>
-    <p v-if="selectedHotelName" class="text-center text-muted mb-4">For Hotel: <strong>{{ selectedHotelName }}</strong> (ID: {{ hotelId }})</p>
+    <p v-if="selectedHotel" class="text-center text-muted mb-4">For Hotel: <strong>{{ selectedHotel.TenKS }}</strong> (ID: {{ hotelId }})</p>
     <div v-if="pageLoading" class="text-center"><div class="spinner-border"></div></div>
     <div v-else-if="pageError" class="alert alert-danger">{{ pageError }}</div>
 
@@ -11,8 +11,8 @@
       <div v-if="successMessage" class="alert alert-success">{{ successMessage }}</div>
 
       <div class="row g-3">
-        <!-- MaKS (được lấy từ route param hotelId) -->
-        <input type="hidden" :value="amenityData.MaKS" />
+        <!-- MaKS (hidden) -->
+        <input type="hidden" :value="hotelId" />
 
         <div class="col-md-12">
           <label for="tenLoaiDV" class="form-label">Service Name (TenLoaiDV) <span class="text-danger">*</span></label>
@@ -52,7 +52,7 @@ const route = useRoute();
 const router = useRouter();
 
 const hotelId = ref(route.params.hotelId || null); // Lấy MaKS từ route param
-const selectedHotelName = ref(''); // Tên khách sạn để hiển thị
+const selectedHotel= ref(''); // Tên khách sạn để hiển thị
 const pageLoading = ref(true);
 const pageError = ref('');
 
@@ -76,10 +76,10 @@ async function fetchHotelNameForDisplay() {
     }
     pageLoading.value = true; // Đặt loading trước khi gọi API
     try {
-        // API lấy tên khách sạn cơ bản
-        const response = await axios.get(`http://localhost:5000/api/hotels/${hotelId.value}/name-only`, { withCredentials: true });
-        if (response.data && response.data.success && response.data.data) {
-            selectedHotelName.value = response.data.data.TenKS;
+        // API lấy tên dịch vụ theo khách sạn
+        const response = await axios.get(`http://localhost:5000/api/services/hotel/${hotelId.value}`, { withCredentials: true });
+        if (response.data && response.data.success) {
+            selectedHotel.value = response.data.data;
         } else {
             pageError.value = response.data.message || `Could not load hotel name for ID ${hotelId.value}.`;
         }
@@ -106,26 +106,23 @@ async function submitAddAmenity() {
 
   try {
     // Gọi API createService của bạn (POST /api/services)
-    const response = await axios.post('http://localhost:5000/api/services', amenityData, {
+    const response = await axios.post('http://localhost:5000/api/services/${hotelId.value}', amenityData, {
       withCredentials: true
     });
-
-    if (response.status === 201 && response.data && response.data.success) {
-      successMessage.value = "Service added successfully! Redirecting...";
+    if (response.status === 201 && response.data?.message) { // API trả về 201 khi tạo thành công
+      successMessage.value = response.data.message;
       // Reset form
-      amenityData.TenLoaiDV = '';
-      amenityData.MoTaDV = '';
-      amenityData.GiaDV = null;
-      // MaKS giữ nguyên vì vẫn thêm cho KS đó
-
+      Object.keys(amenityData).forEach(key => {
+        if(key !== 'MaKS') amenityData[key] = (typeof amenityData[key] === 'number' ? null : '');
+      });
       setTimeout(() => {
           goBackToManageAmenities();
-      }, 2000);
+      }, 1000);
     } else {
-      formError.value = response.data?.message || response.data?.error || "Failed to add service.";
+      formError.value = response.data?.error || response.data?.message || "Failed to add amenity.";
     }
   } catch (err) {
-    formError.value = 'Error adding service: ' + (err.response?.data?.message || err.response?.data?.error || err.message);
+    formError.value = 'Error adding amenity: ' + (err.response?.data?.error || err.response?.data?.message || err.message);
   } finally {
     isSubmitting.value = false;
   }
@@ -134,9 +131,9 @@ async function submitAddAmenity() {
 function goBackToManageAmenities() {
   if(hotelId.value) {
       // Thay 'AdminManageAmenities' bằng tên route đúng của bạn
-      router.push({ name: 'AdminManageAmenities', params: { hotelId: hotelId.value } });
+      router.push({ name: 'AdminFindAmenity', params: { hotelId: hotelId.value } });
   } else {
-      router.push({ name: 'AdminManageAmenities' }); // Fallback
+      router.push({ name: 'AdminFindAmenity' }); // Fallback
   }
 }
 

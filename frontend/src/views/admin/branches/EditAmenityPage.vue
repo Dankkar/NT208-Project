@@ -5,7 +5,7 @@
     <div v-if="pageLoading" class="text-center"><div class="spinner-border"></div></div>
     <div v-else-if="pageError" class="alert alert-danger">
         <p>{{ pageError }}</p>
-        <button @click="goBackToManagePage" class="btn btn-sm btn-secondary">Back to Manage Amenities</button>
+        <button @click="goBackToManageAmenities" class="btn btn-sm btn-secondary">Back to Manage Amenities</button>
     </div>
 
     <form v-else-if="editableAmenity.MaLoaiDV" @submit.prevent="submitUpdateAmenity" class="card p-4 shadow-sm">
@@ -25,8 +25,7 @@
         </div>
          <div class="col-md-6">
           <label for="maKS" class="form-label">Hotel ID (MaKS)</label>
-          <input id="maKS" v-model.number="editableAmenity.MaKS" type="number" class="form-control" required />
-           <!-- Hoặc bạn có thể dùng dropdown để chọn lại khách sạn nếu muốn -->
+          <input id="maKS" type="text" class="form-control" :value="editableAmenity.MaKS" readonly disabled />
         </div>
 
         <div class="col-md-12">
@@ -44,19 +43,14 @@
           <textarea id="moTaDV" v-model="editableAmenity.MoTaDV" class="form-control" rows="3" required></textarea>
         </div>
 
-        <!-- Optional: IsActive field (backend của bạn chưa hỗ trợ update IsActive) -->
-        <!--
-        <div class="col-md-12 d-flex align-items-center mt-3">
-          <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" role="switch" id="isActiveAmenitySwitch" v-model="editableAmenity.IsActive">
-            <label class="form-check-label" for="isActiveAmenitySwitch">Is Active</label>
-          </div>
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="isActiveSwitch" v-model="editableAmenity.IsActive">
+            <label class="form-check-label" for="isActiveSwitch">Is Active</label>
         </div>
-        -->
       </div>
 
       <div class="mt-4 d-flex justify-content-end">
-        <button type="button" @click="goBackToManagePage" class="btn btn-secondary me-2" :disabled="isSubmitting">
+        <button type="button" @click="goBackToManageAmenities" class="btn btn-secondary me-2" :disabled="isSubmitting">
           Cancel
         </button>
         <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
@@ -67,7 +61,7 @@
     </form>
      <div v-else class="alert alert-warning">
         Service data could not be loaded.
-         <button @click="goBackToManagePage" class="btn btn-sm btn-secondary ms-2">Back</button>
+         <button @click="goBackToManageAmenities" class="btn btn-sm btn-secondary ms-2">Back</button>
     </div>
   </div>
 </template>
@@ -90,7 +84,7 @@ const editableAmenity = reactive({
   TenLoaiDV: '',
   MoTaDV: '',
   GiaDV: null,
-  // IsActive: true, // Mặc định là true nếu không có thông tin từ DB
+  IsActive: true,
 });
 
 const pageLoading = ref(true);
@@ -109,16 +103,14 @@ async function fetchAmenityDetails(id) {
     });
     // Backend getServiceById của bạn trả về trực tiếp object data, không có { success: true, data: ...}
     // Nên cần điều chỉnh cách lấy dữ liệu
-    if (response.data && response.data.MaLoaiDV) { // Kiểm tra sự tồn tại của MaLoaiDV
-      originalAmenityData.value = response.data;
-
+    if (response.data && response.data.success) { // Kiểm tra sự tồn tại của MaLoaiDV
+      originalAmenityData.value = response.data.data;
       editableAmenity.MaLoaiDV = originalAmenityData.value.MaLoaiDV;
       editableAmenity.MaKS = originalAmenityData.value.MaKS;
       editableAmenity.TenLoaiDV = originalAmenityData.value.TenLoaiDV || '';
-      editableAmenity.MoTaDV = originalAmenityData.value.MoTaDV || '';
       editableAmenity.GiaDV = originalAmenityData.value.GiaDV || null;
-      // Backend của bạn hiện tại chưa trả về IsActive trong getServiceById.
-      // editableAmenity.IsActive = originalAmenityData.value.IsActive === 1 || originalAmenityData.value.IsActive === true;
+      editableAmenity.MoTaDV = originalAmenityData.value.MoTaDV || '';
+      editableAmenity.IsActive = originalAmenityData.value.IsActive === 1 || originalAmenityData.value.IsActive === true;
 
       if(editableAmenity.MaKS) await fetchHotelNameForDisplay(editableAmenity.MaKS);
 
@@ -140,23 +132,23 @@ async function fetchAmenityDetails(id) {
   }
 }
 
-async function fetchHotelNameForDisplay(hotelIdToFetch){
-    if (!hotelIdToFetch) return;
+async function fetchHotelNameForDisplay(hotelId){
+    if (!hotelId) return;
     try {
-        const hotelRes = await axios.get(`http://localhost:5000/api/hotels/${hotelIdToFetch}/name-only`, { withCredentials: true });
+        const hotelRes = await axios.get(`http://localhost:5000/api/hotels/${hotelId}`, { withCredentials: true });
         if(hotelRes.data && hotelRes.data.success){
             originalHotelName.value = hotelRes.data.data.TenKS;
         }
     } catch (error) {
-        console.warn("Could not fetch hotel name for display for hotel ID", hotelIdToFetch, error);
+        console.warn("Could not fetch hotel name for display for hotel ID", hotelId, error);
         originalHotelName.value = ''; // Reset nếu không fetch được
     }
 }
 
 
 async function submitUpdateAmenity() {
-  if (!editableAmenity.TenLoaiDV || editableAmenity.GiaDV == null || !editableAmenity.MoTaDV || editableAmenity.MaKS == null) {
-    formError.value = "Please fill in all required fields: Hotel ID, Name, Price, and Description.";
+  if (!editableAmenity.TenLoaiDV || editableAmenity.GiaDV == null || !editableAmenity.MoTaDV) {
+    formError.value = "Please fill in all required fields: Name, Price, and Description.";
     return;
   }
   isSubmitting.value = true;
@@ -164,11 +156,10 @@ async function submitUpdateAmenity() {
   successMessage.value = '';
 
   const payload = {
-    MaKS: editableAmenity.MaKS,
     TenLoaiDV: editableAmenity.TenLoaiDV,
     MoTaDV: editableAmenity.MoTaDV,
     GiaDV: editableAmenity.GiaDV,
-    // IsActive: editableAmenity.IsActive, // Nếu backend hỗ trợ update IsActive
+    IsActive: editableAmenity.IsActive,
   };
 
   try {
@@ -177,25 +168,26 @@ async function submitUpdateAmenity() {
     const response = await axios.put(`http://localhost:5000/api/services/${amenityId.value}`, payload, {
       withCredentials: true
     });
-    if (response.data && response.data.success && response.data.message) {
+    if (response.data?.message) {
       successMessage.value = response.data.message;
-      await fetchAmenityDetails(amenityId.value); // Tải lại dữ liệu mới nhất
+      setTimeout(() => {
+        goBackToManageAmenities();
+      }, 1000);
     } else {
-      formError.value = response.data?.message || response.data?.error || "Failed to update service.";
+      formError.value = response.data?.error || "Failed to update amenity.";
     }
   } catch (err) {
-    formError.value = 'Error updating service: ' + (err.response?.data?.message || err.response?.data?.error || err.message);
+    formError.value = 'Error updating amenity: ' + (err.response?.data?.error || err.response?.data?.message || err.message);
   } finally {
     isSubmitting.value = false;
   }
 }
 
-function goBackToManagePage() {
-  // Điều hướng về trang quản lý của khách sạn chứa dịch vụ này
+function goBackToManageAmenities() {
   if(editableAmenity.MaKS) {
-      router.push({ name: 'AdminManageAmenities', params: { hotelId: String(editableAmenity.MaKS) } });
+      router.push({ name: 'AdminFindAmenity', params: { hotelId: String(editableAmenity.MaKS) } });
   } else {
-      router.push({ name: 'AdminManageAmenities' }); // Fallback
+      router.push({ name: 'AdminFindAmenity' }); // Hoặc một route mặc định
   }
 }
 

@@ -28,7 +28,7 @@ router.get('/hotel/:MaKS', authenticateToken, getRoomTypesByHotel);
 router.post('/:MaKS', authenticateToken, isAdmin, createRoomType);
 
 // GET /roomTypes/:id - Lấy loại phòng theo id
-router.get('/:MaLoaiPhong', authenticateToken, isAdmin, getRoomTypeById);
+router.get('/:MaLoaiPhong', getRoomTypeById);
 
 // PUT /roomTypes/:MaLoaiPhong - Cập nhật loại phòng
 router.put('/:MaLoaiPhong', authenticateToken, isAdmin, updateRoomType);

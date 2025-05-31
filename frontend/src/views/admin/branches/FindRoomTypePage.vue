@@ -65,7 +65,11 @@
               <td>{{ rt.TongSoPhong !== null ? rt.TongSoPhong : 0 }}</td>
               <td>{{ rt.SoPhongTrong !== null ? rt.SoPhongTrong : 0 }}</td>
               <td style="max-width: 250px; white-space: pre-wrap;">{{ rt.TienNghi || 'N/A' }}</td>
-              <td><span :class="getActiveClass(rt.IsActive)">{{ rt.IsActive || 'N/A' }} </span></td>
+              <td>
+                <span :class="getActiveClass(rt.IsActive)">
+                  {{ rt.IsActive ? 'Active' : 'Inactive' }}
+                </span>
+              </td>
               <td>
                 <button @click="navigateToEditRoomType(rt.MaLoaiPhong)" class="btn btn-sm btn-outline-warning me-2 mb-1" title="Edit Room Type">
                   <i class="bi bi-pencil-fill"></i> Edit
@@ -128,9 +132,9 @@ const selectedHotelName = computed(() => {
 });
 
 function getActiveClass(status) {
-  if (status === 1) return 'badge bg-success text-white';
-  if (status === 0) return 'badge bg-danger text-white';
-  return 'badge bg-secondary text-white'; // Default or N/A
+  // Giả sử IsActive là 1 (true) hoặc 0 (false) từ DB
+  if (status === 1 || status === true) return 'badge bg-success text-white';
+  return 'badge bg-danger text-white';
 }
 
 async function fetchAvailableHotels() {

@@ -84,7 +84,6 @@
 import { ref, onUnmounted } from 'vue'; // Thêm onUnmounted
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/store/authStore'; // Đảm bảo đường dẫn đúng
-import axios from 'axios';
 import Logo from '../components/Logo.vue';
 import uit_logo from '../assets/Logo_UIT_blue.jpg';
 
@@ -175,9 +174,17 @@ async function handleEmailLogin() {
   const result = await authStore.login({ Email: email.value, MatKhau: password.value });
 
   if (result && result.success) {
-    showSuccessAlert('Successfully signed in!');
+    showSuccessAlert('Succecssfully signed in!');
+    const user = authStore.currentUser;
      setTimeout(() => {
-      const redirectPath = router.currentRoute.value.query.redirect || '/homepage';
+      let redirectPath = router.currentRoute.value.query.redirect;
+      if (!redirectPath) { // Nếu không có query param 'redirect'
+        if (user && user.LoaiUser === 'Admin') {
+          redirectPath = '/admin'; // Hoặc tên route của trang admin dashboard, ví dụ: { name: 'AdminDashboard' }
+        } else {
+          redirectPath = '/homepage'; // Hoặc tên route của trang chủ cho user thường
+        }
+      }
       router.push(redirectPath);
     }, 1500);
   }

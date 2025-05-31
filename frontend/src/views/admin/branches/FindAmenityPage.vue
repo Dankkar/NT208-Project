@@ -68,12 +68,6 @@
                 <button @click="navigateToEditAmenity(amenity.MaLoaiDV)" class="btn btn-sm btn-outline-warning me-2 mb-1" title="Edit Amenity">
                   <i class="bi bi-pencil-fill"></i> Edit
                 </button>
-                <!-- Optional: Delete button -->
-                <!--
-                <button @click="confirmDeleteAmenity(amenity.MaLoaiDV)" class="btn btn-sm btn-outline-danger mb-1" title="Delete Amenity">
-                  <i class="bi bi-trash-fill"></i> Delete
-                </button>
-                -->
               </td>
             </tr>
           </tbody>
@@ -177,14 +171,10 @@ async function fetchAmenitiesForSelectedHotel(page = 1) {
   fetchError.value = '';
   fetchAttempted.value = true;
   paginationData.value.page = page;
-
+  
   try {
-    //
-    // BẠN CẦN TẠO API ENDPOINT NÀY Ở BACKEND:
-    // GET /api/amenities/hotel/:hotelId (hoặc /api/loaidichvu/khachsan/:hotelId)
-    //
     const response = await axios.get(
-      `http://localhost:5000/api/amenities/hotel/${selectedHotelId.value}`,
+      `http://localhost:5000/api/services/hotel/${selectedHotelId.value}`,
       {
         params: { page: paginationData.value.page, limit: paginationData.value.limit },
         withCredentials: true
@@ -224,8 +214,8 @@ watch(selectedHotelId, (newHotelId, oldHotelId) => {
     // Nếu hotelId thay đổi, luôn fetch trang đầu tiên
     // Đồng bộ URL với hotelId được chọn
     if (String(route.params.hotelId || '') !== String(newHotelId)) {
-        // Thay 'AdminManageAmenities' bằng tên route thực tế của bạn
-        router.replace({ name: 'AdminManageAmenities', params: { hotelId: String(newHotelId) } });
+        // Thay 'AdminFindAmenity' bằng tên route thực tế của bạn
+        router.replace({ name: 'AdminFindAmenity', params: { hotelId: String(newHotelId) } });
     }
     // Không cần gọi fetchAmenitiesForSelectedHotel ở đây nữa vì watch route.params.hotelId sẽ xử lý
   } else if (newHotelId === null && oldHotelId !== null) { // Người dùng chọn "-- Select a Hotel --"
@@ -234,28 +224,52 @@ watch(selectedHotelId, (newHotelId, oldHotelId) => {
     fetchAttempted.value = false;
     // Xóa hotelId khỏi URL nếu nó đang tồn tại
     if (route.params.hotelId) {
-        // Thay 'AdminManageAmenitiesNoParam' hoặc route tương ứng không có hotelId
-        router.replace({ name: 'AdminManageAmenities' });
+        // Thay 'AdminFindAmenityNoParam' hoặc route tương ứng không có hotelId
+        router.replace({ name: 'AdminFindAmenity' });
     }
   }
 });
 
 
-// Đồng bộ selectedHotelId với URL param khi component load hoặc URL thay đổi
-watch(() => route.params.hotelId, (newHotelIdParam) => {
-  const newIdFromRoute = newHotelIdParam ? parseInt(newHotelIdParam, 10) : null;
-  // Chỉ cập nhật selectedHotelId và fetch nếu giá trị từ route thực sự thay đổi và khác với hiện tại
-  if (newIdFromRoute !== selectedHotelId.value) {
-    selectedHotelId.value = newIdFromRoute;
-    // Việc set selectedHotelId ở đây sẽ trigger watch(selectedHotelId, ...)
-    // Tuy nhiên, để đảm bảo fetch khi URL thay đổi trực tiếp, chúng ta gọi fetch ở đây
-    // (watch selectedHotelId sẽ xử lý việc cập nhật route nếu chọn từ dropdown)
-    fetchAmenitiesForSelectedHotel(1); // Fetch lại amenities cho hotelId mới từ URL
-  } else if (newIdFromRoute === null && selectedHotelId.value !== null) {
-    // Xử lý trường hợp URL không còn hotelId nhưng selectedHotelId vẫn có giá trị
-    selectedHotelId.value = null; // Sẽ trigger watch(selectedHotelId) để clear list
+// Theo dõi selectedHotelId - Đây sẽ là trigger chính để fetch amenities
+watch(selectedHotelId, (newHotelId, oldHotelId) => {
+  console.log(`WATCH selectedHotelId: Changed from ${oldHotelId} to ${newHotelId}`);
+  if (newHotelId !== null & newHotelId !== '' && newHotelId !== undefined) { // Chỉ xử lý nếu newHotelId có giá trị (không phải -- Select a Hotel --)
+    // Đồng bộ URL (nếu thay đổi so với URL hiện tại)
+    if (String(route.params.hotelId || '') !== String(newHotelId)) {
+      console.log("WATCH selectedHotelId: Updating route to reflect newHotelId:", newHotelId);
+      router.replace({ name: 'AdminFindAmenity', params: { hotelId: String(newHotelId) } });
+      fetchAmenitiesForSelectedHotel(1);
+    } else {
+      foundAmenities.value = [];
+      fetchAttempted.value = false;
+    }
+  } else if (newHotelId === null && oldHotelId !== null) { // Người dùng chọn "-- Select a Hotel --"
+    console.log("WATCH selectedHotelId: Cleared by user selection.");
+    foundAmenitiesTypes.value = [];
+    paginationData.value = { page: 1, limit: 10, total: 0, totalPages: 0 };
+    fetchAttempted.value = false;
+    if (route.params.hotelId) { // Nếu URL vẫn còn hotelId, xóa nó đi
+        router.replace({ name: 'AdminManageRoomTypes' });
+    }
   }
-}, { immediate: true }); // immediate: true để chạy ngay khi component mount
+});
+
+// Theo dõi route.params.hotelId để cập nhật selectedHotelId nếu URL thay đổi từ bên ngoài
+watch(() => route.params.hotelId, (newHotelIdParam, oldHotelIdParam) => {
+  const newIdFromRoute = newHotelIdParam ? parseInt(newHotelIdParam) : null;
+  console.log(`WATCH route.params.hotelId: Changed from "${oldHotelIdParam}" to "${newHotelIdParam}". Parsed to: ${newIdFromRoute}`);
+  // Chỉ cập nhật selectedHotelId nếu nó thực sự khác, để tránh vòng lặp và trigger không cần thiết
+  if (newIdFromRoute !== selectedHotelId.value) {
+    console.log(`WATCH route.params.hotelId: Setting selectedHotelId to ${newIdFromRoute}`);
+    selectedHotelId.value = newIdFromRoute; // Gán giá trị mới, việc này sẽ trigger watch(selectedHotelId, ...)
+  } else if (newIdFromRoute === null && selectedHotelId.value !== null){
+    // Nếu URL không có hotelId, nhưng selectedHotelId đang có giá trị (ví dụ người dùng bỏ chọn)
+    // thì clear selectedHotelId để đồng bộ (watch(selectedHotelId) sẽ dọn dẹp list)
+    console.log(`WATCH route.params.hotelId: Clearing selectedHotelId because route param is null.`);
+    selectedHotelId.value = null;
+  }
+}, { immediate: true }); // immediate: true để chạy ngay khi component load, lấy hotelId từ URL ban đầu
 
 
 onMounted(async () => {
@@ -263,21 +277,8 @@ onMounted(async () => {
   // selectedHotelId và việc fetch amenities ban đầu đã được xử lý bởi watch route.params.hotelId
 });
 
-// === Navigation Functions ===
-const navigateToAddAmenity = () => {
-  if (selectedHotelId.value) {
-    // Thay 'AdminAddAmenity' bằng tên route thực tế
-    router.push({ name: 'AdminAddAmenity', params: { hotelId: String(selectedHotelId.value) }});
-  } else {
-    alert("Please select a hotel first.");
-  }
-};
-
-const navigateToEditAmenity = (amenityId) => {
-  // Thay 'AdminEditAmenity' bằng tên route thực tế
-  // amenityId ở đây là MaLoaiDV
-  router.push({ name: 'AdminEditAmenity', params: { amenityId: String(amenityId) } });
-};
+const navigateToAddAmenity = () => { if (selectedHotelId.value) { router.push({ name: 'AdminAddAmenity', params: { hotelId: String(selectedHotelId.value) }}); } else { alert("Please select a hotel."); }};
+const navigateToEditAmenity = (amenityId) => { router.push({ name: 'AdminEditAmenity', params: { amenityId: String(amenityId) } }); };
 
 </script>
 

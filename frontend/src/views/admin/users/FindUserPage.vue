@@ -44,7 +44,7 @@
             <td>{{ user.MaKH }}</td>
             <td>{{ user.HoTen || 'N/A' }}</td>
             <td>{{ user.Email }}</td>
-            <td><span :class="getActiveClass(user.IsActive)">{{ user.IsActive || 'N/A' }}</span></td>
+            <td><span :class="getActiveClass(user.IsActive)">{{ user.IsActive ? 'Active' : 'Inactive' }}</span></td>
             <td><span :class="getRoleClass(user.LoaiUser)">{{ user.LoaiUser || 'N/A' }}</span></td>
             <td>
               <button @click="editUser(user.MaKH)" class="btn btn-sm btn-outline-warning me-2 mb-1" title="Edit User" :disabled="isProcessing">
@@ -121,9 +121,9 @@ function getRoleClass(role) {
 }
 
 function getActiveClass(status) {
-  if (status === 1) return 'badge bg-success text-white';
-  if (status === 0) return 'badge bg-danger text-white';
-  return 'badge bg-secondary text-white'; // Default or N/A
+  // Giả sử IsActive là 1 (true) hoặc 0 (false) từ DB
+  if (status === 1 || status === true) return 'badge bg-success text-white';
+  return 'badge bg-danger text-white';
 }
 
 function editUser(userId) {
