@@ -52,6 +52,7 @@
               <th>Total R.</th>
               <th>Avail. R.</th>
               <th style="min-width: 180px;">Amenities</th>
+              <th style="min-width: 180px;">IsActive</th>
               <th style="min-width: 140px;">Actions</th>
             </tr>
           </thead>
@@ -65,11 +66,13 @@
               <td>{{ rt.SoPhongTrong !== null ? rt.SoPhongTrong : 0 }}</td>
               <td style="max-width: 250px; white-space: pre-wrap;">{{ rt.TienNghi || 'N/A' }}</td>
               <td>
+                <span :class="getActiveClass(rt.IsActive)">
+                  {{ rt.IsActive ? 'Active' : 'Inactive' }}
+                </span>
+              </td>
+              <td>
                 <button @click="navigateToEditRoomType(rt.MaLoaiPhong)" class="btn btn-sm btn-outline-warning me-2 mb-1" title="Edit Room Type">
                   <i class="bi bi-pencil-fill"></i> Edit
-                </button>
-                <button @click="confirmDeleteRoomType(rt.MaLoaiPhong, rt.TenLoaiPhong)" class="btn btn-sm btn-outline-danger mb-1" title="Delete Room Type">
-                  <i class="bi bi-trash-fill"></i> Delete
                 </button>
               </td>
             </tr>
@@ -127,6 +130,12 @@ const selectedHotelName = computed(() => {
   const hotel = availableHotels.value.find(h => h.MaKS === selectedHotelId.value);
   return hotel ? hotel.TenKS : `Hotel ID ${selectedHotelId.value}`;
 });
+
+function getActiveClass(status) {
+  // Giả sử IsActive là 1 (true) hoặc 0 (false) từ DB
+  if (status === 1 || status === true) return 'badge bg-success text-white';
+  return 'badge bg-danger text-white';
+}
 
 async function fetchAvailableHotels() {
   loadingHotels.value = true;
@@ -204,7 +213,7 @@ watch(selectedHotelId, (newHotelId, oldHotelId) => {
     // Đồng bộ URL (nếu thay đổi so với URL hiện tại)
     if (String(route.params.hotelId || '') !== String(newHotelId)) {
       console.log("WATCH selectedHotelId: Updating route to reflect newHotelId:", newHotelId);
-      router.replace({ name: 'FindRoomType', params: { hotelId: String(newHotelId) } });
+      router.replace({ name: 'AdminFindRoomType', params: { hotelId: String(newHotelId) } });
       fetchRoomTypesForSelectedHotel(1);
     } else {
       foundRoomTypes.value = [];
@@ -250,8 +259,6 @@ const formatCurrency = (value) => { if (value == null || isNaN(parseFloat(value)
 const handleApiError = (err, defaultMessage) => { if (err.response) { fetchError.value = err.response.data?.error || err.response.data?.message || `Error: ${err.response.status} - ${defaultMessage}.`;} else if (err.request) { fetchError.value = `No response from server for: ${defaultMessage}. Please check network.`;} else { fetchError.value = `An error occurred with: ${defaultMessage}.`;} console.error(defaultMessage, err);};
 const navigateToAddRoomType = () => { if (selectedHotelId.value) { router.push({ name: 'AdminAddRoomType', params: { hotelId: String(selectedHotelId.value) }}); } else { alert("Please select a hotel."); }};
 const navigateToEditRoomType = (roomTypeId) => { router.push({ name: 'AdminEditRoomType', params: { roomTypeId: String(roomTypeId) } }); };
-const confirmDeleteRoomType = (roomTypeId, roomTypeName) => { if (window.confirm(`Delete "${roomTypeName || 'this room type'}" (ID: ${roomTypeId})?`)) { deleteRoomTypeApiCall(roomTypeId); }};
-const deleteRoomTypeApiCall = async (roomTypeId) => { isFetchingRoomTypes.value = true; fetchError.value = ''; try { const response = await axios.delete(`http://localhost:5000/api/roomTypes/${roomTypeId}`, { withCredentials: true }); if (response.data?.message) { alert(response.data.message); fetchRoomTypesForSelectedHotel(paginationData.value.page); } else { fetchError.value = response.data?.error || "Failed to delete."; } } catch (err) { handleApiError(err, "Failed to delete room type."); } finally { isFetchingRoomTypes.value = false; }};
 
 </script>
 

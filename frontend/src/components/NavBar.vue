@@ -205,39 +205,9 @@ const menuButtonNavigationItems = computed(() => {
     { label: 'Home', path: '/homepage', icon: 'bi-house' },
     { label: 'Hotels', path: '/hotels', icon: 'bi-building' },
     { label: 'Ratings', path: '/ratings', icon: 'bi-star' },
-    { type: 'divider' },
-    {
-      label: 'Room Booking',
-      icon: 'bi-calendar-check',
-      subItems: [
-        { label: 'By City', path: '/room-booking/by-city' },
-        { label: 'By Date', path: '/room-booking/by-date' },
-      ],
-    },
     { label: 'Reserve', path: '/bookingprocess', icon: 'bi-bookmark-plus' },
   ];
-
-  if (authStore.isAuthenticated) {
-    return [
-      ...baseItems,
-      { type: 'divider' },
-      {
-        label: 'My Account',
-        icon: 'bi-person',
-        subItems: [
-          { label: 'Profile', path: '/profile' },
-          { label: 'Booking History', path: '/bookinghistory' },
-        ],
-      },
-      { label: 'Logout', action: handleLogout, icon: 'bi-box-arrow-right' },
-    ];
-  } else {
-    return [
-      ...baseItems,
-      { type: 'divider' },
-      { label: 'Login', path: '/login', icon: 'bi-box-arrow-in-right' },
-    ];
-  }
+  return baseItems;
 });
 
 // --- Scroll Handling Logic ---

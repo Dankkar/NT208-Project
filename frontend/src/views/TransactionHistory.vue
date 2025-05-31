@@ -50,7 +50,7 @@
 import { ref, onMounted } from 'vue';
 import Layout from '../components/Layout.vue';
 import axios from 'axios';
-import  { useAuth } from '../utils/auth'
+import { useAuthStore } from '@/store/authStore';
 
 const user = ref(null);
 const loading = ref(true);
