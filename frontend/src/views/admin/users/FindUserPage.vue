@@ -19,7 +19,7 @@
       </div>
     </form>
 
-    <div v-if="isProcessing && !foundUsers.length" class="text-center my-3"> {/* Chỉ hiện loading tổng khi chưa có kq */}
+    <div v-if="isProcessing && !foundUsers.length" class="text-center my-3">
       <div class="spinner-border text-primary" role="status">
         <span class="visually-hidden">Searching...</span>
       </div>
@@ -50,9 +50,6 @@
               <button @click="editUser(user.MaKH)" class="btn btn-sm btn-outline-warning me-2 mb-1" title="Edit User" :disabled="isProcessing">
                 <i class="bi bi-pencil-fill"></i> Edit
               </button>
-              <!-- <button @click="confirmRemoveUser(user.MaKH, user.HoTen || user.Email)" class="btn btn-sm btn-outline-danger mb-1" title="Remove User" :disabled="isProcessing">
-                <i class="bi bi-trash-fill"></i> Remove
-              </button> -->
             </td>
           </tr>
         </tbody>
@@ -77,8 +74,8 @@ const router = useRouter();
 
 const searchQuery = ref('');
 const foundUsers = ref([]);
-const isProcessing = ref(false); // Chung cho search và remove
-const apiError = ref(''); // Chung cho search và remove
+const isProcessing = ref(false);
+const apiError = ref('');
 const searchAttempted = ref(false);
 const previousQuery = ref('');
 
@@ -120,7 +117,7 @@ function getRoleClass(role) {
   if (role === 'Admin') return 'badge bg-danger text-white';
   if (role === 'QuanLyKS') return 'badge bg-warning text-dark';
   if (role === 'KhachHang') return 'badge bg-success text-white';
-  return 'badge bg-secondary text-white'; // Default or N/A
+  return 'badge bg-secondary text-white';
 }
 
 function getActiveClass(status) {
@@ -132,49 +129,8 @@ function getActiveClass(status) {
 function editUser(userId) {
   console.log(`Navigating to edit user ID ${userId}`);
   // Bạn cần tạo route và component cho 'AdminEditUser'
-  router.push({ name: 'AdminEditUser', params: { userId: String(userId) } }); // Đảm bảo userId là string nếu route params cần
+  router.push({ name: 'AdminEditUser', params: { userId: String(userId) } });
 }
-
-// function confirmRemoveUser(userId, userName) {
-//   if (window.confirm(`Are you sure you want to remove user "${userName || 'this user'}" (ID: ${userId})? This action cannot be undone.`)) {
-//     removeUserApiCall(userId);
-//   }
-// }
-
-// async function removeUserApiCall(userId) {
-//   isProcessing.value = true;
-//   apiError.value = '';
-//   try {
-//     const response = await axios.delete(
-//       `http://localhost:5000/api/users/${userId}`, // URL từ userRoutes của bạn
-//       { withCredentials: true }
-//     );
-
-//     // Controller của bạn trả về: { message: 'Xóa người dùng thành công' } khi status 200
-//     if (response.status === 200 && response.data?.message) {
-//       alert(response.data.message); // 'Xóa người dùng thành công'
-
-//       // Tải lại danh sách sau khi xóa thành công
-//       // Hoặc nếu đang hiển thị kết quả tìm kiếm, chỉ cần xóa item đó khỏi mảng
-//       if (searchAttempted.value && searchQuery.value.trim()){
-//         // Tạm thời chỉ xóa ở client để UI cập nhật ngay, nhưng thực tế nên fetch lại
-//         foundUsers.value = foundUsers.value.filter(user => user.MaKH !== userId);
-//         // Nếu muốn đảm bảo đồng bộ 100%, hãy gọi lại searchUser():
-//         // await searchUser();
-//       } else {
-//         // Nếu không phải kết quả search, cần có cơ chế tải lại danh sách user chung (nếu có)
-//         foundUsers.value = foundUsers.value.filter(user => user.MaKH !== userId);
-//       }
-
-//     } else {
-//       apiError.value = response.data?.message || "Failed to remove user: Unknown server response.";
-//     }
-//   } catch (err) {
-//     handleApiError(err, "Failed to remove user.");
-//   } finally {
-//     isProcessing.value = false;
-//   }
-// }
 
 function handleApiError(err, defaultMessage) {
   if (err.response) {

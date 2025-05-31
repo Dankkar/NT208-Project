@@ -209,7 +209,7 @@ async function handleModalSave({ section, data }) {
 
 <style scoped>
 .account-info-section {
-  /* padding-top: 120px; */ /* Removed fixed padding, adjust if needed based on Layout component */
+  padding-top: 120px;
 }
 .avatar-icon {
   width: 60px; height: 60px; border-radius: 50%; background: #eee;

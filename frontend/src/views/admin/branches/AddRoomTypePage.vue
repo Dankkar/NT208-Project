@@ -11,25 +11,40 @@
       <div v-if="successMessage" class="alert alert-success">{{ successMessage }}</div>
 
       <div class="row g-3">
-        <!-- MaKS (hidden or readonly) -->
-        <input type="hidden" :value="hotelId" />
+        <!-- MaKS (hidden) -->
+        <input type="hidden" :value="hotelId" /> <!-- Hoặc :value="roomTypeData.MaKS" nếu bạn muốn đồng bộ -->
 
+        <!-- 1. Tên Loại Phòng -->
         <div class="col-md-6">
           <label for="tenLoaiPhong" class="form-label">Room Type Name <span class="text-danger">*</span></label>
           <input id="tenLoaiPhong" v-model="roomTypeData.TenLoaiPhong" type="text" class="form-control" required />
         </div>
+
+        <!-- 2. Số Giường -->
         <div class="col-md-6">
-          <label for="giaCoSo" class="form-label">Base Price (VND) <span class="text-danger">*</span></label>
-          <input id="giaCoSo" v-model.number="roomTypeData.GiaCoSo" type="number" step="1000" min="0" class="form-control" required />
+          <label for="soGiuong" class="form-label">Number of Beds <span class="text-danger">*</span></label>
+          <input id="soGiuong" v-model.number="roomTypeData.SoGiuong" type="number" step="1" min="1" class="form-control" required />
         </div>
-        <div class="col-md-6">
-          <label for="dienTich" class="form-label">Area (m²) <span class="text-danger">*</span></label>
-          <input id="dienTich" v-model.number="roomTypeData.DienTich" type="number" step="0.1" min="0" class="form-control" required />
-        </div>
+
+        <!-- 3. Tiện Nghi -->
         <div class="col-12">
           <label for="tienNghi" class="form-label">Amenities (comma-separated) <span class="text-danger">*</span></label>
           <textarea id="tienNghi" v-model="roomTypeData.TienNghi" class="form-control" rows="3" placeholder="e.g., WiFi, Air Conditioning, TV" required></textarea>
         </div>
+
+        <!-- 4. Diện Tích -->
+        <div class="col-md-6">
+          <label for="dienTich" class="form-label">Area (m²) <span class="text-danger">*</span></label>
+          <input id="dienTich" v-model.number="roomTypeData.DienTich" type="number" step="0.1" min="0" class="form-control" required />
+        </div>
+
+        <!-- 5. Giá Cơ Sở -->
+        <div class="col-md-6">
+          <label for="giaCoSo" class="form-label">Base Price (VND) <span class="text-danger">*</span></label>
+          <input id="giaCoSo" v-model.number="roomTypeData.GiaCoSo" type="number" step="1000" min="0" class="form-control" required />
+        </div>
+
+        <!-- 6. Mô Tả -->
         <div class="col-12">
           <label for="moTa" class="form-label">Description (Optional)</label>
           <textarea id="moTa" v-model="roomTypeData.MoTa" class="form-control" rows="3"></textarea>
@@ -84,9 +99,7 @@ async function fetchSelectedHotelDetails() {
     }
     pageLoading.value = true;
     try {
-        // API này bạn cần tạo: GET /api/hotels/:id/basic-info (chỉ lấy TenKS)
-        // Hoặc dùng lại API GET /api/hotels/:id nếu nó nhẹ
-        const response = await axios.get(`http://localhost:5000/api/hotels/${hotelId.value}/name-only`, { withCredentials: true });
+        const response = await axios.get(`http://localhost:5000/api/roomTypes/hotel/${hotelId.value}`, { withCredentials: true });
         if (response.data && response.data.success) {
             selectedHotel.value = response.data.data;
         } else {
@@ -101,7 +114,7 @@ async function fetchSelectedHotelDetails() {
 
 
 async function submitAddRoomType() {
-  if (!roomTypeData.TenLoaiPhong || !roomTypeData.GiaCoSo || !roomTypeData.DienTich || !roomTypeData.TienNghi) {
+  if (!roomTypeData.TenLoaiPhong || !roomTypeData.SoGiuong || !roomTypeData.GiaCoSo || !roomTypeData.DienTich || !roomTypeData.TienNghi) {
     formError.value = "Please fill in all required fields: Name, Price, Area, and Amenities.";
     return;
   }
@@ -116,18 +129,18 @@ async function submitAddRoomType() {
 
   try {
     // Gọi API createRoomType của bạn
-    const response = await axios.post('http://localhost:5000/api/room-types', roomTypeData, {
+    const response = await axios.post('http://localhost:5000/api/roomTypes/${hotelId.value}', roomTypeData, {
       withCredentials: true
     });
     if (response.status === 201 && response.data?.message) { // API trả về 201 khi tạo thành công
-      successMessage.value = response.data.message + " Redirecting back to manage page...";
+      successMessage.value = response.data.message;
       // Reset form
       Object.keys(roomTypeData).forEach(key => {
         if(key !== 'MaKS') roomTypeData[key] = (typeof roomTypeData[key] === 'number' ? null : '');
       });
       setTimeout(() => {
           goBackToManageRoomTypes();
-      }, 2000);
+      }, 1000);
     } else {
       formError.value = response.data?.error || response.data?.message || "Failed to add room type.";
     }
@@ -142,9 +155,9 @@ function goBackToManageRoomTypes() {
   // Điều hướng về trang quản lý loại phòng của khách sạn hiện tại (nếu có hotelId)
   // Hoặc một trang chung nếu hotelId không có (dù ở đây luôn có hotelId để vào trang Add)
   if(hotelId.value) {
-      router.push({ name: 'AdminManageRoomTypes', params: { hotelId: hotelId.value } });
+      router.push({ name: 'AdminFindRoomType', params: { hotelId: hotelId.value } });
   } else {
-      router.push({ name: 'AdminManageRoomTypes' }); // Hoặc một route mặc định
+      router.push({ name: 'AdminFindRoomType' }); // Hoặc một route mặc định
   }
 }
 

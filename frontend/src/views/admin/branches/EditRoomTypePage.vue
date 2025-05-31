@@ -25,6 +25,10 @@
           <input id="tenLoaiPhong" v-model="editableRoomType.TenLoaiPhong" type="text" class="form-control" required />
         </div>
         <div class="col-md-6">
+          <label for="soGiuong" class="form-label">Number of Beds <span class="text-danger">*</span></label>
+          <input id="soGiuong" v-model.number="editableRoomType.SoGiuong" type="number" step="1" min="1" class="form-control" required />
+        </div>
+        <div class="col-md-6">
           <label for="giaCoSo" class="form-label">Base Price (VND) <span class="text-danger">*</span></label>
           <input id="giaCoSo" v-model.number="editableRoomType.GiaCoSo" type="number" step="1000" min="0" class="form-control" required />
         </div>
@@ -40,10 +44,16 @@
           <label for="moTa" class="form-label">Description (Optional)</label>
           <textarea id="moTa" v-model="editableRoomType.MoTa" class="form-control" rows="3"></textarea>
         </div>
+        <div class="col-md-6 d-flex align-items-center mt-4">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="isActiveSwitch" v-model="editableRoomType.IsActive">
+            <label class="form-check-label" for="isActiveSwitch">Is Active</label>
+          </div>
+        </div>
       </div>
 
       <div class="mt-4 d-flex justify-content-end">
-        <button type="button" @click="goBackToManagePage" class="btn btn-secondary me-2" :disabled="isSubmitting">
+        <button type="button" @click="goBackToManageRoomTypes" class="btn btn-secondary me-2" :disabled="isSubmitting">
           Cancel
         </button>
         <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
@@ -92,7 +102,7 @@ async function fetchRoomTypeDetails(id) {
   pageError.value = '';
   try {
     // BẠN CẦN TẠO API GET /api/room-types/:id Ở BACKEND ĐỂ LẤY CHI TIẾT 1 LOẠI PHÒNG
-    const response = await axios.get(`http://localhost:5000/api/room-types/${id}`, {
+    const response = await axios.get(`http://localhost:5000/api/roomTypes/${id}`, {
       withCredentials: true,
     });
     if (response.data && response.data.success) {
@@ -100,10 +110,12 @@ async function fetchRoomTypeDetails(id) {
       editableRoomType.MaLoaiPhong = originalRoomTypeData.value.MaLoaiPhong;
       editableRoomType.MaKS = originalRoomTypeData.value.MaKS;
       editableRoomType.TenLoaiPhong = originalRoomTypeData.value.TenLoaiPhong || '';
+      editableRoomType.SoGiuong = originalRoomTypeData.value.SoGiuong;
       editableRoomType.TienNghi = originalRoomTypeData.value.TienNghi || '';
       editableRoomType.DienTich = originalRoomTypeData.value.DienTich || null;
       editableRoomType.GiaCoSo = originalRoomTypeData.value.GiaCoSo || null;
       editableRoomType.MoTa = originalRoomTypeData.value.MoTa || '';
+      editableRoomType.IsActive = originalRoomTypeData.value.IsActive === 1 || originalRoomTypeData.value.IsActive === true;
       // Có thể fetch thêm tên KS nếu cần hiển thị
       if(editableRoomType.MaKS) await fetchHotelNameForDisplay(editableRoomType.MaKS);
 
@@ -139,21 +151,24 @@ async function submitUpdateRoomType() {
 
   const payload = {
     TenLoaiPhong: editableRoomType.TenLoaiPhong,
+    SoGiuong: editableRoomType.SoGiuong,
     TienNghi: editableRoomType.TienNghi,
     DienTich: editableRoomType.DienTich,
     GiaCoSo: editableRoomType.GiaCoSo,
-    MoTa: editableRoomType.MoTa
+    MoTa: editableRoomType.MoTa,
+    IsActive: editableRoomType.IsActive
   };
 
   try {
     // Gọi API updateRoomType của bạn
-    const response = await axios.put(`http://localhost:5000/api/room-types/${roomTypeId.value}`, payload, {
+    const response = await axios.put(`http://localhost:5000/api/roomTypes/${roomTypeId.value}`, payload, {
       withCredentials: true
     });
     if (response.data?.message) { // API của bạn trả về {message: '...'}
       successMessage.value = response.data.message;
-      // Không tự động redirect, để admin xem thông báo
-      // Có thể fetch lại data sau khi update: fetchRoomTypeDetails(roomTypeId.value);
+      setTimeout(() => {
+        goBackToManageRoomTypes();
+      }, 1000);
     } else {
       formError.value = response.data?.error || "Failed to update room type.";
     }
@@ -164,12 +179,12 @@ async function submitUpdateRoomType() {
   }
 }
 
-function goBackToManagePage() {
+function goBackToManageRoomTypes() {
   // Điều hướng về trang quản lý của khách sạn chứa loại phòng này
   if(editableRoomType.MaKS) {
-      router.push({ name: 'AdminManageRoomTypes', params: { hotelId: String(editableRoomType.MaKS) } });
+      router.push({ name: 'AdminFindRoomType', params: { hotelId: String(editableRoomType.MaKS) } });
   } else {
-      router.push({ name: 'AdminManageRoomTypes' }); // Hoặc một route mặc định
+      router.push({ name: 'AdminFindRoomType' }); // Hoặc một route mặc định
   }
 }
 

@@ -67,6 +67,7 @@ const sections = [
   {
     title: 'Branches',
     children: [
+      { name: 'Find Hotel', route: '/admin/branches/find-hotel' },
       { name: 'Find Room Type', route: '/admin/branches/find-room-type' },
       { name: 'Find Amenity', route: '/admin/branches/find-amenity' },
     ],

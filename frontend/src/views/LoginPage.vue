@@ -2,12 +2,7 @@
 <template>
   <div class="login-page">
     <router-link class="logo-wrapper" to="/homepage">
-      <Logo
-        :src="logoSrc"
-        alt="UIT_Logo"
-        hoverFilter="brightness(0.8)" 
-        width="50px"
-      />
+      <Logo :src="logoSrc" alt="UIT_Logo" hoverFilter="brightness(0.8)" width="50px" />
     </router-link>
     <div class="form-card">
       <h2 class="form-title">Sign in to CHILLCHILL</h2>
@@ -89,6 +84,9 @@
 import { ref, onUnmounted } from 'vue'; // Thêm onUnmounted
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/store/authStore'; // Đảm bảo đường dẫn đúng
+import axios from 'axios';
+import Logo from '../components/Logo.vue';
+import uit_logo from '../assets/Logo_UIT_blue.jpg';
 
 // GoogleLogin component cần được import nếu nó là một component bạn đã tạo hoặc cài đặt
 // import { GoogleLogin } from 'vue3-google-login'; // Ví dụ nếu bạn dùng thư viện này
@@ -101,6 +99,7 @@ const password = ref('');
 const emailError = ref('');
 const passwordError = ref('');
 const successMessage = ref('');
+const logoSrc = ref(uit_logo);
 let alertTimeout = null;
 
 // Xóa lỗi khi component unmount để tránh hiển thị lại khi điều hướng
@@ -186,6 +185,15 @@ async function handleEmailLogin() {
 </script>
 
 <style scoped>
+.logo-wrapper {
+  position: absolute;
+  top: 2rem; /* Adjust as needed */
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  z-index: 10;
+}
 .login-page { display: flex; align-items: center; justify-content: center; background: url('../assets/mountain.jpg') no-repeat center/cover; min-height: 100vh; opacity: 90%; padding: 2rem; }
 .form-card { background: #ffffff; max-width: 420px; width: 100%; padding: 2rem 2.5rem; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
 .form-title { margin-bottom: 1.5rem; font-size: 1.75rem; font-weight: 600; text-align: center; color: #111; }

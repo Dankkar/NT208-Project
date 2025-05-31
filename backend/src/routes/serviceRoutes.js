@@ -35,13 +35,13 @@ router.delete('/booking/:MaDat/:MaDV', authenticateToken, removeServiceFromBooki
 // --------- ADMIN/STAFF ONLY ---------
 
 // POST /services - Tạo dịch vụ
-router.post('/', authenticateToken, isStaff, createService);
+router.post('/', authenticateToken, isAdmin, createService);
 
 // PUT /services/:MaDV - Cập nhật dịch vụ
-router.put('/:MaDV', authenticateToken, isStaff, updateService);
+router.put('/:MaDV', authenticateToken, isAdmin, updateService);
 
 // DELETE /services/:MaDV - Xóa dịch vụ
-router.delete('/:MaDV', authenticateToken, isStaff, deleteService);
+router.delete('/:MaDV', authenticateToken, isAdmin, deleteService);
 
 // --------- ĐỂ CUỐI: GET /services/:MaDV ---------
 router.get('/:MaDV', getServiceById);

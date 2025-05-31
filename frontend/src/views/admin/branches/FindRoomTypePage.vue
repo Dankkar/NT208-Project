@@ -52,6 +52,7 @@
               <th>Total R.</th>
               <th>Avail. R.</th>
               <th style="min-width: 180px;">Amenities</th>
+              <th style="min-width: 180px;">IsActive</th>
               <th style="min-width: 140px;">Actions</th>
             </tr>
           </thead>
@@ -64,6 +65,7 @@
               <td>{{ rt.TongSoPhong !== null ? rt.TongSoPhong : 0 }}</td>
               <td>{{ rt.SoPhongTrong !== null ? rt.SoPhongTrong : 0 }}</td>
               <td style="max-width: 250px; white-space: pre-wrap;">{{ rt.TienNghi || 'N/A' }}</td>
+              <td><span :class="getActiveClass(rt.IsActive)">{{ rt.IsActive || 'N/A' }} </span></td>
               <td>
                 <button @click="navigateToEditRoomType(rt.MaLoaiPhong)" class="btn btn-sm btn-outline-warning me-2 mb-1" title="Edit Room Type">
                   <i class="bi bi-pencil-fill"></i> Edit
@@ -124,6 +126,12 @@ const selectedHotelName = computed(() => {
   const hotel = availableHotels.value.find(h => h.MaKS === selectedHotelId.value);
   return hotel ? hotel.TenKS : `Hotel ID ${selectedHotelId.value}`;
 });
+
+function getActiveClass(status) {
+  if (status === 1) return 'badge bg-success text-white';
+  if (status === 0) return 'badge bg-danger text-white';
+  return 'badge bg-secondary text-white'; // Default or N/A
+}
 
 async function fetchAvailableHotels() {
   loadingHotels.value = true;
@@ -201,7 +209,7 @@ watch(selectedHotelId, (newHotelId, oldHotelId) => {
     // Đồng bộ URL (nếu thay đổi so với URL hiện tại)
     if (String(route.params.hotelId || '') !== String(newHotelId)) {
       console.log("WATCH selectedHotelId: Updating route to reflect newHotelId:", newHotelId);
-      router.replace({ name: 'FindRoomType', params: { hotelId: String(newHotelId) } });
+      router.replace({ name: 'AdminFindRoomType', params: { hotelId: String(newHotelId) } });
       fetchRoomTypesForSelectedHotel(1);
     } else {
       foundRoomTypes.value = [];

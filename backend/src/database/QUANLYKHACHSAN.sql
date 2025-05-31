@@ -380,3 +380,6 @@ ADD MaKhach INT NULL,
     CONSTRAINT FK_Booking_Guests FOREIGN KEY (MaKhach) REFERENCES Guests(MaKhach);
 
 
+select * from LoaiPhong
+SELECT * FROM NguoiDung
+select * from LoaiDichVu
