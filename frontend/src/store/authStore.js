@@ -17,6 +17,18 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
+    // Clear authentication errors
+    clearError() {
+      this.authError = null;
+    },
+
+    // Clear all auth data
+    clearAuthData() {
+      this.user = null;
+      this.authError = null;
+      this.isLoading = false;
+    },
+
     async login(credentials) {
       this.isLoading = true;
       this.authError = null;
@@ -75,23 +87,27 @@ export const useAuthStore = defineStore('auth', {
         return this.user;
       } catch (err) {
         this.$patch({ user: null });
-        if (err.response?.status === 401) { this.authError = 'Session expired or not authenticated.';}
-        else { this.authError = null; } // Không hiển thị lỗi nếu chỉ là không có session
+        if (err.response?.status === 401) { 
+          this.authError = 'Session expired or not authenticated.';
+        } else { 
+          this.authError = null; // Không hiển thị lỗi nếu chỉ là không có session
+        }
         return null;
       } finally {
         this.isLoading = false;
       }
     },
 
+    // Logout action
     async logout() {
       this.isLoading = true;
-      this.authError = null;
       try {
         await axios.post('http://localhost:5000/api/auth/logout', {}, { withCredentials: true });
       } catch (err) {
-        console.error('API Logout failed, but proceeding with client-side logout:', err);
+        console.error('Logout error:', err);
+        // Continue with local logout even if server logout fails
       } finally {
-        this.$patch({ user: null, authError: null, isLoading: false });
+        this.clearAuthData();
       }
     },
 
@@ -107,20 +123,11 @@ export const useAuthStore = defineStore('auth', {
       try {
         // Gọi API đăng ký của backend
         const response = await axios.post('http://localhost:5000/api/auth/register', signupData, {
-          withCredentials: true // Nếu API register cũng set cookie session ngay
+          withCredentials: true // Set cookie session ngay sau khi register
         });
 
-        //
-        // Xử lý response từ backend
-        // Giả sử API register thành công sẽ tự động đăng nhập người dùng (set cookie)
-        // hoặc trả về thông tin để có thể login ngay sau đó.
-        //
-
         if (response.data && response.data.success) {
-          //
-          // Nếu đăng ký thành công, gọi fetchCurrentUser để lấy thông tin user
-          // dựa trên session/cookie vừa được backend tạo.
-          //
+          // Sau khi đăng ký thành công, fetch user data để cập nhật store
           await this.fetchCurrentUser();
           if (this.user) { // Nếu fetchCurrentUser thành công
             this.$patch({ user: this.user, authError: null });
@@ -128,10 +135,10 @@ export const useAuthStore = defineStore('auth', {
             console.log("isAuthenticated:", this.isAuthenticated);
             return { success: true };
           } else {
-            //
-            // Trường hợp API register báo success nhưng không lấy được user (hiếm gặp nếu backend đúng)
-            //
-            throw new Error('Account created, but failed to retrieve user data immediately.');
+            // Nếu không lấy được user data, vẫn coi như thành công
+            // vì account đã được tạo, user có thể đăng nhập lại sau
+            console.warn('Account created but could not fetch user data immediately');
+            return { success: true };
           }
         } else {
           //
@@ -147,12 +154,13 @@ export const useAuthStore = defineStore('auth', {
       } finally {
         this.isLoading = false;
       }
-    },
-    async clearError() {
-      this.authError = null;
     }
   },
+
+  // Enable persistence
   persist: {
-    paths: ['user'],
-  },
-});
+    key: 'auth-store',
+    storage: localStorage,
+    paths: ['user'] // Only persist user data, not loading states or errors
+  }
+})
