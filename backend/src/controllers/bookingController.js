@@ -671,9 +671,28 @@ exports.holdBooking = async (req, res) => {
 
         // Check if this session already has a held booking
         if (req.session.bookingInfo) {
-            return res.status(400).json({
-                error: 'Bạn đã có một đơn đặt phòng đang được giữ. Vui lòng hoàn tất đơn đó trước khi tạo đơn mới.'
-            });
+            // Verify booking is still valid in database before blocking new booking
+            const pool = await poolPromise;
+            const checkValid = await pool.request()
+                .input('MaDat', sql.Int, req.session.bookingInfo.MaDat)
+                .query(`
+                    SELECT * FROM Booking 
+                    WHERE MaDat = @MaDat 
+                    AND TrangThaiBooking = N'Tạm giữ' 
+                    AND ThoiGianGiuCho IS NOT NULL 
+                    AND DATEDIFF(MINUTE, ThoiGianGiuCho, GETDATE()) <= 15
+                `);
+            
+            if (checkValid.recordset.length === 0) {
+                // Booking has expired or been cancelled, clear session
+                delete req.session.bookingInfo;
+                console.log('Cleared expired booking from session:', req.session.bookingInfo?.MaDat);
+            } else {
+                // Booking is still valid, block new booking
+                return res.status(400).json({
+                    error: 'Bạn đã có một đơn đặt phòng đang được giữ. Vui lòng hoàn tất đơn đó trước khi tạo đơn mới.'
+                });
+            }
         }
 
         const pool = await poolPromise;

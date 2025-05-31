@@ -86,7 +86,7 @@
 </template>
 
 <script setup>
-import { ref, onUnmounted } from 'vue'; // Thêm onUnmounted
+import { ref, onUnmounted, onMounted } from 'vue'; // Thêm onMounted
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/store/authStore'; // Đảm bảo đường dẫn đúng
 
@@ -102,6 +102,25 @@ const emailError = ref('');
 const passwordError = ref('');
 const successMessage = ref('');
 let alertTimeout = null;
+
+// Check if user is already authenticated on component mount
+onMounted(async () => {
+  // Check authentication state first
+  if (!authStore.user && !authStore.isLoading) {
+    await authStore.fetchCurrentUser();
+  }
+  
+  // If already authenticated, redirect to homepage or intended page
+  if (authStore.isAuthenticated) {
+    console.warn('Already authenticated user accessing login page, redirecting');
+    const redirectPath = router.currentRoute.value.query.redirect || '/homepage';
+    router.replace(redirectPath);
+    return;
+  }
+  
+  // Clear any previous auth errors when starting fresh
+  authStore.clearError();
+});
 
 // Xóa lỗi khi component unmount để tránh hiển thị lại khi điều hướng
 onUnmounted(() => {
