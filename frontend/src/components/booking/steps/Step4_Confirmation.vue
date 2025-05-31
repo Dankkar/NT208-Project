@@ -161,8 +161,10 @@
 <script setup>
 import { computed, ref, watchEffect } from 'vue'; // Đã thêm watchEffect
 import { useBookingStore } from '@/store/bookingStore';
+import { useRouter } from 'vue-router';
 
 const bookingStore = useBookingStore();
+const router = useRouter();
 const confirmationDetails = computed(() => bookingStore.dataForStep4Display);
 
 const formatDisplayPrice = (value) => {
@@ -172,7 +174,10 @@ const formatDisplayPrice = (value) => {
 };
 
 const printPage = () => { window.print(); };
-const startNewBooking = () => { bookingStore.resetBookingProcess(); };
+const startNewBooking = () => { 
+   bookingStore.resetBookingProcess();
+   router.push('/');
+};
 
 const countries = ref([
   { code: 'VN', name: 'Vietnam' }, { code: 'US', name: 'United States' },

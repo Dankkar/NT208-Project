@@ -24,7 +24,7 @@ const { authenticateToken, isAdmin, isStaff, optionalAuthenticationToken } = req
  * @desc    Kiểm tra phòng trống theo loại phòng và ngày
  * @access  Public
  */
-router.post('/search', searchAvailableRooms);
+router.get('/search', searchAvailableRooms);
 
 /**
  * @route   GET /api/bookings/admin
