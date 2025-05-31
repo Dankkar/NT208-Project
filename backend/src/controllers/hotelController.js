@@ -8,11 +8,38 @@ exports.createHotel = async (req, res) => {
         LoaiHinh,
         MoTaCoSoVatChat,
         QuyDinh,
-        MotaChung
+        MotaChung,
+        MaNguoiQuanLy // Cho phép admin chỉ định người quản lý khác
     } = req.body;
-    try
-    {
+    
+    try {
         const pool = await poolPromise;
+        
+        // Xác định MaNguoiQuanLy - ưu tiên từ body, nếu không có thì dùng user hiện tại
+        let finalMaNguoiQuanLy = MaNguoiQuanLy || req.user.MaKH;
+        
+        // Validate role của người được chỉ định làm quản lý
+        const managerValidation = await pool.request()
+            .input('MaKH', sql.Int, finalMaNguoiQuanLy)
+            .query(`
+                SELECT MaKH, LoaiUser, HoTen 
+                FROM NguoiDung 
+                WHERE MaKH = @MaKH AND IsActive = 1
+            `);
+
+        if (managerValidation.recordset.length === 0) {
+            return res.status(400).json({
+                error: 'Không tìm thấy người dùng được chỉ định làm quản lý hoặc tài khoản đã bị vô hiệu hóa'
+            });
+        }
+
+        const manager = managerValidation.recordset[0];
+        if (manager.LoaiUser !== 'QuanLyKS' && manager.LoaiUser !== 'Admin') {
+            return res.status(400).json({
+                error: `Người dùng "${manager.HoTen}" không có quyền làm người quản lý khách sạn. Chỉ người dùng có role "QuanLyKS" hoặc "Admin" mới có thể được chỉ định làm người quản lý.`
+            });
+        }
+
         const result = await pool.request()
             .input('TenKS', sql.VarChar, TenKS)
             .input('DiaChi', sql.VarChar, DiaChi)
@@ -21,16 +48,17 @@ exports.createHotel = async (req, res) => {
             .input('MoTaCoSoVatChat', sql.Text, MoTaCoSoVatChat)
             .input('QuyDinh', sql.Text, QuyDinh)
             .input('MotaChung', sql.Text, MotaChung)
-            .input('MaNguoiQuanLy', sql.Int, req.Int, req.user.MaKH)
+            .input('MaNguoiQuanLy', sql.Int, finalMaNguoiQuanLy)
             .query(`
                 INSERT INTO KhachSan (TenKS, DiaChi, HangSao, LoaiHinh, MoTaCoSoVatChat, QuyDinh, MotaChung, MaNguoiQuanLy)
                 VALUES (@TenKS, @DiaChi, @HangSao, @LoaiHinh, @MoTaCoSoVatChat, @QuyDinh, @MotaChung, @MaNguoiQuanLy)
-                `)
+            `);
         
-        res.status(201).json({message: 'Khách sạn đã được tạo thành công'});
+        res.status(201).json({
+            message: `Khách sạn đã được tạo thành công với người quản lý: ${manager.HoTen}`
+        });
     }
-    catch (err)
-    {
+    catch (err) {
         console.error('Lỗi createHotel:', err);
         res.status(500).json({error: 'Lỗi server'});
     }
@@ -45,7 +73,8 @@ exports.updateHotel = async (req, res) => {
         LoaiHinh,
         MoTaCoSoVatChat,
         QuyDinh,
-        MotaChung
+        MotaChung,
+        MaNguoiQuanLy
     } = req.body;
 
     if(!MaKS || isNaN(MaKS))
@@ -54,22 +83,112 @@ exports.updateHotel = async (req, res) => {
     try
     {
         const pool = await poolPromise;
-        const result = await pool.request()
-        .input('MaKS', sql.Int, parseInt(MaKS))
-        .input('TenKS', sql.VarChar, TenKS)
-        .input('DiaChi', sql.VarChar, DiaChi)
-        .input('HangSao', sql.VarChar, HangSao)
-        .input('LoaiHinh', sql.VarChar, LoaiHinh)
-        .input('MoTaCoSoVatChat', sql.Text, MoTaCoSoVatChat)
-        .input('QuyDinh', sql.Text, QuyDinh)
-        .input('MotaChung', sql.Text, MotaChung)
-        .query(`
-            UPDATE KhachSan
-            SET TenKS = @TenKS, DiaChi = @DiaChi, HangSao = @HangSao, LoaiHinh = @LoaiHinh, MoTaCoSoVatChat = @MoTaCoSoVatChat, QuyDinh = @QuyDinh, MotaChung = @MotaChung
-            WHERE MaKS = @MaKS
-        `);
+        
+        // Nếu có MaNguoiQuanLy, validate role của người được chỉ định
+        if (MaNguoiQuanLy !== undefined && MaNguoiQuanLy !== null) {
+            const managerValidation = await pool.request()
+                .input('MaKH', sql.Int, MaNguoiQuanLy)
+                .query(`
+                    SELECT MaKH, LoaiUser, HoTen 
+                    FROM NguoiDung 
+                    WHERE MaKH = @MaKH AND IsActive = 1
+                `);
 
-    res.json({message: 'Thông tin khách sạn đã được cập nhật thành công'});
+            if (managerValidation.recordset.length === 0) {
+                return res.status(400).json({
+                    error: 'Không tìm thấy người dùng với mã này hoặc tài khoản đã bị vô hiệu hóa'
+                });
+            }
+
+            const manager = managerValidation.recordset[0];
+            if (manager.LoaiUser !== 'QuanLyKS' && manager.LoaiUser !== 'Admin') {
+                return res.status(400).json({
+                    error: `Người dùng "${manager.HoTen}" không có quyền làm người quản lý khách sạn. Chỉ người dùng có role "QuanLyKS" hoặc "Admin" mới có thể được chỉ định làm người quản lý.`
+                });
+            }
+        }
+
+        // Xây dựng query update động
+        let updateFields = [];
+        let queryParams = { MaKS: parseInt(MaKS) };
+
+        if (TenKS !== undefined) {
+            updateFields.push('TenKS = @TenKS');
+            queryParams.TenKS = TenKS;
+        }
+        if (DiaChi !== undefined) {
+            updateFields.push('DiaChi = @DiaChi');
+            queryParams.DiaChi = DiaChi;
+        }
+        if (HangSao !== undefined) {
+            updateFields.push('HangSao = @HangSao');
+            queryParams.HangSao = HangSao;
+        }
+        if (LoaiHinh !== undefined) {
+            updateFields.push('LoaiHinh = @LoaiHinh');
+            queryParams.LoaiHinh = LoaiHinh;
+        }
+        if (MoTaCoSoVatChat !== undefined) {
+            updateFields.push('MoTaCoSoVatChat = @MoTaCoSoVatChat');
+            queryParams.MoTaCoSoVatChat = MoTaCoSoVatChat;
+        }
+        if (QuyDinh !== undefined) {
+            updateFields.push('QuyDinh = @QuyDinh');
+            queryParams.QuyDinh = QuyDinh;
+        }
+        if (MotaChung !== undefined) {
+            updateFields.push('MotaChung = @MotaChung');
+            queryParams.MotaChung = MotaChung;
+        }
+        if (MaNguoiQuanLy !== undefined) {
+            updateFields.push('MaNguoiQuanLy = @MaNguoiQuanLy');
+            queryParams.MaNguoiQuanLy = MaNguoiQuanLy;
+        }
+
+        if (updateFields.length === 0) {
+            return res.status(400).json({error: 'Không có thông tin nào để cập nhật'});
+        }
+
+        const query = `
+            UPDATE KhachSan
+            SET ${updateFields.join(', ')}
+            WHERE MaKS = @MaKS
+        `;
+
+        const request = pool.request();
+        Object.keys(queryParams).forEach(key => {
+            if (key === 'MaKS' || key === 'MaNguoiQuanLy') {
+                request.input(key, sql.Int, queryParams[key]);
+            } else if (key === 'MoTaCoSoVatChat' || key === 'QuyDinh' || key === 'MotaChung') {
+                request.input(key, sql.Text, queryParams[key]);
+            } else {
+                request.input(key, sql.VarChar, queryParams[key]);
+            }
+        });
+
+        const result = await request.query(query);
+
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({error: 'Không tìm thấy khách sạn để cập nhật'});
+        }
+
+        let message = 'Thông tin khách sạn đã được cập nhật thành công';
+        if (MaNguoiQuanLy !== undefined) {
+            if (MaNguoiQuanLy === null) {
+                message += '. Đã xóa người quản lý khỏi khách sạn.';
+            } else {
+                // Lấy tên người quản lý mới
+                const managerInfo = await pool.request()
+                    .input('MaKH', sql.Int, MaNguoiQuanLy)
+                    .query('SELECT HoTen FROM NguoiDung WHERE MaKH = @MaKH');
+                
+                if (managerInfo.recordset.length > 0) {
+                    message += `. Đã chỉ định "${managerInfo.recordset[0].HoTen}" làm người quản lý khách sạn.`;
+                }
+            }
+        }
+
+        res.json({message});
     }
     catch (err)
     {
@@ -706,27 +825,131 @@ exports.suggestAlternativeDates = async (req, res) => {
 // HÀM MỚI: Lấy danh sách khách sạn cơ bản cho Admin (MaKS, TenKS)
 exports.getBasicHotelListForAdmin = async (req, res) => {
     try {
-        // Middleware isAdmin đã kiểm tra quyền Admin rồi
         const pool = await poolPromise;
-        const result = await pool.request()
-            .query(`SELECT MaKS, TenKS FROM KhachSan ORDER BY TenKS ASC`); // Lấy MaKS và TenKS
+        const result = await pool.request().query(`
+            SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh,
+                   nd.HoTen AS NguoiQuanLy
+            FROM KhachSan ks
+            LEFT JOIN NguoiDung nd ON ks.MaNguoiQuanLy = nd.MaKH
+            ORDER BY ks.HangSao DESC
+        `);
 
-        if (result.recordset.length === 0) {
-            return res.status(200).json({
-                success: true,
-                data: [] // Trả về mảng rỗng nếu không có khách sạn nào
-            });
-        }
-
-        res.status(200).json({
+        res.json({
             success: true,
             data: result.recordset
         });
-    } catch (error) {
-        console.error("Lỗi trong hotelController.getBasicHotelListForAdmin:", error);
-        res.status(500).json({
-            success: false,
-            message: 'Lỗi server khi lấy danh sách khách sạn cho admin.'
+    } catch (err) {
+        console.error('Lỗi getBasicHotelListForAdmin:', err);
+        res.status(500).json({ error: 'Lỗi hệ thống' });
+    }
+};
+
+// API để assign/unassign manager cho khách sạn
+exports.assignManager = async (req, res) => {
+    const { MaKS } = req.params;
+    const { MaNguoiQuanLy } = req.body; // null để unassign
+
+    if (!MaKS || isNaN(MaKS)) {
+        return res.status(400).json({ error: 'Mã khách sạn không hợp lệ' });
+    }
+
+    try {
+        const pool = await poolPromise;
+
+        // Kiểm tra khách sạn có tồn tại không
+        const hotelCheck = await pool.request()
+            .input('MaKS', sql.Int, parseInt(MaKS))
+            .query('SELECT MaKS, TenKS FROM KhachSan WHERE MaKS = @MaKS');
+
+        if (hotelCheck.recordset.length === 0) {
+            return res.status(404).json({ error: 'Không tìm thấy khách sạn' });
+        }
+
+        const hotel = hotelCheck.recordset[0];
+
+        // Nếu MaNguoiQuanLy không phải null, validate role
+        if (MaNguoiQuanLy !== null && MaNguoiQuanLy !== undefined) {
+            const managerValidation = await pool.request()
+                .input('MaKH', sql.Int, MaNguoiQuanLy)
+                .query(`
+                    SELECT MaKH, LoaiUser, HoTen 
+                    FROM NguoiDung 
+                    WHERE MaKH = @MaKH AND IsActive = 1
+                `);
+
+            if (managerValidation.recordset.length === 0) {
+                return res.status(400).json({
+                    error: 'Không tìm thấy người dùng với mã này hoặc tài khoản đã bị vô hiệu hóa'
+                });
+            }
+
+            const manager = managerValidation.recordset[0];
+            if (manager.LoaiUser !== 'QuanLyKS' && manager.LoaiUser !== 'Admin') {
+                return res.status(400).json({
+                    error: `Người dùng "${manager.HoTen}" không có quyền làm người quản lý khách sạn. Chỉ người dùng có role "QuanLyKS" hoặc "Admin" mới có thể được chỉ định làm người quản lý.`
+                });
+            }
+        }
+
+        // Update manager
+        const result = await pool.request()
+            .input('MaKS', sql.Int, parseInt(MaKS))
+            .input('MaNguoiQuanLy', sql.Int, MaNguoiQuanLy)
+            .query(`
+                UPDATE KhachSan
+                SET MaNguoiQuanLy = @MaNguoiQuanLy
+                WHERE MaKS = @MaKS
+            `);
+
+        if (result.rowsAffected[0] === 0) {
+            return res.status(500).json({ error: 'Không thể cập nhật người quản lý' });
+        }
+
+        let message;
+        if (MaNguoiQuanLy === null || MaNguoiQuanLy === undefined) {
+            message = `Đã xóa người quản lý khỏi khách sạn "${hotel.TenKS}"`;
+        } else {
+            // Lấy tên người quản lý mới
+            const managerInfo = await pool.request()
+                .input('MaKH', sql.Int, MaNguoiQuanLy)
+                .query('SELECT HoTen FROM NguoiDung WHERE MaKH = @MaKH');
+            
+            const managerName = managerInfo.recordset[0]?.HoTen || 'Không xác định';
+            message = `Đã chỉ định "${managerName}" làm người quản lý khách sạn "${hotel.TenKS}"`;
+        }
+
+        res.json({
+            success: true,
+            message
         });
+
+    } catch (err) {
+        console.error('Lỗi assignManager:', err);
+        res.status(500).json({ error: 'Lỗi server' });
+    }
+};
+
+// API để lấy danh sách người dùng có thể làm quản lý khách sạn
+exports.getAvailableManagers = async (req, res) => {
+    try {
+        const pool = await poolPromise;
+        
+        const result = await pool.request()
+            .query(`
+                SELECT MaKH, HoTen, Email, LoaiUser
+                FROM NguoiDung
+                WHERE (LoaiUser = 'QuanLyKS' OR LoaiUser = 'Admin') 
+                AND IsActive = 1
+                ORDER BY HoTen ASC
+            `);
+
+        res.json({
+            success: true,
+            data: result.recordset
+        });
+
+    } catch (err) {
+        console.error('Lỗi getAvailableManagers:', err);
+        res.status(500).json({ error: 'Lỗi server' });
     }
 };

@@ -5,15 +5,6 @@ const { initBookingCleanupJob } = require('./services/bookingCleanupService');
 
 const express = require('express');
 const app = express();
-const http = require('http');
-const server = http.createServer(app);
-const io = require('socket.io')(server, {
-  cors: {
-    origin: "http://localhost:3000",
-    methods: ["GET", "POST"],
-    credentials: true
-  }
-});
 
 // Session middleware
 const session = require('express-session');
@@ -22,14 +13,15 @@ const session = require('express-session');
 app.use(session({
     secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: false, // Chỉ tạo session khi có data để lưu
     genid: function(req) {
         return Date.now().toString(36) + Math.random().toString(36).substr(2);
     },
     cookie: {
-        secure: process.env.NODE_ENV === 'production',
+        secure: false, // Set to false for localhost development
         httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        sameSite: 'lax' // Add SameSite attribute for cross-origin requests
     }
 }));
 
@@ -46,6 +38,8 @@ app.use(express.json());          // ✅ Đọc JSON body
 //Logging
 app.use((req, res, next) => {
   console.log(`→ ${req.method} ${req.url}`);
+  console.log('Session ID:', req.session?.id);
+  console.log('Cookies:', Object.keys(req.cookies || {}).join(', '));
   next();
 });
 //Mount routes
@@ -77,30 +71,8 @@ app.use('/api/prices', priceRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/promotions', promotionRoutes);
 
-// Socket.IO connection handling
-io.on('connection', (socket) => {
-  console.log('A user connected');
-
-  socket.on('join-room', (managerId) => {
-    socket.join(managerId);
-    console.log(`User joined room: ${managerId}`);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('User disconnected');
-  });
-});
-
-// Function to emit booking notification
-const emitBookingNotification = (managerId, bookingData) => {
-  io.to(managerId).emit('new-booking', bookingData);
-};
-
-// Make emitBookingNotification available globally
-global.emitBookingNotification = emitBookingNotification;
-
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
+app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
     initBookingCleanupJob();
 })

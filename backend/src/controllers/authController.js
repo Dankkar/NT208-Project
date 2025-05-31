@@ -9,29 +9,27 @@ const schema = 'dbo';
 
 // Initialize session for guest users
 exports.initializeGuestSession = (req, res) => {
-    if (!req.session.id) {
-        req.session.regenerate((err) => {
-            if (err) {
-                console.error('Error regenerating session:', err);
-                return res.status(500).json({ 
-                    success: false,
-                    message: 'Lỗi khởi tạo phiên'
-                });
-            }
-            res.status(200).json({ 
-                success: true,
-                message: 'Phiên khách đã được khởi tạo',
-                sessionId: req.session.id
-            });
-        });
-    } else {
-        res.status(200).json({ 
+    // Check if user is already authenticated
+    if (req.session && req.session.user) {
+        return res.status(200).json({ 
             success: true,
-            message: 'Phiên đã tồn tại',
-            sessionId: req.session.id
+            message: 'User session already exists',
+            sessionId: req.session.id,
+            authenticated: true
         });
     }
-  }
+
+    // Mark as guest session without regenerating
+    req.session.isGuest = true;
+    
+    res.status(200).json({ 
+        success: true,
+        message: 'Guest session initialized',
+        sessionId: req.session.id,
+        authenticated: false
+    });
+};
+
 //API kiem tra email ton tai truoc khi dang ky
 exports.checkEmailExists = async (req, res) => {
   const { Email } = req.body;
@@ -191,39 +189,28 @@ exports.login = async (req, res) => {
       { expiresIn: '1h' }
     );
 
-    // Regenerate session on login
-    req.session.regenerate((err) => {
-      if (err) {
-        console.error('Error regenerating session:', err);
-        return res.status(500).json({ 
-          success: false,
-          message: 'Lỗi đăng nhập'
-        });
-      }
+    // Set session data directly without regenerating
+    req.session.user = {
+      MaKH: user.MaKH,
+      Email: user.Email,
+      role: user.LoaiUser
+    };
 
-      // Set session data
-      req.session.user = {
+    res.cookie('access_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 1 * 60 * 60 * 1000,
+    });
+
+    res.status(200).json({ 
+      message: 'Đăng nhập thành công',
+      user: {
         MaKH: user.MaKH,
+        HoTen: user.HoTen,
         Email: user.Email,
         role: user.LoaiUser
-      };
-
-      res.cookie('access_token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 1 * 60 * 60 * 1000,
-      });
-
-      res.status(200).json({ 
-        message: 'Đăng nhập thành công',
-        user: {
-          MaKH: user.MaKH,
-          HoTen: user.HoTen,
-          Email: user.Email,
-          role: user.LoaiUser
-        }
-      });
+      }
     });
   } catch (error) {
     console.error(error);
@@ -336,27 +323,31 @@ exports.resetPassword = async (req, res) => {
   }
 }
 
-// Dang xuat
+// API Logout
 exports.logout = (req, res) => {
-  // Clear session data
+  // Destroy session
   req.session.destroy((err) => {
     if (err) {
       console.error('Error destroying session:', err);
       return res.status(500).json({ 
         success: false,
-        message: 'Lỗi khi đăng xuất'
+        message: 'Lỗi đăng xuất'
       });
     }
-  });
 
-  res.clearCookie('access_token', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'Strict'
-  });
+    // Clear the access token cookie
+    res.clearCookie('access_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict'
+    });
 
-  res.status(200).json({ message: 'Đăng xuất thành công' });
-}
+    res.status(200).json({ 
+      success: true,
+      message: 'Đăng xuất thành công'
+    });
+  });
+};
 
 exports.deleteUser = async (req, res) => {
   const { MaKH } = req.params;

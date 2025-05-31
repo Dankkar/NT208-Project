@@ -1,7 +1,7 @@
 // backend/src/controllers/bookingController.js
 
 const { poolPromise, sql } = require('../database/db');
-const { sendReviewRequestEmail, sendBookingConfirmation } = require('../utils/emailService');
+const { sendReviewRequestEmail, sendBookingConfirmation, sendBookingNotificationToManager } = require('../utils/emailService');
 const PriceCalculationService = require('../services/priceCalculationService');
 
 
@@ -134,8 +134,19 @@ exports.createBooking = async (req, res) => {
                 promotion: promotion
             };
 
+            console.log('Booking details for price calculation:', {
+                basePrice,
+                checkIn: bookingInfo.NgayNhanPhong,
+                checkOut: bookingInfo.NgayTraPhong,
+                services: serviceDetails,
+                promotion: promotion
+            });
+
             const priceDetails = PriceCalculationService.calculateTotalPrice(bookingDetails);
+            console.log('Price calculation result:', priceDetails);
+            
             const TongTienDuKien = priceDetails.finalPrice;
+            console.log('TongTienDuKien:', TongTienDuKien);
 
             // Update booking status to confirmed
             await transaction.request()
@@ -172,9 +183,9 @@ exports.createBooking = async (req, res) => {
             }
 
             // Get guest account ID
-            const guestAccountResult = await transaction.request()
-                .query('SELECT MaKH FROM GuestAccount');
-            const guestAccountId = guestAccountResult.recordset[0].MaKH;
+            // const guestAccountResult = await transaction.request()
+            //     .query('SELECT MaKH FROM GuestAccount');
+            // const guestAccountId = guestAccountResult.recordset[0].MaKH;
 
             // Determine which MaKH to use for the invoice
             let invoiceMaKH;
@@ -234,6 +245,40 @@ exports.createBooking = async (req, res) => {
                 await sendBookingConfirmation(emailInfo);
             } catch (emailErr) {
                 console.error('Error sending confirmation email:', emailErr);
+            }
+
+            // Send email notification to hotel manager
+            try {
+                const hotelManagerResult = await pool.request()
+                    .input('MaKS', sql.Int, bookingInfo.MaKS)
+                    .query(`
+                        SELECT ks.MaNguoiQuanLy, nd.HoTen as TenQuanLy, nd.Email as EmailQuanLy
+                        FROM KhachSan ks
+                        LEFT JOIN NguoiDung nd ON ks.MaNguoiQuanLy = nd.MaKH
+                        WHERE ks.MaKS = @MaKS AND nd.Email IS NOT NULL
+                    `);
+
+                if (hotelManagerResult.recordset.length > 0 && hotelManagerResult.recordset[0].MaNguoiQuanLy) {
+                    const managerInfo = hotelManagerResult.recordset[0];
+                    
+                    // Send email notification to hotel manager
+                    const managerEmailInfo = {
+                        managerEmail: managerInfo.EmailQuanLy,
+                        managerName: managerInfo.TenQuanLy,
+                        bookingId: bookingInfo.MaDat,
+                        hotelName: roomInfo.TenKS,
+                        roomNumber: roomInfo.SoPhong,
+                        guestName: currentUser ? currentUser.HoTen : guestInfo.HoTen,
+                        checkIn: bookingInfo.NgayNhanPhong,
+                        checkOut: bookingInfo.NgayTraPhong,
+                        totalPrice: TongTienDuKien
+                    };
+                    
+                    await sendBookingNotificationToManager(managerEmailInfo);
+                    console.log(`Email notification sent to hotel manager ${managerInfo.TenQuanLy} for booking ${bookingInfo.MaDat}`);
+                }
+            } catch (notificationErr) {
+                console.error('Error sending email notification to hotel manager:', notificationErr);
             }
 
             // Clear booking info from session
@@ -619,9 +664,28 @@ exports.holdBooking = async (req, res) => {
 
         // Check if this session already has a held booking
         if (req.session.bookingInfo) {
-            return res.status(400).json({
-                error: 'Bạn đã có một đơn đặt phòng đang được giữ. Vui lòng hoàn tất đơn đó trước khi tạo đơn mới.'
-            });
+            // Verify booking is still valid in database before blocking new booking
+            const pool = await poolPromise;
+            const checkValid = await pool.request()
+                .input('MaDat', sql.Int, req.session.bookingInfo.MaDat)
+                .query(`
+                    SELECT * FROM Booking 
+                    WHERE MaDat = @MaDat 
+                    AND TrangThaiBooking = N'Tạm giữ' 
+                    AND ThoiGianGiuCho IS NOT NULL 
+                    AND DATEDIFF(MINUTE, ThoiGianGiuCho, GETDATE()) <= 15
+                `);
+            
+            if (checkValid.recordset.length === 0) {
+                // Booking has expired or been cancelled, clear session
+                delete req.session.bookingInfo;
+                console.log('Cleared expired booking from session:', req.session.bookingInfo?.MaDat);
+            } else {
+                // Booking is still valid, block new booking
+                return res.status(400).json({
+                    error: 'Bạn đã có một đơn đặt phòng đang được giữ. Vui lòng hoàn tất đơn đó trước khi tạo đơn mới.'
+                });
+            }
         }
 
         const pool = await poolPromise;
