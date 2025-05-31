@@ -13,14 +13,15 @@ const session = require('express-session');
 app.use(session({
     secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: false, // Chỉ tạo session khi có data để lưu
     genid: function(req) {
         return Date.now().toString(36) + Math.random().toString(36).substr(2);
     },
     cookie: {
-        secure: process.env.NODE_ENV === 'production',
+        secure: false, // Set to false for localhost development
         httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        sameSite: 'lax' // Add SameSite attribute for cross-origin requests
     }
 }));
 
@@ -37,6 +38,8 @@ app.use(express.json());          // ✅ Đọc JSON body
 //Logging
 app.use((req, res, next) => {
   console.log(`→ ${req.method} ${req.url}`);
+  console.log('Session ID:', req.session?.id);
+  console.log('Cookies:', Object.keys(req.cookies || {}).join(', '));
   next();
 });
 //Mount routes

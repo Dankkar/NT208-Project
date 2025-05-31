@@ -69,7 +69,7 @@
       </button>
 
       <p class="card-footer mt-3">
-        <router-link to="/signup" class="link-primary">
+        <router-link to="/signup" class="link-primary" @click="handleBackToSignup">
           ← Back to Sign Up
         </router-link>
       </p>
@@ -134,16 +134,21 @@ const isProfileFormValidAndNotEmpty = computed(() => {
 });
 
 onMounted(() => {
+  // Check if coming from signup flow
   if (!signupStore.email || !signupStore.password) {
     showAlert('Signup data missing. Please start from the first step.', 'warning');
     setTimeout(() => router.replace('/signup'), 2000); // Give user time to read
     return;
   }
+  
+  // Pre-fill profile data if exists
   profileData.HoTen = signupStore.profileDetails.HoTen || '';
   profileData.SDT = signupStore.profileDetails.SDT || '';
   profileData.CCCD = signupStore.profileDetails.CCCD || '';
   profileData.NgaySinh = signupStore.profileDetails.NgaySinh || '';
   profileData.GioiTinh = signupStore.profileDetails.GioiTinh || '';
+  
+  // Validate existing fields
   ['HoTen', 'SDT', 'CCCD', 'NgaySinh', 'GioiTinh'].forEach(field => {
     if (profileData[field]) validateField(field);
   });
@@ -223,6 +228,11 @@ async function handleRegistration(skippedProfile = false) {
     isLoading.value = false;
     isSkipping.value = false;
   }
+}
+
+function handleBackToSignup() {
+  // Implement the logic to handle back to signup
+  console.log('Back to signup clicked');
 }
 </script>
 
