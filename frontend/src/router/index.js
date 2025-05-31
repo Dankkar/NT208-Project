@@ -43,7 +43,7 @@ const routes = [
   { path: '/BookingHistory', name: 'BookingHistory', component: BookingHistory, meta: {navbarBehavior: 'stickyWithHideOnScroll'}}, 
   { path: '/TransactionHistory', name: 'TransactionHistory', component: TransactionHistory, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
   { path: '/hotels/:id', name: 'HotelDetails', component: HotelDetails, meta: {navbarBehavior: 'stickyWithHideOnScroll'}, props: true},
-  { path: '/complete-profile', name: 'CompleteProfilePage', component: CompleteProfilePage, meta: { requiresAuth: true }},
+  { path: '/complete-profile', name: 'CompleteProfilePage', component: CompleteProfilePage },
   {
     path: '/admin',
     component: Dashboard,

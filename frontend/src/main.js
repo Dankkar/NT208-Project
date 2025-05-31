@@ -16,34 +16,40 @@ import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 axios.defaults.baseURL = 'http://localhost:5000'
 axios.defaults.withCredentials = true // Important for session handling
 
-// Initialize session
-const initializeSession = async () => {
+// Initialize session only when needed (moved to authentication flow)
+const initializeSessionIfNeeded = async () => {
     try {
-        await axios.get('/api/auth/init-session')
-        console.log('Session initialized successfully')
+        const response = await axios.get('/api/auth/init-session')
+        console.log('Session initialized:', response.data)
+        return response.data
     } catch (error) {
         console.error('Error initializing session:', error)
+        return null
     }
 }
 
-// Initialize Pinia with persistence
-const pinia = createPinia()
-pinia.use(piniaPluginPersistedstate)
+// Make session initialization available globally
+window.initializeSessionIfNeeded = initializeSessionIfNeeded
 
-// Create and configure app
+// Create app instance
 const app = createApp(App)
 
-// Register components
+// Configure Pinia with persistence
+const pinia = createPinia()
+pinia.use(piniaPluginPersistedstate)
+app.use(pinia)
+
+// Configure router
+app.use(router)
+
+// Configure Vue Datepicker
 app.component('Datepicker', Datepicker)
 
-// Use plugins
-app.use(router)
+// Configure Google Login
 app.use(vue3GoogleLogin, {
     clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID,
 })
 app.use(pinia)
 
-// Initialize session before mounting
-initializeSession().then(() => {
-    app.mount('#app')
-})
+// Mount app directly - no need to initialize session on startup
+app.mount('#app')

@@ -99,8 +99,35 @@ const authStore = useAuthStore();
 
 const logoSrc = ref(uit_logo);
 
+// Check if user is already authenticated on component mount
+onMounted(async () => {
+  // Check authentication state first
+  if (!authStore.user && !authStore.isLoading) {
+    await authStore.fetchCurrentUser();
+  }
+  
+  // If already authenticated and not in signup flow, redirect to homepage
+  if (authStore.isAuthenticated && !signupStore.email) {
+    console.warn('Already authenticated user accessing signup page, redirecting to homepage');
+    signupStore.clearSignupData(); // Clear any stale signup data
+    router.replace('/homepage');
+    return;
+  }
+  
+  // If coming back from complete-profile, preserve the signup data
+  if (!signupStore.email) {
+    // Clear any previous signup data when starting fresh
+    signupStore.clearSignupData();
+  }
+  
+  // If email is pre-filled (e.g. from signupStore), validate it
+  if (formData.email) {
+    validateEmailOnBlur(); // Validate format and check on server
+  }
+});
+
 const formData = reactive({
-  email: signupStore.email || '', // Pre-fill if coming back or from other flow
+  email: signupStore.email || '', // Show email from signup store if available
   password: '',
   confirmPassword: '',
 });
@@ -260,13 +287,6 @@ async function handleFormSubmit() {
 }
 
 // --- Lifecycle Hooks ---
-onMounted(() => {
-  // If email is pre-filled (e.g. from signupStore), validate it
-  if (formData.email) {
-    validateEmailOnBlur(); // Validate format and check on server
-  }
-});
-
 onUnmounted(() => {
   clearTimeout(debounceTimer);
   // Optionally clear errors in authStore if this page was responsible for setting them

@@ -10,7 +10,9 @@ const {
   getFeaturedHotels,
   suggestLocations,
   getBasicHotelListForAdmin,
-  searchAvailableHotels
+  searchAvailableHotels,
+  assignManager,
+  getAvailableManagers
 } = require('../controllers/hotelController');
 const { authenticateToken, isAdmin } = require('../middlewares/auth');
 const { LocationSuggestLimiter } = require('../middlewares/rateLimiter');
@@ -79,5 +81,13 @@ router.get('/list-basic', authenticateToken, isAdmin, getBasicHotelListForAdmin)
 
 // GET /hotels/:MaKS - chi tiết khách sạn
 router.get('/:MaKS', getHotelById);
+
+// ----------- HOTEL MANAGER ROUTES -----------
+
+// PUT /hotels/:MaKS/manager - assign/unassign manager (Admin only)
+router.put('/:MaKS/manager', authenticateToken, isAdmin, assignManager);
+
+// GET /hotels/available-managers - danh sách người có thể làm quản lý (Admin only)
+router.get('/available-managers', authenticateToken, isAdmin, getAvailableManagers);
 
 module.exports = router;

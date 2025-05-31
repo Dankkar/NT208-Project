@@ -37,11 +37,11 @@ exports.getRevenueOverview = async (req, res) => {
                     NULLIF(COUNT(*), 0) as DECIMAL(5,2)) as CancellationRate,
                 
                 -- Occupancy Rate
-                (SELECT CAST(COUNT(*) * 100.0 / NULLIF((SELECT COUNT(*) FROM ${schema}.Phong), 0) as DECIMAL(5,2))
-                FROM ${schema}.Booking
+                (SELECT CAST(COUNT(*) * 100.0 / NULLIF((SELECT COUNT(*) FROM Phong), 0) as DECIMAL(5,2))
+                FROM Booking
                 WHERE TrangThaiBooking != 'Đã hủy'
                 AND GETDATE() BETWEEN NgayNhanPhong AND NgayTraPhong) as CurrentOccupancyRate
-            FROM ${schema}.Booking
+            FROM Booking
         `;
 
         const result = await pool.request()
@@ -76,7 +76,7 @@ exports.getRevenueByPeriod = async (req, res) => {
                 COUNT(CASE WHEN TrangThaiBooking != 'Đã hủy' THEN 1 END) as BookingCount,
                 COUNT(CASE WHEN TrangThaiBooking = 'Đã hủy' THEN 1 END) as CancelledCount,
                 AVG(CASE WHEN TrangThaiBooking != 'Đã hủy' THEN TongTienDuKien ELSE NULL END) as AverageRevenue
-            FROM ${schema}.Booking
+            FROM Booking
             WHERE NgayDat BETWEEN @startDate AND @endDate
             GROUP BY 
                 CASE 
@@ -116,16 +116,16 @@ exports.getRevenueByRoomType = async (req, res) => {
                 SUM(CASE WHEN b.TrangThaiBooking != 'Đã hủy' THEN b.TongTienDuKien ELSE 0 END) as Revenue,
                 AVG(CASE WHEN b.TrangThaiBooking != 'Đã hủy' THEN b.TongTienDuKien ELSE NULL END) as AverageRevenue,
                 COUNT(CASE WHEN b.TrangThaiBooking = 'Đã hủy' THEN 1 END) as CancelledBookings,
-                (SELECT COUNT(*) FROM ${schema}.Phong p2 
+                (SELECT COUNT(*) FROM Phong p2 
                  WHERE p2.MaLoaiPhong = lp.MaLoaiPhong) as TotalRooms,
-                (SELECT COUNT(*) FROM ${schema}.Phong p2 
-                 JOIN ${schema}.Booking b2 ON p2.MaPhong = b2.MaPhong
+                (SELECT COUNT(*) FROM Phong p2 
+                 JOIN Booking b2 ON p2.MaPhong = b2.MaPhong
                  WHERE p2.MaLoaiPhong = lp.MaLoaiPhong
                  AND b2.TrangThaiBooking != 'Đã hủy'
                  AND GETDATE() BETWEEN b2.NgayNhanPhong AND b2.NgayTraPhong) as OccupiedRooms
-            FROM ${schema}.Booking b
-            JOIN ${schema}.Phong p ON b.MaPhong = p.MaPhong
-            JOIN ${schema}.LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
+            FROM Booking b
+            JOIN Phong p ON b.MaPhong = p.MaPhong
+            JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
             WHERE b.NgayDat BETWEEN @startDate AND @endDate
             GROUP BY lp.TenLoaiPhong, lp.MaLoaiPhong
             ORDER BY Revenue DESC
@@ -159,9 +159,9 @@ exports.getRevenueByService = async (req, res) => {
                 SUM(sdv.GiaTaiThoiDiemSuDung * sdv.SoLuong) as Revenue,
                 AVG(sdv.GiaTaiThoiDiemSuDung) as AveragePrice,
                 COUNT(DISTINCT sdv.MaDat) as BookingCount
-            FROM ${schema}.LoaiDichVu ldv
-            JOIN ${schema}.SuDungDichVu sdv ON ldv.MaLoaiDV = sdv.MaLoaiDV
-            JOIN ${schema}.Booking b ON sdv.MaDat = b.MaDat
+            FROM LoaiDichVu ldv
+            JOIN SuDungDichVu sdv ON ldv.MaLoaiDV = sdv.MaLoaiDV
+            JOIN Booking b ON sdv.MaDat = b.MaDat
             WHERE b.NgayDat BETWEEN @startDate AND @endDate
             AND b.TrangThaiBooking != 'Đã hủy'
             GROUP BY ldv.TenLoaiDV, ldv.MaLoaiDV
@@ -196,15 +196,15 @@ exports.getRevenueByHotel = async (req, res) => {
                 SUM(CASE WHEN b.TrangThaiBooking != 'Đã hủy' THEN b.TongTienDuKien ELSE 0 END) as Revenue,
                 AVG(CASE WHEN b.TrangThaiBooking != 'Đã hủy' THEN b.TongTienDuKien ELSE NULL END) as AverageRevenue,
                 COUNT(CASE WHEN b.TrangThaiBooking = 'Đã hủy' THEN 1 END) as CancelledBookings,
-                (SELECT COUNT(*) FROM ${schema}.Phong p2 
+                (SELECT COUNT(*) FROM Phong p2 
                  WHERE p2.MaKS = ks.MaKS) as TotalRooms,
-                (SELECT COUNT(*) FROM ${schema}.Phong p2 
-                 JOIN ${schema}.Booking b2 ON p2.MaPhong = b2.MaPhong
+                (SELECT COUNT(*) FROM Phong p2 
+                 JOIN Booking b2 ON p2.MaPhong = b2.MaPhong
                  WHERE p2.MaKS = ks.MaKS
                  AND b2.TrangThaiBooking != 'Đã hủy'
                  AND GETDATE() BETWEEN b2.NgayNhanPhong AND b2.NgayTraPhong) as OccupiedRooms
-            FROM ${schema}.Booking b
-            JOIN ${schema}.KhachSan ks ON b.MaKS = ks.MaKS
+            FROM Booking b
+            JOIN KhachSan ks ON b.MaKS = ks.MaKS
             WHERE b.NgayDat BETWEEN @startDate AND @endDate
             GROUP BY ks.TenKS, ks.MaKS
             ORDER BY Revenue DESC
@@ -238,7 +238,7 @@ exports.getRevenueAnalytics = async (req, res) => {
                 SUM(CASE WHEN TrangThaiBooking != 'Đã hủy' THEN TongTienDuKien ELSE 0 END) as DailyRevenue,
                 COUNT(CASE WHEN TrangThaiBooking != 'Đã hủy' THEN 1 END) as DailyBookings,
                 AVG(CASE WHEN TrangThaiBooking != 'Đã hủy' THEN TongTienDuKien ELSE NULL END) as AverageRevenue
-            FROM ${schema}.Booking
+            FROM Booking
             WHERE NgayDat BETWEEN @startDate AND @endDate
             GROUP BY CONVERT(DATE, NgayDat)
             ORDER BY Date
@@ -250,7 +250,7 @@ exports.getRevenueAnalytics = async (req, res) => {
                 DATEPART(HOUR, NgayDat) as Hour,
                 COUNT(*) as BookingCount,
                 AVG(TongTienDuKien) as AverageRevenue
-            FROM ${schema}.Booking
+            FROM Booking
             WHERE NgayDat BETWEEN @startDate AND @endDate
             AND TrangThaiBooking != 'Đã hủy'
             GROUP BY DATEPART(HOUR, NgayDat)
@@ -263,7 +263,7 @@ exports.getRevenueAnalytics = async (req, res) => {
                 DATEDIFF(day, NgayDat, NgayHuy) as DaysBeforeCheckIn,
                 COUNT(*) as CancellationCount,
                 AVG(TongTienDuKien) as AverageBookingValue
-            FROM ${schema}.Booking
+            FROM Booking
             WHERE TrangThaiBooking = 'Đã hủy'
             AND NgayDat BETWEEN @startDate AND @endDate
             GROUP BY DATEDIFF(day, NgayDat, NgayHuy)
