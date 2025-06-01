@@ -12,9 +12,9 @@ const hotelService = {
             throw error;
         }
     },
-    getAllHotels: async () => {
+    getAllHotels: async (params = {}) => {
         try {
-            const response = await axios.get(`${API_URL}/hotels`);
+            const response = await axios.get(`${API_URL}/hotels`, { params });
             return response.data;
         } catch (error) {
             console.error('Error fetching all hotels:', error);

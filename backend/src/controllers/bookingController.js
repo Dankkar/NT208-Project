@@ -148,11 +148,47 @@ exports.createBooking = async (req, res) => {
             const TongTienDuKien = priceDetails.finalPrice;
             console.log('TongTienDuKien:', TongTienDuKien);
 
+            // Create guest account representative for all guests if not exists
+            let guestRepresentativeResult = await transaction.request()
+                .query(`
+                    SELECT MaKH FROM NguoiDung 
+                    WHERE LoaiUser = 'Guest' AND Email = 'guest@system.internal'
+                `);
+
+            if (guestRepresentativeResult.recordset.length === 0) {
+                // Create guest representative account if it doesn't exist
+                guestRepresentativeResult = await transaction.request()
+                    .input('LoaiUser', sql.NVarChar, 'Guest')
+                    .input('HoTen', sql.NVarChar, 'Guest Representative Account')
+                    .input('Email', sql.NVarChar, 'guest@system.internal')
+                    .input('MatKhauHash', sql.NVarChar, 'GUEST_REPRESENTATIVE_NO_LOGIN')
+                    .query(`
+                        INSERT INTO NguoiDung (LoaiUser, HoTen, Email, MatKhauHash)
+                        OUTPUT INSERTED.MaKH
+                        VALUES (@LoaiUser, @HoTen, @Email, @MatKhauHash)
+                    `);
+            }
+            
+            const guestRepresentativeId = guestRepresentativeResult.recordset[0].MaKH;
+
+            // Determine which MaKH to use for the booking and invoice
+            let bookingMaKH, bookingMaKhach;
+            if (currentUser) {
+                // If user is logged in, use their MaKH
+                bookingMaKH = currentUser.MaKH;
+                bookingMaKhach = null;
+            } else {
+                // If user is guest, use the guest representative account for MaKH
+                // and actual guest info for MaKhach
+                bookingMaKH = guestRepresentativeId;
+                bookingMaKhach = MaKhach; // Guest record created earlier
+            }
+
             // Update booking status to confirmed
             await transaction.request()
                 .input('MaDat', sql.Int, bookingInfo.MaDat)
-                .input('MaKH', sql.Int, MaKH)
-                .input('MaKhach', sql.Int, MaKhach)
+                .input('MaKH', sql.Int, bookingMaKH)
+                .input('MaKhach', sql.Int, bookingMaKhach)
                 .input('TrangThaiBooking', sql.NVarChar, 'Đã xác nhận')
                 .input('TongTienDuKien', sql.Decimal(18, 2), TongTienDuKien)
                 .query(`
@@ -187,21 +223,11 @@ exports.createBooking = async (req, res) => {
             //     .query('SELECT MaKH FROM GuestAccount');
             // const guestAccountId = guestAccountResult.recordset[0].MaKH;
 
-            // Determine which MaKH to use for the invoice
-            let invoiceMaKH;
-            if (currentUser) {
-                // If user is logged in, use their MaKH
-                invoiceMaKH = currentUser.MaKH;
-            } else {
-                // If user is guest, use the guest account ID
-                invoiceMaKH = guestAccountId;
-            }
-
             // Create invoice
             const nowVN = new Date(new Date().getTime() + 7 * 60 * 60 * 1000);
             const invoiceResult = await transaction.request()
                 .input('MaDat', sql.Int, bookingInfo.MaDat)
-                .input('MaKH', sql.Int, invoiceMaKH)
+                .input('MaKH', sql.Int, bookingMaKH)
                 .input('MaKM', sql.Int, promotion?.MaKM || null)
                 .input('TongTienPhong', sql.Decimal(18, 2), TongTienDuKien)
                 .input('HinhThucTT', sql.NVarChar, paymentInfo.HinhThucTT)
@@ -261,6 +287,20 @@ exports.createBooking = async (req, res) => {
                 if (hotelManagerResult.recordset.length > 0 && hotelManagerResult.recordset[0].MaNguoiQuanLy) {
                     const managerInfo = hotelManagerResult.recordset[0];
                     
+                    // Get guest name - either from currentUser database or guestInfo
+                    let guestName;
+                    if (currentUser) {
+                        // For logged-in users, get name from database to ensure accuracy
+                        const userInfoResult = await pool.request()
+                            .input('MaKH', sql.Int, currentUser.MaKH)
+                            .query(`SELECT HoTen FROM NguoiDung WHERE MaKH = @MaKH`);
+                        guestName = userInfoResult.recordset.length > 0 ? 
+                                   userInfoResult.recordset[0].HoTen : 
+                                   (currentUser.HoTen || 'Khách hàng');
+                    } else {
+                        guestName = guestInfo.HoTen;
+                    }
+                    
                     // Send email notification to hotel manager
                     const managerEmailInfo = {
                         managerEmail: managerInfo.EmailQuanLy,
@@ -268,10 +308,10 @@ exports.createBooking = async (req, res) => {
                         bookingId: bookingInfo.MaDat,
                         hotelName: roomInfo.TenKS,
                         roomNumber: roomInfo.SoPhong,
-                        guestName: currentUser ? currentUser.HoTen : guestInfo.HoTen,
+                        guestName: guestName,
                         checkIn: bookingInfo.NgayNhanPhong,
                         checkOut: bookingInfo.NgayTraPhong,
-                        totalPrice: TongTienDuKien
+                        totalPrice: TongTienDuKien,
                     };
                     
                     await sendBookingNotificationToManager(managerEmailInfo);
@@ -1377,21 +1417,21 @@ exports.updateBookingDetails = async (req, res) => {
         await transaction.begin();
 
         try {
-            let MaKhach = null;
+            let MaKhach = bookingInfo?.MaKhach || null;
 
             // If user is not logged in, create guest record
             if (!currentUser) {
-                if (!guestInfo) {
+                if (!bookingInfo.guestInfo) {
                     throw new Error("Thông tin khách hàng là bắt buộc");
                 }
 
                 const guestResult = await transaction.request()
-                    .input('HoTen', sql.NVarChar, guestInfo.HoTen)
-                    .input('Email', sql.NVarChar, guestInfo.Email)
-                    .input('SDT', sql.NVarChar, guestInfo.SDT)
-                    .input('CCCD', sql.NVarChar, guestInfo.CCCD || null)
-                    .input('NgaySinh', sql.Date, guestInfo.NgaySinh || null)
-                    .input('GioiTinh', sql.NVarChar, guestInfo.GioiTinh || null)
+                    .input('HoTen', sql.NVarChar, bookingInfo.guestInfo.HoTen)
+                    .input('Email', sql.NVarChar, bookingInfo.guestInfo.Email)
+                    .input('SDT', sql.NVarChar, bookingInfo.guestInfo.SDT)
+                    .input('CCCD', sql.NVarChar, bookingInfo.guestInfo.CCCD || null)
+                    .input('NgaySinh', sql.Date, bookingInfo.guestInfo.NgaySinh || null)
+                    .input('GioiTinh', sql.NVarChar, bookingInfo.guestInfo.GioiTinh || null)
                     .query(`
                         INSERT INTO Guests (HoTen, Email, SDT, CCCD, NgaySinh, GioiTinh)
                         OUTPUT INSERTED.MaKhach
@@ -1401,38 +1441,65 @@ exports.updateBookingDetails = async (req, res) => {
                 MaKhach = guestResult.recordset[0].MaKhach;
             }
 
-            // Update booking with guest info
-            if (currentUser) {
-                await transaction.request()
-                    .input('MaDat', sql.Int, bookingInfo.MaDat)
-                    .input('MaKH', sql.Int, currentUser.MaKH)
-                    .query(`UPDATE Booking SET MaKH = @MaKH WHERE MaDat = @MaDat`);
-            } else {
-                await transaction.request()
-                    .input('MaDat', sql.Int, bookingInfo.MaDat)
-                    .input('MaKhach', sql.Int, MaKhach)
-                    .query(`UPDATE Booking SET MaKhach = @MaKhach WHERE MaDat = @MaDat`);
-            };
+            // Create guest account representative for all guests if not exists
+            let guestRepresentativeResult = await transaction.request()
+                .query(`
+                    SELECT MaKH FROM NguoiDung 
+                    WHERE LoaiUser = 'Guest' AND Email = 'guest@system.internal'
+                `);
+
+            if (guestRepresentativeResult.recordset.length === 0) {
+                // Create guest representative account if it doesn't exist
+                guestRepresentativeResult = await transaction.request()
+                    .input('LoaiUser', sql.NVarChar, 'Guest')
+                    .input('HoTen', sql.NVarChar, 'Guest Representative Account')
+                    .input('Email', sql.NVarChar, 'guest@system.internal')
+                    .input('MatKhauHash', sql.NVarChar, 'GUEST_REPRESENTATIVE_NO_LOGIN')
+                    .query(`
+                        INSERT INTO NguoiDung (LoaiUser, HoTen, Email, MatKhauHash)
+                        OUTPUT INSERTED.MaKH
+                        VALUES (@LoaiUser, @HoTen, @Email, @MatKhauHash)
+                    `);
+            }
             
-            // Add selected services if any
-            if (services && Array.isArray(services) && services.length > 0) {
-                for (const service of services) {
-                    // Normalize service object keys to uppercase
-                    const normalizedService = {
-                        MaLoaiDV: service.MaLoaiDV || service.MaLoaiDv,
-                        quantity: service.quantity,
-                        GiaDV: service.GiaDV
-                    };
+            const guestRepresentativeId = guestRepresentativeResult.recordset[0].MaKH;
 
-                    if (!normalizedService.MaLoaiDV || !normalizedService.quantity || !normalizedService.GiaDV) {
-                        throw new Error("Thông tin dịch vụ không hợp lệ");
-                    }
+            // Determine which MaKH to use for the booking and invoice
+            let bookingMaKH, bookingMaKhach;
+            if (currentUser) {
+                // If user is logged in, use their MaKH
+                bookingMaKH = currentUser.MaKH;
+                bookingMaKhach = null;
+            } else {
+                // If user is guest, use the guest representative account for MaKH
+                // and actual guest info for MaKhach
+                bookingMaKH = guestRepresentativeId;
+                bookingMaKhach = MaKhach; // Guest record created above
+            }
 
+            // Update booking status to confirmed
+            await transaction.request()
+                .input('MaDat', sql.Int, bookingInfo.MaDat)
+                .input('MaKH', sql.Int, bookingMaKH)
+                .input('MaKhach', sql.Int, bookingMaKhach)
+                .input('TrangThaiBooking', sql.NVarChar, 'Đã xác nhận')
+                .query(`
+                    UPDATE Booking
+                    SET MaKH = @MaKH,
+                        MaKhach = @MaKhach,
+                        TrangThaiBooking = @TrangThaiBooking,
+                        ThoiGianGiuCho = NULL
+                    WHERE MaDat = @MaDat
+                `);
+
+            // Add services if any
+            if (bookingInfo.services && bookingInfo.services.length > 0) {
+                for (const service of bookingInfo.services) {
                     await transaction.request()
                         .input('MaDat', sql.Int, bookingInfo.MaDat)
-                        .input('MaLoaiDV', sql.Int, normalizedService.MaLoaiDV)
-                        .input('SoLuong', sql.Int, normalizedService.quantity)
-                        .input('GiaTaiThoiDiemSuDung', sql.Decimal(18, 2), normalizedService.GiaDV)
+                        .input('MaLoaiDV', sql.Int, service.MaLoaiDV)
+                        .input('SoLuong', sql.Int, service.quantity)
+                        .input('GiaTaiThoiDiemSuDung', sql.Decimal(18, 2), service.GiaDV)
                         .query(`
                             INSERT INTO SuDungDichVu
                             (MaDat, MaLoaiDV, SoLuong, GiaTaiThoiDiemSuDung)
@@ -1522,7 +1589,6 @@ exports.confirmBooking = async (req, res) => {
         await transaction.begin();
 
         try {
-            let MaKH = currentUser ? currentUser.MaKH : null;
             let MaKhach = bookingInfo?.MaKhach || null;
 
             // If user is not logged in, create guest record
@@ -1547,11 +1613,47 @@ exports.confirmBooking = async (req, res) => {
                 MaKhach = guestResult.recordset[0].MaKhach;
             }
 
+            // Create guest account representative for all guests if not exists
+            let guestRepresentativeResult = await transaction.request()
+                .query(`
+                    SELECT MaKH FROM NguoiDung 
+                    WHERE LoaiUser = 'Guest' AND Email = 'guest@system.internal'
+                `);
+
+            if (guestRepresentativeResult.recordset.length === 0) {
+                // Create guest representative account if it doesn't exist
+                guestRepresentativeResult = await transaction.request()
+                    .input('LoaiUser', sql.NVarChar, 'Guest')
+                    .input('HoTen', sql.NVarChar, 'Guest Representative Account')
+                    .input('Email', sql.NVarChar, 'guest@system.internal')
+                    .input('MatKhauHash', sql.NVarChar, 'GUEST_REPRESENTATIVE_NO_LOGIN')
+                    .query(`
+                        INSERT INTO NguoiDung (LoaiUser, HoTen, Email, MatKhauHash)
+                        OUTPUT INSERTED.MaKH
+                        VALUES (@LoaiUser, @HoTen, @Email, @MatKhauHash)
+                    `);
+            }
+            
+            const guestRepresentativeId = guestRepresentativeResult.recordset[0].MaKH;
+
+            // Determine which MaKH to use for the booking and invoice
+            let bookingMaKH, bookingMaKhach;
+            if (currentUser) {
+                // If user is logged in, use their MaKH
+                bookingMaKH = currentUser.MaKH;
+                bookingMaKhach = null;
+            } else {
+                // If user is guest, use the guest representative account for MaKH
+                // and actual guest info for MaKhach
+                bookingMaKH = guestRepresentativeId;
+                bookingMaKhach = MaKhach; // Guest record created above
+            }
+
             // Update booking status to confirmed
             await transaction.request()
                 .input('MaDat', sql.Int, MaDat)
-                .input('MaKH', sql.Int, MaKH)
-                .input('MaKhach', sql.Int, MaKhach)
+                .input('MaKH', sql.Int, bookingMaKH)
+                .input('MaKhach', sql.Int, bookingMaKhach)
                 .input('TrangThaiBooking', sql.NVarChar, 'Đã xác nhận')
                 .query(`
                     UPDATE Booking
@@ -1579,27 +1681,11 @@ exports.confirmBooking = async (req, res) => {
                 }
             }
 
-            // Get guest account ID
-            const guestAccountResult = await transaction.request()
-                .query('SELECT MaKH FROM GuestAccount');
-            const guestAccountId = guestAccountResult.recordset[0].MaKH;
-
-            // Create invoice
+            // Create invoice using the same MaKH as booking
             const nowVN = new Date(new Date().getTime() + 7 * 60 * 60 * 1000);
-            
-            // Determine which MaKH to use for the invoice
-            let invoiceMaKH;
-            if (currentUser) {
-                // If user is logged in, use their MaKH
-                invoiceMaKH = currentUser.MaKH;
-            } else {
-                // If user is guest, use the guest account ID
-                invoiceMaKH = guestAccountId;
-            }
-
             const invoiceResult = await transaction.request()
                 .input('MaDat', sql.Int, MaDat)
-                .input('MaKH', sql.Int, invoiceMaKH)
+                .input('MaKH', sql.Int, bookingMaKH)
                 .input('MaKM', sql.Int, bookingInfo.promotionCode || null)
                 .input('TongTienPhong', sql.Decimal(18, 2), bookingInfo.TongTienDuKien)
                 .input('HinhThucTT', sql.NVarChar, paymentInfo.HinhThucTT)
@@ -1622,10 +1708,11 @@ exports.confirmBooking = async (req, res) => {
             const roomInfoResult = await pool.request()
                 .input('MaDat', sql.Int, MaDat)
                 .query(`
-                    SELECT p.SoPhong, ks.TenKS
+                    SELECT p.SoPhong, ks.TenKS, nd.HoTen, nd.Email
                     FROM Booking b
                     JOIN Phong p ON b.MaPhong = p.MaPhong
                     JOIN KhachSan ks ON b.MaKS = ks.MaKS
+                    LEFT JOIN NguoiDung nd ON b.MaKH = nd.MaKH
                     WHERE b.MaDat = @MaDat
                 `);
 
@@ -1635,7 +1722,7 @@ exports.confirmBooking = async (req, res) => {
             try {
                 const emailInfo = {
                     guestEmail: currentUser ? currentUser.Email : bookingInfo.guestInfo.Email,
-                    guestName: currentUser ? currentUser.HoTen : bookingInfo.guestInfo.HoTen,
+                    guestName: currentUser ? roomInfo.HoTen : bookingInfo.guestInfo.HoTen,
                     bookingId: MaDat,
                     hotelName: roomInfo.TenKS,
                     roomNumber: roomInfo.SoPhong,
@@ -1646,6 +1733,54 @@ exports.confirmBooking = async (req, res) => {
                 await sendBookingConfirmation(emailInfo);
             } catch (emailErr) {
                 console.error('Error sending confirmation email:', emailErr);
+            }
+
+            // Send email notification to hotel manager
+            try {
+                const hotelManagerResult = await pool.request()
+                    .input('MaKS', sql.Int, bookingInfo.MaKS)
+                    .query(`
+                        SELECT ks.MaNguoiQuanLy, nd.HoTen as TenQuanLy, nd.Email as EmailQuanLy
+                        FROM KhachSan ks
+                        LEFT JOIN NguoiDung nd ON ks.MaNguoiQuanLy = nd.MaKH
+                        WHERE ks.MaKS = @MaKS AND nd.Email IS NOT NULL
+                    `);
+
+                if (hotelManagerResult.recordset.length > 0 && hotelManagerResult.recordset[0].MaNguoiQuanLy) {
+                    const managerInfo = hotelManagerResult.recordset[0];
+                    
+                    // Get guest name - either from currentUser database or guestInfo
+                    let guestName;
+                    if (currentUser) {
+                        // For logged-in users, get name from database to ensure accuracy
+                        const userInfoResult = await pool.request()
+                            .input('MaKH', sql.Int, currentUser.MaKH)
+                            .query(`SELECT HoTen FROM NguoiDung WHERE MaKH = @MaKH`);
+                        guestName = userInfoResult.recordset.length > 0 ? 
+                                   userInfoResult.recordset[0].HoTen : 
+                                   (currentUser.HoTen || 'Khách hàng');
+                    } else {
+                        guestName = guestInfo.HoTen;
+                    }
+                    
+                    // Send email notification to hotel manager
+                    const managerEmailInfo = {
+                        managerEmail: managerInfo.EmailQuanLy,
+                        managerName: managerInfo.TenQuanLy,
+                        bookingId: bookingInfo.MaDat,
+                        hotelName: roomInfo.TenKS,
+                        roomNumber: roomInfo.SoPhong,
+                        guestName: guestName,
+                        checkIn: bookingInfo.NgayNhanPhong,
+                        checkOut: bookingInfo.NgayTraPhong,
+                        totalPrice: bookingInfo.TongTienDuKien,
+                    };
+                    
+                    await sendBookingNotificationToManager(managerEmailInfo);
+                    console.log(`Email notification sent to hotel manager ${managerInfo.TenQuanLy} for booking ${bookingInfo.MaDat}`);
+                }
+            } catch (notificationErr) {
+                console.error('Error sending email notification to hotel manager:', notificationErr);
             }
 
             res.status(200).json({

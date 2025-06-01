@@ -294,11 +294,6 @@ cd backend
 npm start
 ```
 
-### Docker (Optional)
-```bash
-# Build và chạy với Docker
-docker-compose up -d
-```
 
 ## 🤝 Đóng góp
 

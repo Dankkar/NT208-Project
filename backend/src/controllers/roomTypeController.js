@@ -2,8 +2,9 @@ const { poolPromise, sql } = require('../database/db');
 
 exports.createRoomType = async (req, res) => {
     const { 
-        MaKS, 
+        MaKS,
         TenLoaiPhong,
+        SoGiuong,
         TienNghi,
         DienTich,
         GiaCoSo,
@@ -15,13 +16,14 @@ exports.createRoomType = async (req, res) => {
         const result = await pool.request()
             .input('MaKS', sql.Int, MaKS)
             .input('TenLoaiPhong', sql.NVarChar, TenLoaiPhong)
+            .input('SoGiuong', sql.Int, SoGiuong)
             .input('TienNghi', sql.NVarChar, TienNghi)
             .input('DienTich', sql.Decimal(8, 2), DienTich)
             .input('GiaCoSo', sql.Decimal(18, 2), GiaCoSo)
             .input('MoTa', sql.NVarChar, MoTa)
             .query(`
-                INSERT INTO LoaiPhong (MaKS, TenLoaiPhong, TienNghi, DienTich, GiaCoSo, MoTa)
-                VALUES (@MaKS, @TenLoaiPhong, @TienNghi, @DienTich, @GiaCoSo, @MoTa)
+                INSERT INTO LoaiPhong (MaKS, TenLoaiPhong, SoGiuong, TienNghi, DienTich, GiaCoSo, MoTa)
+                VALUES (@MaKS, @TenLoaiPhong, @SoGiuong, @TienNghi, @DienTich, @GiaCoSo, @MoTa)
             `);
         
         res.status(201).json({message: 'Loại phòng đã được tạo thành công'});
@@ -64,7 +66,7 @@ exports.getRoomTypesByHotel = async (req, res) => {
                 LEFT JOIN Phong p ON lp.MaLoaiPhong = p.MaLoaiPhong
                 WHERE lp.MaKS = @MaKS
                 GROUP BY lp.MaLoaiPhong, lp.MaKS, lp.TenLoaiPhong, lp.SoGiuong, lp.TienNghi, 
-                         lp.DienTich, lp.GiaCoSo, lp.MoTa
+                         lp.DienTich, lp.GiaCoSo, lp.MoTa, lp.IsActive
                 ORDER BY lp.MaLoaiPhong DESC
                 OFFSET @offset ROWS
                 FETCH NEXT @limit ROWS ONLY
@@ -90,10 +92,12 @@ exports.updateRoomType = async (req, res) => {
     const { MaLoaiPhong } = req.params;
     const { 
         TenLoaiPhong,
+        SoGiuong,
         TienNghi,
         DienTich,
         GiaCoSo,
-        MoTa
+        MoTa,
+        IsActive
     } = req.body;
 
     if(!MaLoaiPhong || isNaN(MaLoaiPhong)) {
@@ -105,17 +109,21 @@ exports.updateRoomType = async (req, res) => {
         const result = await pool.request()
             .input('MaLoaiPhong', sql.Int, MaLoaiPhong)
             .input('TenLoaiPhong', sql.NVarChar, TenLoaiPhong)
+            .input('SoGiuong', sql.Int, SoGiuong)
             .input('TienNghi', sql.NVarChar, TienNghi)
             .input('DienTich', sql.Decimal(8, 2), DienTich)
             .input('GiaCoSo', sql.Decimal(18, 2), GiaCoSo)
             .input('MoTa', sql.NVarChar, MoTa)
+            .input('IsActive', sql.Bit, IsActive)
             .query(`
                 UPDATE LoaiPhong
                 SET TenLoaiPhong = @TenLoaiPhong,
+                    SoGiuong = @SoGiuong,
                     TienNghi = @TienNghi,
                     DienTich = @DienTich,
                     GiaCoSo = @GiaCoSo,
-                    MoTa = @MoTa
+                    MoTa = @MoTa,
+                    IsActive = @IsActive
                 WHERE MaLoaiPhong = @MaLoaiPhong
             `);
         res.json({message: 'Loại phòng đã được cập nhật thành công'});
@@ -301,5 +309,34 @@ exports.compareRoomTypes = async (req, res) => {
             success: false,
             message: 'Lỗi khi so sánh loại phòng'
         });
+    }
+};
+
+
+exports.getRoomTypeById = async (req, res) => {
+    const { MaLoaiPhong } = req.params; // Lấy ID từ route params
+
+    if (!MaLoaiPhong || isNaN(MaLoaiPhong)) {
+        return res.status(400).json({ success: false, error: 'Mã loại phòng không hợp lệ.' });
+    }
+
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .input('MaLoaiPhong', sql.Int, MaLoaiPhong)
+            .query('SELECT * FROM LoaiPhong WHERE MaLoaiPhong = @MaLoaiPhong'); // Chọn tất cả các cột (*) hoặc các cột cần thiết
+
+        if (result.recordset.length > 0) {
+            // Trả về toàn bộ object của loại phòng
+            // Bao gồm MaKS, TenLoaiPhong, SoGiuong, TienNghi, DienTich, GiaCoSo, MoTa, IsActive
+            res.json({ success: true, data: result.recordset[0] });
+        } else {
+            res.status(404).json({ success: false, message: `Không tìm thấy loại phòng với ID ${id}.` });
+        }
+    } catch (err) {
+        console.error(`Lỗi khi lấy chi tiết loại phòng ID ${id}:`, err);
+        // Trong môi trường development, bạn có thể muốn trả về chi tiết lỗi
+        const errorMessage = process.env.NODE_ENV === 'development' ? err.message : 'Lỗi server khi lấy chi tiết loại phòng.';
+        res.status(500).json({ success: false, error: errorMessage });
     }
 };
