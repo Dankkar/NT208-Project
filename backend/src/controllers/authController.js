@@ -192,6 +192,7 @@ exports.login = async (req, res) => {
     // Set session data directly without regenerating
     req.session.user = {
       MaKH: user.MaKH,
+      HoTen: user.HoTen,
       Email: user.Email,
       role: user.LoaiUser
     };
@@ -417,6 +418,14 @@ exports.googleLogin = async (req, res) => {
         MaKH = user.MaKH;
         role = user.LoaiUser;
       }
+
+      req.session.user = {
+        MaKH,
+        HoTen,
+        Email: email,
+        role
+      };
+      
 
       const jwtToken = jwt.sign(
         {MaKH, Email: email, role},

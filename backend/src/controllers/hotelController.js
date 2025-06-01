@@ -305,7 +305,7 @@ exports.getHotelById = async (req, res) => {
             .input('MaKS', sql.Int, MaKS)
             .query(`
                 SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh,
-                       ks.MoTaCoSoVatChat, ks.QuyDinh, ks.MotaChung
+                       ks.MoTaCoSoVatChat, ks.QuyDinh, ks.MoTaChung
                 FROM KhachSan ks
                 WHERE ks.MaKS = @MaKS
             `);
@@ -321,15 +321,19 @@ exports.getHotelById = async (req, res) => {
         const roomTypesResult = await pool.request()
             .input('MaKS', sql.Int, MaKS)
             .query(`
-                SELECT lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo, lp.SoNguoiToiDa,
+                SELECT lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo, lp.SoGiuong,
                        lp.DienTich, lp.MoTa, lp.TienNghi,
-                       COUNT(p.MaPhong) as SoPhongTrong
+                       chg.TenCauHinh as CauHinhGiuong,
+                       chg.SoGiuongDoi,
+                       chg.SoGiuongDon,
+                       COUNT(DISTINCT CASE WHEN p.TrangThaiPhong = N'Trong' THEN p.MaPhong END) as SoPhongTrong
                 FROM LoaiPhong lp
-                LEFT JOIN Phong p ON lp.MaLoaiPhong = p.MaLoaiPhong 
-                    AND p.TrangThai = N'Trống'
+                LEFT JOIN Phong p ON lp.MaLoaiPhong = p.MaLoaiPhong
+                LEFT JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
                 WHERE lp.MaKS = @MaKS
-                GROUP BY lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo, lp.SoNguoiToiDa,
-                         lp.DienTich, lp.MoTa, lp.TienNghi
+                GROUP BY lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo, lp.SoGiuong,
+                         lp.DienTich, lp.MoTa, lp.TienNghi,
+                         chg.TenCauHinh, chg.SoGiuongDoi, chg.SoGiuongDon
                 ORDER BY lp.GiaCoSo ASC
             `);
 
@@ -337,10 +341,10 @@ exports.getHotelById = async (req, res) => {
         const servicesResult = await pool.request()
             .input('MaKS', sql.Int, MaKS)
             .query(`
-                SELECT dv.MaDichVu, dv.TenDichVu, dv.MoTa, dv.Gia
-                FROM DichVu dv
-                WHERE dv.MaKS = @MaKS
-                ORDER BY dv.TenDichVu
+                SELECT ldv.MaLoaiDV, ldv.TenLoaiDV, ldv.MoTaDV, ldv.GiaDV
+                FROM LoaiDichVu ldv
+                WHERE ldv.MaKS = @MaKS
+                ORDER BY ldv.TenLoaiDV
             `);
 
         // Calculate price range
