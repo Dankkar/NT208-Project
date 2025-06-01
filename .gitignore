@@ -37,3 +37,4 @@ yarn.lock
 # Các tệp của IDE nếu sử dụng
 *.swp
 *.swo
+*.cursor

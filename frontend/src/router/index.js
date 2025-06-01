@@ -30,6 +30,7 @@ import EditUserPage from '../views/admin/users/EditUserPage.vue'
 
 
 const routes = [
+  { path: '/', redirect: '/Homepage' },
   { path: '/login', name: 'Login', component: LoginPage },
   { path: '/signup',name: 'Signup', component: SignupPage },
   { path: '/forgotpass',name: 'Forgotpass', component: ForgotPassPage },

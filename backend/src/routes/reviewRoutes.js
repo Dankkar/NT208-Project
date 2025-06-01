@@ -1,31 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const { 
-    createReview,
-    getHotelReviews,
-    getBookingReviews
+const {
+  createReview,
+  getHotelReviews,
+  getBookingReviews
 } = require('../controllers/reviewController');
 const { authenticateToken } = require('../middlewares/auth');
 
-/**
- * @route   POST /api/reviews
- * @desc    Create a new review with auto-reply
- * @access  Private
- */
-router.post('/', authenticateToken, createReview);
+// -------- PUBLIC ROUTES --------
 
-/**
- * @route   GET /api/reviews/hotel/:MaKS
- * @desc    Get all reviews for a hotel
- * @access  Public
- */
+// GET /reviews/hotel/:MaKS - Lấy đánh giá theo khách sạn
 router.get('/hotel/:MaKS', getHotelReviews);
 
-/**
- * @route   GET /api/reviews/booking/:MaDat
- * @desc    Get all reviews for a booking
- * @access  Public
- */
+// GET /reviews/booking/:MaDat - Lấy đánh giá theo booking
 router.get('/booking/:MaDat', getBookingReviews);
 
-module.exports = router; 
+// -------- PRIVATE ROUTES --------
+
+// POST /reviews - Tạo đánh giá (phải đăng nhập)
+router.post('/', authenticateToken, createReview);
+
+module.exports = router;

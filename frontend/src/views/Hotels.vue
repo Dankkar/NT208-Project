@@ -21,8 +21,8 @@
           <p class="mt-3 text-muted">Loading hotels, please wait...</p>
         </div>
 
-        <div v-else-if="sortedHotels.length" class="row g-4">
-          <div v-for="hotel in sortedHotels" :key="hotel.MaKS" class="col-md-6 col-lg-4">
+        <div v-else-if="hotels.length" class="row g-4">
+          <div v-for="hotel in hotels" :key="hotel.MaKS" class="col-md-6 col-lg-4">
             <HotelCard :hotel="hotel" />
           </div>
         </div>
@@ -80,16 +80,53 @@ const sortOptions = [
   { value: 'rating_asc', text: 'Rating: Low to High' },
   { value: 'price_asc', text: 'Price: Low to High' },
   { value: 'price_desc', text: 'Price: High to Low' },
+  { value: 'name_asc', text: 'Name: A to Z' },
+  { value: 'name_desc', text: 'Name: Z to A' },
 ];
 
-// Fetch hotels with pagination
-async function fetchHotels(page = 1) {
+// Fetch hotels with pagination and sorting
+async function fetchHotels(page = 1, sort = sortKey.value) {
   try {
     loading.value = true;
+    
+    // Map frontend sort values to backend parameters
+    let sortBy, sortOrder;
+    switch (sort) {
+      case 'rating_desc':
+        sortBy = 'rating';
+        sortOrder = 'desc';
+        break;
+      case 'rating_asc':
+        sortBy = 'rating';
+        sortOrder = 'asc';
+        break;
+      case 'price_asc':
+        sortBy = 'price';
+        sortOrder = 'asc';
+        break;
+      case 'price_desc':
+        sortBy = 'price';
+        sortOrder = 'desc';
+        break;
+      case 'name_asc':
+        sortBy = 'name';
+        sortOrder = 'asc';
+        break;
+      case 'name_desc':
+        sortBy = 'name';
+        sortOrder = 'desc';
+        break;
+      default:
+        sortBy = 'rating';
+        sortOrder = 'desc';
+    }
+    
     const response = await axios.get(`http://localhost:5000/api/hotels`, {
       params: {
         page,
-        limit: itemsPerPage.value
+        limit: itemsPerPage.value,
+        sortBy,
+        sortOrder
       }
     });
     
@@ -103,23 +140,6 @@ async function fetchHotels(page = 1) {
     loading.value = false;
   }
 }
-
-// Sort hotels
-const sortedHotels = computed(() => {
-  const sorted = [...hotels.value];
-  switch (sortKey.value) {
-    case 'rating_desc':
-      return sorted.sort((a, b) => b.HangSao - a.HangSao);
-    case 'rating_asc':
-      return sorted.sort((a, b) => a.HangSao - b.HangSao);
-    case 'price_asc':
-      return sorted.sort((a, b) => a.GiaThapNhat - b.GiaThapNhat);
-    case 'price_desc':
-      return sorted.sort((a, b) => b.GiaThapNhat - a.GiaThapNhat);
-    default:
-      return sorted;
-  }
-});
 
 // Pagination range computation
 const paginationRange = computed(() => {
@@ -160,27 +180,28 @@ const paginationRange = computed(() => {
 // Pagination handlers
 function prevPage() {
   if (currentPage.value > 1) {
-    fetchHotels(currentPage.value - 1);
+    fetchHotels(currentPage.value - 1, sortKey.value);
     window.scrollTo(0, 0);
   }
 }
 
 function nextPage() {
   if (currentPage.value < totalPages.value) {
-    fetchHotels(currentPage.value + 1);
+    fetchHotels(currentPage.value + 1, sortKey.value);
     window.scrollTo(0, 0);
   }
 }
 
 function goToPage(pageNumber) {
   if (typeof pageNumber === 'number' && pageNumber >= 1 && pageNumber <= totalPages.value) {
-    fetchHotels(pageNumber);
+    fetchHotels(pageNumber, sortKey.value);
     window.scrollTo(0, 0);
   }
 }
 
 function applySort() {
-  // Sort is handled by computed property, no need to fetch new data
+  // Fetch new data with the selected sorting
+  fetchHotels(1, sortKey.value);
 }
 
 onMounted(() => {

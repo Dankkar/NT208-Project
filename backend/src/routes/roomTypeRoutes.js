@@ -14,13 +14,13 @@ const { authenticateToken, isAdmin, isStaff } = require('../middlewares/auth');
 // -------- PUBLIC / SHARED ROUTES --------
 
 // GET /roomTypes/compare/:typeId1/:typeId2 - So sánh 2 loại phòng theo param
-router.get('/compare/:typeId1/:typeId2', authenticateToken, compareRoomTypes);
+router.get('/compare/:typeId1/:typeId2', compareRoomTypes);
 
 // GET /roomTypes/compare?type1=...&type2=... - So sánh theo query
-router.get('/compare', authenticateToken, compareRoomTypes);
+router.get('/compare', compareRoomTypes);
 
 // GET /roomTypes/hotel/:MaKS - Lấy loại phòng theo khách sạn
-router.get('/hotel/:MaKS', authenticateToken, getRoomTypesByHotel);
+router.get('/hotel/:MaKS', getRoomTypesByHotel);
 
 // -------- ADMIN / STAFF ROUTES --------
 

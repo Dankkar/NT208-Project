@@ -225,7 +225,7 @@ exports.updateHotel = async (req, res) => {
 
 exports.getAllHotels = async (req, res) => {
     try {
-        const { page = 1, limit = 10 } = req.query;
+        const { page = 1, limit = 10, sortBy = 'rating', sortOrder = 'desc' } = req.query;
         const offset = (page - 1) * limit;
         const pool = await poolPromise;
         const isAdmin = req.user && req.user.Role === 'admin';
@@ -257,11 +257,38 @@ exports.getAllHotels = async (req, res) => {
             `;
         }
 
-        // Add GROUP BY, ORDER BY and pagination
+        // Add GROUP BY
         query += `
             GROUP BY ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh
             ${isAdmin ? ', nd.HoTen' : ''}
-            ORDER BY ks.HangSao DESC
+        `;
+
+        // Handle sorting based on parameters
+        let orderByClause = '';
+        const validSortFields = ['rating', 'price', 'name'];
+        const validSortOrders = ['asc', 'desc'];
+        
+        // Validate parameters
+        const safeSortBy = validSortFields.includes(sortBy) ? sortBy : 'rating';
+        const safeSortOrder = validSortOrders.includes(sortOrder.toLowerCase()) ? sortOrder.toUpperCase() : 'DESC';
+        
+        switch (safeSortBy) {
+            case 'rating':
+                orderByClause = `ORDER BY ks.HangSao ${safeSortOrder}`;
+                break;
+            case 'price':
+                orderByClause = `ORDER BY MIN(lp.GiaCoSo) ${safeSortOrder}`;
+                break;
+            case 'name':
+                orderByClause = `ORDER BY ks.TenKS ${safeSortOrder}`;
+                break;
+            default:
+                orderByClause = 'ORDER BY ks.HangSao DESC'; // Default fallback
+        }
+
+        // Add ORDER BY and pagination
+        query += `
+            ${orderByClause}
             OFFSET @offset ROWS
             FETCH NEXT @limit ROWS ONLY
         `;
@@ -279,6 +306,10 @@ exports.getAllHotels = async (req, res) => {
                 page: parseInt(page),
                 limit: parseInt(limit),
                 totalPages: Math.ceil(countResult.recordset[0].total / parseInt(limit))
+            },
+            sorting: {
+                sortBy: safeSortBy,
+                sortOrder: safeSortOrder
             }
         });
     } catch (err) {
