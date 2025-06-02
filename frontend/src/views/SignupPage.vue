@@ -12,9 +12,9 @@
         {{ alertMessage }}
       </div>
       <!-- Global auth errors (e.g., if check-email API failed in a way authStore handles) -->
-      <div v-if="authStore.getAuthError" class="alert alert-danger" role="alert">
+      <!-- <div v-if="authStore.getAuthError" class="alert alert-danger" role="alert">
         {{ authStore.getAuthError }}
-      </div>
+      </div> -->
       
       <div class="divider mb-4"><span class="line"></span><span class="line"></span></div>
 

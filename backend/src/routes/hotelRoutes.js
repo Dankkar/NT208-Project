@@ -3,7 +3,7 @@ const { check } = require('express-validator');
 const {
   createHotel,
   updateHotel,
-  deleteHotel,
+  // deleteHotel,
   getHotelsByNguoiQuanLy,
   getHotelById,
   getAllHotels,
@@ -32,6 +32,9 @@ router.get('/featured', getFeaturedHotels);
 // GET /hotels/suggest-locations - gợi ý địa điểm
 router.get('/suggest-locations', LocationSuggestLimiter, suggestLocations);
 
+// GET /hotels/list-basic - danh sách khách sạn cơ bản (admin)
+router.get('/list-basic', authenticateToken, isAdmin, getBasicHotelListForAdmin);
+
 // GET /hotels - tất cả khách sạn
 router.get('/', getAllHotels);
 
@@ -42,10 +45,6 @@ router.post('/search', searchAvailableHotels);
 router.get('/:MaKS', getHotelById);
 
 // ----------- ADMIN ROUTES (PRIVATE) -----------
-
-// GET /hotels/list-basic - danh sách khách sạn cơ bản (admin)
-router.get('/list-basic', authenticateToken, isAdmin, getBasicHotelListForAdmin);
-
 // GET /hotels/nguoi-quan-ly/:MaKH - khách sạn theo người quản lý
 router.get('/nguoi-quan-ly/:MaKH', authenticateToken, isAdmin, getHotelsByNguoiQuanLy);
 

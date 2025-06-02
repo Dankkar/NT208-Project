@@ -2,42 +2,77 @@ const {poolPromise, sql} = require('../database/db');
 
 exports.createHotel = async (req, res) => {
     const {
-        TenKS,
-        DiaChi,
-        HangSao,
-        LoaiHinh,
-        MoTaCoSoVatChat,
-        QuyDinh,
-        MotaChung,
-        MaNguoiQuanLy // Cho phép admin chỉ định người quản lý khác
+        TenKS, DiaChi, HangSao, LoaiHinh, MoTaCoSoVatChat, QuyDinh, MotaChung,
+        MaNguoiQuanLy,
+        Latitude, Longitude
     } = req.body;
-    
+
     try {
         const pool = await poolPromise;
-        
-        // Xác định MaNguoiQuanLy - ưu tiên từ body, nếu không có thì dùng user hiện tại
-        let finalMaNguoiQuanLy = MaNguoiQuanLy || req.user.MaKH;
-        
-        // Validate role của người được chỉ định làm quản lý
-        const managerValidation = await pool.request()
-            .input('MaKH', sql.Int, finalMaNguoiQuanLy)
-            .query(`
-                SELECT MaKH, LoaiUser, HoTen 
-                FROM NguoiDung 
-                WHERE MaKH = @MaKH AND IsActive = 1
-            `);
 
-        if (managerValidation.recordset.length === 0) {
-            return res.status(400).json({
-                error: 'Không tìm thấy người dùng được chỉ định làm quản lý hoặc tài khoản đã bị vô hiệu hóa'
-            });
+        let finalMaNguoiQuanLy = null;
+        if (MaNguoiQuanLy) { // Nếu admin có nhập MaNguoiQuanLy
+            const managerValidation = await pool.request()
+                .input('MaKH_Validate', sql.Int, MaNguoiQuanLy)
+                .query(`SELECT MaKH, LoaiUser, HoTen FROM NguoiDung WHERE MaKH = @MaKH_Validate AND IsActive = 1`);
+            if (managerValidation.recordset.length === 0) {
+                return res.status(400).json({ error: 'Không tìm thấy người dùng được chỉ định làm quản lý hoặc tài khoản đã bị vô hiệu hóa.' });
+            }
+            const manager = managerValidation.recordset[0];
+            if (manager.LoaiUser !== 'QuanLyKS' && manager.LoaiUser !== 'Admin') {
+                return res.status(400).json({ error: `Người dùng "${manager.HoTen}" không có quyền làm người quản lý.` });
+            }
+            finalMaNguoiQuanLy = MaNguoiQuanLy;
+        } else if (req.user && req.user.MaKH) { // Nếu admin không nhập, thử lấy của admin hiện tại
+             const adminAsManagerValidation = await pool.request()
+                .input('MaKH_Admin', sql.Int, req.user.MaKH)
+                .query(`SELECT MaKH, LoaiUser FROM NguoiDung WHERE MaKH = @MaKH_Admin AND IsActive = 1`);
+            if (adminAsManagerValidation.recordset.length > 0) {
+                 const adminUser = adminAsManagerValidation.recordset[0];
+                 if (adminUser.LoaiUser === 'QuanLyKS' || adminUser.LoaiUser === 'Admin') {
+                    finalMaNguoiQuanLy = req.user.MaKH;
+                 } else {
+                    // Nếu admin hiện tại không có role phù hợp, có thể để MaNguoiQuanLy là NULL
+                    // Hoặc trả lỗi nếu logic yêu cầu phải có người quản lý với role đúng
+                    console.warn(`Admin hiện tại (MaKH: ${req.user.MaKH}) không có role QuanLyKS/Admin để tự gán.`);
+                 }
+            }
+        }
+        // Nếu sau tất cả, finalMaNguoiQuanLy vẫn là null, DB cho phép điều này.
+
+        // Xử lý HangSao: Chuyển "X sao" thành số X.0
+        let numericHangSao = null;
+        if (HangSao) {
+            const match = HangSao.match(/^(\d)/); // Lấy chữ số đầu tiên
+            if (match) {
+                numericHangSao = parseFloat(match[1]);
+            } else {
+                // Hoặc bạn có thể trả lỗi 400 nếu định dạng HangSao không đúng
+                console.warn(`Định dạng HangSao không hợp lệ: ${HangSao}. Sẽ được lưu là NULL nếu cột cho phép.`);
+            }
         }
 
-        const manager = managerValidation.recordset[0];
-        if (manager.LoaiUser !== 'QuanLyKS' && manager.LoaiUser !== 'Admin') {
-            return res.status(400).json({
-                error: `Người dùng "${manager.HoTen}" không có quyền làm người quản lý khách sạn. Chỉ người dùng có role "QuanLyKS" hoặc "Admin" mới có thể được chỉ định làm người quản lý.`
-            });
+
+        const request = pool.request()
+            .input('TenKS', sql.NVarChar(150), TenKS)
+            .input('DiaChi', sql.NVarChar(255), DiaChi)
+            .input('HangSao', sql.Decimal(2,1), numericHangSao) // Dùng giá trị số đã xử lý
+            .input('LoaiHinh', sql.NVarChar(100), LoaiHinh || null)
+            .input('MoTaCoSoVatChat', sql.NVarChar(sql.MAX), MoTaCoSoVatChat || null)
+            .input('QuyDinh', sql.NVarChar(sql.MAX), QuyDinh || null)
+            .input('MotaChung', sql.NVarChar(sql.MAX), MotaChung || null)
+            .input('MaNguoiQuanLy', sql.Int, finalMaNguoiQuanLy); // Có thể là NULL
+
+        // Thêm Latitude, Longitude nếu có
+        if (Latitude !== undefined && Latitude !== null && Latitude !== '') {
+            request.input('Latitude', sql.Decimal(10,8), parseFloat(Latitude));
+        } else {
+             request.input('Latitude', sql.Decimal(10,8), null); // Hoặc không input nếu DB có default
+        }
+        if (Longitude !== undefined && Longitude !== null && Longitude !== '') {
+            request.input('Longitude', sql.Decimal(11,8), parseFloat(Longitude));
+        } else {
+             request.input('Longitude', sql.Decimal(11,8), null);
         }
 
         const result = await pool.request()
@@ -80,7 +115,8 @@ exports.updateHotel = async (req, res) => {
         MoTaCoSoVatChat,
         QuyDinh,
         MotaChung,
-        MaNguoiQuanLy
+        MaNguoiQuanLy,
+        IsActive
     } = req.body;
 
     if(!MaKS || isNaN(MaKS))
@@ -150,6 +186,10 @@ exports.updateHotel = async (req, res) => {
             updateFields.push('MaNguoiQuanLy = @MaNguoiQuanLy');
             queryParams.MaNguoiQuanLy = MaNguoiQuanLy;
         }
+        if (IsActive !== undefined) {
+            updateFields.push('IsActive = @IsActive');
+            queryParams.IsActive = IsActive;
+        }
 
         if (updateFields.length === 0) {
             return res.status(400).json({error: 'Không có thông tin nào để cập nhật'});
@@ -167,9 +207,22 @@ exports.updateHotel = async (req, res) => {
                 request.input(key, sql.Int, queryParams[key]);
             } else if (key === 'MoTaCoSoVatChat' || key === 'QuyDinh' || key === 'MotaChung') {
                 request.input(key, sql.Text, queryParams[key]);
+            } else if (key === 'HangSao') {
+                request.input(key, sql.Decimal(2,1), queryParams[key] === null ? null : parseFloat(queryParams[key]));
+            } else if (key === 'Latitude' || key === 'Longitude') {
+                request.input(key, sql.Decimal(/* precision, scale */), queryParams[key] === null ? null : parseFloat(queryParams[key]));
+            } else if (key === 'IsActive') {
+                request.input(key, sql.Bit, queryParams[key]);
             } else {
-                request.input(key, sql.VarChar, queryParams[key]);
-            }
+                if (key === 'TenKS') {
+                    request.input(key, sql.NVarChar(150), queryParams[key]);
+                } else if (key === 'DiaChi') {
+                    request.input(key, sql.NVarChar(255), queryParams[key]);
+                } else if (key === 'LoaiHinh') {
+                    request.input(key, sql.NVarChar(100), queryParams[key]);
+                } else {
+                    request.input(key, sql.VarChar, queryParams[key]);
+            }}
         });
 
         const result = await request.query(query);
@@ -462,19 +515,20 @@ exports.getAllHotels = async (req, res) => {
         const { page = 1, limit = 10, sortBy = 'rating', sortOrder = 'desc' } = req.query;
         const offset = (page - 1) * limit;
         const pool = await poolPromise;
-        const isAdmin = req.user && req.user.Role === 'admin';
-
+        const currentUser = req.user;
         const countResult = await pool.request().query(`
             SELECT COUNT(*) as total
             FROM KhachSan
         `);
 
-        // Base query without NguoiQuanLy
+        // Base query
         let query = `
-            SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh,
+            SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh, ks.IsActive,
+                   nd.HoTen AS NguoiQuanLy,
                    MIN(lp.GiaCoSo) as GiaThapNhat,
                    ak.DuongDanAnh as MainImagePath
             FROM KhachSan ks
+            LEFT JOIN NguoiDung nd ON ks.MaNguoiQuanLy = nd.MaKH
             LEFT JOIN Phong p ON ks.MaKS = p.MaKS
             LEFT JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
             LEFT JOIN AnhKhachSan ak ON ks.MaKS = ak.MaKS
@@ -488,25 +542,11 @@ exports.getAllHotels = async (req, res) => {
                 )
         `;
 
-        // Add NguoiQuanLy to query if user is admin
-        if (isAdmin) {
-            query = `
-                SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh,
-                       nd.HoTen AS NguoiQuanLy,
-                       MIN(lp.GiaCoSo) as GiaThapNhat
-                FROM KhachSan ks
-                LEFT JOIN NguoiDung nd ON ks.MaNguoiQuanLy = nd.MaKH
-                LEFT JOIN Phong p ON ks.MaKS = p.MaKS
-                LEFT JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
-            `;
-        }
-
-        // Add GROUP BY
+        // Add GROUP BY, ORDER BY and pagination
         query += `
-            GROUP BY ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh, ak.DuongDanAnh
-            ${isAdmin ? ', nd.HoTen' : ''}
+            GROUP BY ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh, ks.MaNguoiQuanLy, ks.IsActive, nd.HoTen, ak.DuongDanAnh
         `;
-
+        
         // Handle sorting based on parameters
         let orderByClause = '';
         const validSortFields = ['rating', 'price', 'name'];
@@ -579,23 +619,25 @@ exports.getHotelById = async (req, res) => {
         });
     }
 
+    const numericMaKS = Number(MaKS);
+
     try {
         const pool = await poolPromise;
 
         // Get hotel basic information
         const hotelResult = await pool.request()
-            .input('MaKS', sql.Int, MaKS)
+            .input('MaKS_Param', sql.Int, numericMaKS)
             .query(`
                 SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh,
-                       ks.MoTaCoSoVatChat, ks.QuyDinh, ks.MoTaChung
+                       ks.MoTaCoSoVatChat, ks.QuyDinh, ks.MotaChung, ks.MaNguoiQuanLy, ks.IsActive
                 FROM KhachSan ks
-                WHERE ks.MaKS = @MaKS
+                WHERE ks.MaKS = @MaKS_Param
             `);
 
         if (hotelResult.recordset.length === 0) {
             return res.status(404).json({
                 success: false,
-                message: 'Không tìm thấy khách sạn'
+                message: `Không tìm thấy khách sạn với ID ${numericMaKS}`
             });
         }
 
@@ -622,32 +664,38 @@ exports.getHotelById = async (req, res) => {
 
         // Get room types and pricing information
         const roomTypesResult = await pool.request()
-            .input('MaKS', sql.Int, MaKS)
+            .input('MaKS_Param', sql.Int, numericMaKS)
             .query(`
                 SELECT lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo, lp.SoGiuong,
-                       lp.DienTich, lp.MoTa, lp.TienNghi,
+                       lp.DienTich, lp.MoTa, lp.TienNghi, lp.IsActive as LoaiPhong_IsActive,
                        chg.TenCauHinh as CauHinhGiuong,
                        chg.SoGiuongDoi,
                        chg.SoGiuongDon,
-                       COUNT(DISTINCT CASE WHEN p.TrangThaiPhong = N'Trong' THEN p.MaPhong END) as SoPhongTrong
+                       COUNT(DISTINCT CASE WHEN p.TrangThaiPhong = N'Trong' THEN p.MaPhong END) as SoPhongTrongThucTe
                 FROM LoaiPhong lp
                 LEFT JOIN Phong p ON lp.MaLoaiPhong = p.MaLoaiPhong
                 LEFT JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
-                WHERE lp.MaKS = @MaKS
+                WHERE lp.MaKS = @MaKS_RoomTypes AND lp.IsActive = 1
                 GROUP BY lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo, lp.SoGiuong,
-                         lp.DienTich, lp.MoTa, lp.TienNghi,
+                         lp.DienTich, lp.MoTa, lp.TienNghi, lp.IsActive,
                          chg.TenCauHinh, chg.SoGiuongDoi, chg.SoGiuongDon
                 ORDER BY lp.GiaCoSo ASC
+
             `);
 
-        // Get hotel amenities/services
+        // Get hotel amenities/services (LoaiDichVu)
         const servicesResult = await pool.request()
-            .input('MaKS', sql.Int, MaKS)
+            .input('MaKS_Param', sql.Int, numericMaKS)
             .query(`
-                SELECT ldv.MaLoaiDV, ldv.TenLoaiDV, ldv.MoTaDV, ldv.GiaDV
-                FROM LoaiDichVu ldv
-                WHERE ldv.MaKS = @MaKS
-                ORDER BY ldv.TenLoaiDV
+                SELECT 
+                    dv.MaLoaiDV, 
+                    dv.TenLoaiDV, 
+                    dv.MoTaDV, 
+                    dv.GiaDV,
+                    dv.IsActive
+                FROM LoaiDichVu dv
+                WHERE dv.MaKS = @MaKS_Param AND dv.IsActive = 1 -- Chỉ lấy dịch vụ đang hoạt động
+                ORDER BY dv.TenLoaiDV
             `);
 
         const images = imagesResult.recordset.map(img => ({
@@ -674,7 +722,8 @@ exports.getHotelById = async (req, res) => {
             roomTypes: roomTypesResult.recordset,
             services: servicesResult.recordset,
             priceRange: priceRange,
-            totalRoomTypes: roomTypesResult.recordset.length
+            totalRoomTypes: roomTypesResult.recordset ? roomTypesResult.recordset.length : 0,
+            totalServices: servicesResult.recordset ? servicesResult.recordset.length : 0
         };
 
         res.json({
@@ -682,10 +731,11 @@ exports.getHotelById = async (req, res) => {
             data: hotelData
         });
     } catch (err) {
-        console.error('Lỗi getHotelById:', err);
+        console.error(`Lỗi getHotelById cho MaKS ${numericMaKS}:`, err.message, err.stack);
+        const errorMessage = process.env.NODE_ENV === 'development' ? err.message : 'Lỗi server khi lấy thông tin khách sạn.';
         res.status(500).json({
             success: false,
-            message: 'Lỗi server'
+            message: errorMessage
         });
     }
 };
@@ -1170,7 +1220,6 @@ exports.getBasicHotelListForAdmin = async (req, res) => {
             LEFT JOIN NguoiDung nd ON ks.MaNguoiQuanLy = nd.MaKH
             ORDER BY ks.HangSao DESC
         `);
-
         res.json({
             success: true,
             data: result.recordset
