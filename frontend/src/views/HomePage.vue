@@ -29,7 +29,7 @@
                 v-for="suggestion in locationSuggestions"
                 :key="suggestion"
                 class="suggestion-item"
-                @mousedown="selectSuggestedLocation(suggestion)" 
+                @mousedown="selectSuggestedLocation(suggestion)"
               >
                 {{ suggestion }}
               </div>
@@ -77,7 +77,8 @@
         <div v-else-if="featuredHotels.length > 0">
           <Carousel :items="featuredHotels">
             <template #default="{ item: hotel }">
-              <HotelCard :hotel="hotel" @reserve-now="initiateBookingFromScratch" />
+              <!-- HotelCard giờ chỉ là link, không cần @reserve-now -->
+              <HotelCard :hotel="hotel" />
             </template>
           </Carousel>
         </div>
@@ -104,17 +105,16 @@ import Post from '../components/Post.vue';
 import Footer from '../components/Footer.vue';
 import Feature from '../components/Feature.vue';
 import Carousel from '../components/Carousel.vue';
-import HotelCard from '../components/HotelCard.vue';
+import HotelCard from '../components/HotelCard.vue'; // Vẫn import để hiển thị
 import NotificationToast from '../components/NotificationToast.vue';
-import hotelService from '../services/hotelService'; // Giả định hotelService có suggestLocations & getFeaturedHotels
+import hotelService from '../services/hotelService';
 import { useRouter } from 'vue-router';
 import { useBookingStore } from '../store/bookingStore';
-import { formatISO, parseISO, isBefore, isEqual, addDays } from 'date-fns'; // Thêm addDays
-import defaultHeroImage from '../assets/mountain.jpg'; // Đặt tên rõ ràng hơn
+import { formatISO, parseISO, isBefore, isEqual, addDays } from 'date-fns';
+import defaultHeroImage from '../assets/mountain.jpg';
 
-// --- Constants and State ---
 const heroImageUrl = ref(defaultHeroImage);
-const postImageUrl = ref(defaultHeroImage); // Có thể là ảnh khác
+const postImageUrl = ref(defaultHeroImage);
 const postContents = ref([
   'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
   'Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
@@ -123,14 +123,9 @@ const postContents = ref([
 
 const bookingStore = useBookingStore();
 const router = useRouter();
-const notificationToast = ref(null); // Đổi tên ref cho rõ
+const notificationToast = ref(null);
 
-const searchForm = reactive({
-  location: '',
-  startDate: '',
-  endDate: '',
-  numberOfGuests: ''
-});
+const searchForm = reactive({ location: '', startDate: '', endDate: '', numberOfGuests: '' });
 const isSubmittingSearchForm = ref(false);
 const searchSubmissionError = ref(null);
 
@@ -143,17 +138,14 @@ const isLocationSuggestionsVisible = ref(false);
 let locationSuggestionDebounceTimer = null;
 let hideSuggestionsDelayTimer = null;
 
-// --- Computed Properties ---
 const minDateForPicker = computed(() => formatISO(new Date(), { representation: 'date' }));
 const minEndDateForPicker = computed(() => {
   if (searchForm.startDate) {
-    // Ngày check-out phải ít nhất là 1 ngày sau ngày check-in
     return formatISO(addDays(parseISO(searchForm.startDate), 1), { representation: 'date' });
   }
   return formatISO(addDays(new Date(), 1), { representation: 'date' });
 });
 
-// --- Location Suggestions Logic ---
 const DEBOUNCE_DELAY_MS = 350;
 
 function debounce(func, delay) {
@@ -167,41 +159,34 @@ function debounce(func, delay) {
 
 async function fetchLocationSuggestions() {
   const locationQuery = searchForm.location.trim();
-  if (locationQuery.length < 2) { // Chỉ fetch nếu có ít nhất 2 ký tự
+  if (locationQuery.length < 2) {
     locationSuggestions.value = [];
     return;
   }
   try {
-    // Giả sử hotelService.suggestLocations trả về một mảng các string
     locationSuggestions.value = await hotelService.suggestLocations(locationQuery);
   } catch (err) {
     console.error('Error fetching location suggestions:', err);
-    locationSuggestions.value = []; // Xóa gợi ý khi có lỗi
+    locationSuggestions.value = [];
   }
 }
-
 const debouncedFetchLocationSuggestions = debounce(fetchLocationSuggestions, DEBOUNCE_DELAY_MS);
 
-function onLocationInput() {
-  debouncedFetchLocationSuggestions();
-}
-
+function onLocationInput() { debouncedFetchLocationSuggestions(); }
 function selectSuggestedLocation(location) {
   searchForm.location = location;
   locationSuggestions.value = [];
   isLocationSuggestionsVisible.value = false;
   clearTimeout(hideSuggestionsDelayTimer);
 }
-
 function hideLocationSuggestionsWithDelay() {
   hideSuggestionsDelayTimer = setTimeout(() => {
     isLocationSuggestionsVisible.value = false;
-  }, 200); // Delay để cho phép click vào item
+  }, 200);
 }
 
-// --- Form Validation and Submission ---
 function validateSearchForm() {
-  searchSubmissionError.value = null; // Reset lỗi chung
+  searchSubmissionError.value = null;
   const errors = [];
   if (!searchForm.startDate) errors.push('Check-in date is required.');
   if (!searchForm.endDate) errors.push('Check-out date is required.');
@@ -219,26 +204,23 @@ function validateSearchForm() {
   }
 
   if (errors.length > 0 && notificationToast.value) {
-    notificationToast.value.show(errors[0], 'error'); // Hiển thị lỗi đầu tiên
+    notificationToast.value.show(errors[0], 'error');
     return false;
   }
   return true;
 }
 
 async function submitSearchForm() {
-  if (!validateSearchForm()) {
-    return; // Validation failed
-  }
+  if (!validateSearchForm()) return;
 
   isSubmittingSearchForm.value = true;
   searchSubmissionError.value = null;
-  if (bookingStore.roomsError) bookingStore.roomsError = null; // Reset lỗi cũ từ store
+  if (bookingStore.roomsError) bookingStore.roomsError = null;
 
   const criteria = {
     startDate: searchForm.startDate,
     endDate: searchForm.endDate,
     numberOfGuests: parseInt(searchForm.numberOfGuests),
-    // location: searchForm.location // Bỏ comment nếu store và API của bạn dùng location
   };
 
   try {
@@ -248,7 +230,7 @@ async function submitSearchForm() {
         notificationToast.value.show(`Search failed: ${bookingStore.roomsError}`, 'error');
       }
     } else {
-      router.push('/BookingProcess'); // Chuyển trang nếu không có lỗi từ store
+      router.push('/BookingProcess');
     }
   } catch (err) {
     console.error("HomePage: Unexpected error during search form submission:", err);
@@ -261,32 +243,31 @@ async function submitSearchForm() {
   }
 }
 
-// --- Other Actions ---
-function initiateBookingFromScratch() {
-  bookingStore.startBookingFromScratch(); // Action này reset store và set currentStep = 1
-  router.push('/BookingProcess');
-}
+// Hàm initiateBookingFromScratch không còn được gọi từ HotelCard ở đây nữa.
+// Nếu bạn có một nút "Book Now" chung chung khác trên HomePage mà không liên quan
+// đến một khách sạn cụ thể từ carousel, bạn có thể giữ hàm này (ví dụ đổi tên thành `startGenericBooking`):
+// function startGenericBooking() {
+//   bookingStore.clearPreselectedBookingIntent(); // Không có intent cụ thể
+//   bookingStore.startBookingFromScratch();
+//   router.push('/BookingProcess');
+// }
 
-// --- Lifecycle Hooks ---
 async function loadFeaturedHotels() {
   isLoadingFeaturedHotels.value = true;
   featuredHotelsError.value = null;
   try {
     const response = await hotelService.getFeaturedHotels();
-    featuredHotels.value = response.data?.data || response.data || []; // Xử lý các cấu trúc response có thể có
+    featuredHotels.value = response.data?.data || response.data || [];
   } catch (err) {
     console.error('Error loading featured hotels:', err);
     featuredHotelsError.value = 'Could not load featured properties. Please try again later.';
-    featuredHotels.value = []; // Đảm bảo là mảng rỗng khi lỗi
+    featuredHotels.value = [];
   } finally {
     isLoadingFeaturedHotels.value = false;
   }
 }
 
-onMounted(() => {
-  loadFeaturedHotels();
-});
-
+onMounted(() => { loadFeaturedHotels(); });
 onBeforeUnmount(() => {
   clearTimeout(locationSuggestionDebounceTimer);
   clearTimeout(hideSuggestionsDelayTimer);
@@ -295,31 +276,9 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .home-page { overflow-x: hidden; }
-
 .hero .container { position: relative; z-index: 1; }
-
 .featured h2 { text-align: center; font-weight: 600; }
-
-/* Location suggestions dropdown (giữ nguyên style cũ của bạn) */
-.suggestions-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  max-height: 200px;
-  overflow-y: auto;
-  z-index: 1000;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-.suggestion-item {
-  padding: 8px 12px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  color: black;
-  text-align: left;
-}
+.suggestions-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-radius: 4px; max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.suggestion-item { padding: 8px 12px; cursor: pointer; transition: background-color 0.2s; color: black; text-align: left; }
 .suggestion-item:hover { background-color: #f5f5f5; }
 </style>

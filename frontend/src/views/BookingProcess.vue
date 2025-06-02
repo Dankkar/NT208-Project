@@ -211,7 +211,21 @@ async function attemptToSkipStep2() {
       const roomTypeData = hotelData.roomTypes.find(rt => rt.MaLoaiPhong === intent.roomTypeId);
       if (roomTypeData && roomTypeData.SoPhongTrong > 0) {
         console.log("BP (attemptToSkipStep2): Preselected room is available! Attempting to hold.", roomTypeData);
-        const essentialHotelInfo = { /* ... trích xuất ... */ };
+        // Trích xuất ĐẦY ĐỦ thông tin khách sạn cần thiết cho selectedHotelDetails
+    const essentialHotelInfo = {
+        MaKS: hotelData.MaKS,
+        TenKS: hotelData.TenKS,
+        DiaChi: hotelData.DiaChi,
+        HangSao: hotelData.HangSao,
+        LoaiHinh: hotelData.LoaiHinh,
+        MoTaChung: hotelData.MoTaChung,
+        // LẤY CÁC TRƯỜNG NÀY TỪ hotelData nếu có, API searchAvailableRooms cần trả về chúng
+        SoDienThoaiKS: hotelData.SoDienThoaiKS || null,
+        EmailKS: hotelData.EmailKS || null,
+        UrlBanDoKS: hotelData.UrlBanDoKS || null,
+        HinhAnhKS: hotelData.HinhAnhKS || null, // Hoặc defaultHotelImage
+        // Các trường khác bạn cần cho selectedHotelDetails
+    };
         const payloadForHold = { hotelInfo: essentialHotelInfo, roomInfo: roomTypeData, searchCriteria: bookingStore.searchCriteria };
         await bookingStore.holdRoomAndProceed(payloadForHold);
         if (!bookingStore.holdError) {

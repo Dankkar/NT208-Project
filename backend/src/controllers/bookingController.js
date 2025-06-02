@@ -1581,8 +1581,8 @@ exports.confirmBooking = async (req, res) => {
 
             // Get guest account ID
             const guestAccountResult = await transaction.request()
-                .query('SELECT MaKH FROM GuestAccount');
-            const guestAccountId = guestAccountResult.recordset[0].MaKH;
+                .query('SELECT MaKhach FROM Guests');
+            const guestAccountId = guestAccountResult.recordset[0].MaKhach;
 
             // Create invoice
             const nowVN = new Date(new Date().getTime() + 7 * 60 * 60 * 1000);

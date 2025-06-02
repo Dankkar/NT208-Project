@@ -17,7 +17,7 @@
 
     <div v-else class="row g-4 g-lg-5">
       <div class="col-lg-7">
-        <form @submit.prevent="handleSubmit" class="guest-form-section"> <!-- Bọc form ở đây -->
+        <form @submit.prevent="handleSubmit" class="guest-form-section">
           <h4 class="mb-4 fw-semibold">Guest & Payment Information</h4>
 
           <div v-if="bookingStore.finalizeError" class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -31,7 +31,10 @@
               <div class="col-md-3 col-sm-4">
                 <label for="guestTitle" class="form-label small">Title <span class="text-danger">*</span></label>
                 <select id="guestTitle" class="form-select form-select-sm" v-model="formData.guestInfo.title" required :disabled="bookingStore.isFinalizingBooking">
-                  <option value="Mr.">Mr.</option> <option value="Ms.">Ms.</option> <option value="Mrs.">Mrs.</option> <option value="Other">Other</option>
+                  <option value="Mr.">Mr.</option>
+                  <option value="Ms.">Ms.</option>
+                  <option value="Mrs.">Mrs.</option>
+                  <option value="Other">Other</option>
                 </select>
                 <div v-if="formSubmitted && errors.guestInfo.title" class="text-danger small mt-1">{{ errors.guestInfo.title }}</div>
               </div>
@@ -55,13 +58,58 @@
                 <input type="tel" class="form-control form-control-sm" id="guestPhone" v-model.trim="formData.guestInfo.phone" required placeholder="Enter phone number" :disabled="bookingStore.isFinalizingBooking">
                 <div v-if="formSubmitted && errors.guestInfo.phone" class="text-danger small mt-1">{{ errors.guestInfo.phone }}</div>
               </div>
-              <div class="col-12">
+              <div class="col-md-6"> <!-- Thay đổi col-12 thành col-md-6 -->
                 <label for="guestNationalId" class="form-label small">National ID / Passport <span class="text-danger">*</span></label>
                 <input type="text" class="form-control form-control-sm" id="guestNationalId" v-model.trim="formData.guestInfo.nationalId" required placeholder="Enter National ID or Passport" :disabled="bookingStore.isFinalizingBooking">
                 <div v-if="formSubmitted && errors.guestInfo.nationalId" class="text-danger small mt-1">{{ errors.guestInfo.nationalId }}</div>
               </div>
+              <div class="col-md-3 col-6"> <!-- Điều chỉnh cột cho Date of Birth -->
+                <label for="guestBirthDate" class="form-label small">Date of Birth</label>
+                <input type="date" class="form-control form-control-sm" id="guestBirthDate" v-model="formData.guestInfo.birthDate" :disabled="bookingStore.isFinalizingBooking">
+                <div v-if="formSubmitted && errors.guestInfo.birthDate" class="text-danger small mt-1">{{ errors.guestInfo.birthDate }}</div>
+              </div>
+              <div class="col-md-3 col-6"> <!-- Điều chỉnh cột cho Gender -->
+                <label for="guestGender" class="form-label small">Gender</label>
+                <select id="guestGender" class="form-select form-select-sm" v-model="formData.guestInfo.gender" :disabled="bookingStore.isFinalizingBooking">
+                  <option value="">Select...</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+                 <div v-if="formSubmitted && errors.guestInfo.gender" class="text-danger small mt-1">{{ errors.guestInfo.gender }}</div>
+              </div>
             </div>
           </section>
+
+          <section class="mb-4">
+            <h5 class="mb-3 fw-medium pb-2 border-bottom">Billing Address <span class="text-danger">*</span></h5>
+             <div class="row g-3">
+                <div class="col-12">
+                    <label for="billingStreet" class="form-label small">Street Address <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" id="billingStreet" v-model.trim="formData.billingAddress.street" required placeholder="123 Main St" :disabled="bookingStore.isFinalizingBooking">
+                    <div v-if="formSubmitted && errors.billingAddress.street" class="text-danger small mt-1">{{ errors.billingAddress.street }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label for="billingCity" class="form-label small">City <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" id="billingCity" v-model.trim="formData.billingAddress.city" required placeholder="City name" :disabled="bookingStore.isFinalizingBooking">
+                    <div v-if="formSubmitted && errors.billingAddress.city" class="text-danger small mt-1">{{ errors.billingAddress.city }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label for="billingPostalCode" class="form-label small">Postal Code <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" id="billingPostalCode" v-model.trim="formData.billingAddress.postalCode" required placeholder="Postal or ZIP code" :disabled="bookingStore.isFinalizingBooking">
+                    <div v-if="formSubmitted && errors.billingAddress.postalCode" class="text-danger small mt-1">{{ errors.billingAddress.postalCode }}</div>
+                </div>
+                <div class="col-12">
+                    <label for="billingCountry" class="form-label small">Country <span class="text-danger">*</span></label>
+                    <select id="billingCountry" class="form-select form-select-sm" v-model="formData.billingAddress.country" required :disabled="bookingStore.isFinalizingBooking">
+                        <option disabled value="">Please select a country</option>
+                        <option v-for="country in countries" :key="country.code" :value="country.code">{{ country.name }}</option>
+                    </select>
+                    <div v-if="formSubmitted && errors.billingAddress.country" class="text-danger small mt-1">{{ errors.billingAddress.country }}</div>
+                </div>
+            </div>
+          </section>
+
           <section class="mb-4">
             <h5 class="mb-3 fw-medium pb-2 border-bottom">Payment Method (Symbolic)</h5>
             <div class="mb-3 payment-icons">
@@ -89,39 +137,8 @@
                 <div v-if="formSubmitted && errors.paymentInfo.cvv" class="text-danger small mt-1">{{ errors.paymentInfo.cvv }}</div>
               </div>
             </div>
-             <div class="form-check mt-4 mb-3">
-              <input class="form-check-input" type="checkbox" id="billingAddressSame" v-model="formData.billingAddressSameAsContact" :disabled="bookingStore.isFinalizingBooking">
-              <label class="form-check-label small" for="billingAddressSame">My billing address is the same as my guest information.</label>
-            </div>
-            <div v-if="!formData.billingAddressSameAsContact" class="billing-address-form mt-3 border p-3 rounded bg-body-tertiary">
-               <h6 class="mb-3 small text-secondary text-uppercase fw-semibold">Billing Address</h6>
-               <div class="row g-3">
-                  <div class="col-12">
-                      <label for="billingStreet" class="form-label small">Street Address <span class="text-danger">*</span></label>
-                      <input type="text" class="form-control form-control-sm" id="billingStreet" v-model.trim="formData.billingAddress.street" :required="!formData.billingAddressSameAsContact" placeholder="123 Main St" :disabled="bookingStore.isFinalizingBooking">
-                      <div v-if="formSubmitted && errors.billingAddress.street" class="text-danger small mt-1">{{ errors.billingAddress.street }}</div>
-                  </div>
-                  <div class="col-md-6">
-                      <label for="billingCity" class="form-label small">City <span class="text-danger">*</span></label>
-                      <input type="text" class="form-control form-control-sm" id="billingCity" v-model.trim="formData.billingAddress.city" :required="!formData.billingAddressSameAsContact" placeholder="City name" :disabled="bookingStore.isFinalizingBooking">
-                      <div v-if="formSubmitted && errors.billingAddress.city" class="text-danger small mt-1">{{ errors.billingAddress.city }}</div>
-                  </div>
-                  <div class="col-md-6">
-                      <label for="billingPostalCode" class="form-label small">Postal Code <span class="text-danger">*</span></label>
-                      <input type="text" class="form-control form-control-sm" id="billingPostalCode" v-model.trim="formData.billingAddress.postalCode" :required="!formData.billingAddressSameAsContact" placeholder="Postal or ZIP code" :disabled="bookingStore.isFinalizingBooking">
-                      <div v-if="formSubmitted && errors.billingAddress.postalCode" class="text-danger small mt-1">{{ errors.billingAddress.postalCode }}</div>
-                  </div>
-                  <div class="col-12">
-                      <label for="billingCountry" class="form-label small">Country <span class="text-danger">*</span></label>
-                      <select id="billingCountry" class="form-select form-select-sm" v-model="formData.billingAddress.country" :required="!formData.billingAddressSameAsContact" :disabled="bookingStore.isFinalizingBooking">
-                          <option disabled value="">Please select a country</option>
-                          <option v-for="country in countries" :key="country.code" :value="country.code">{{ country.name }}</option>
-                      </select>
-                      <div v-if="formSubmitted && errors.billingAddress.country" class="text-danger small mt-1">{{ errors.billingAddress.country }}</div>
-                  </div>
-                </div>
-            </div>
           </section>
+
           <div class="form-check mb-4">
             <input class="form-check-input" type="checkbox" id="termsAndConditions" v-model="formData.agreedToTerms" :disabled="bookingStore.isFinalizingBooking">
             <label class="form-check-label small" for="termsAndConditions">
@@ -129,8 +146,8 @@
             </label>
             <div v-if="formSubmitted && errors.agreedToTerms" class="text-danger small mt-1">{{ errors.agreedToTerms }}</div>
           </div>
+
           <div class="text-end mb-4">
-            <!-- Nút submit giờ là type="submit" của form -->
             <Button
                 content="Confirm & Finalize Booking"
                 type="submit"
@@ -144,9 +161,8 @@
           <div v-if="!bookingStore.isTimerActive && bookingStore.heldBookingMaDat" class="alert alert-danger small text-center">
             Your booking hold has expired. Please <a href="#" @click.prevent="goToPreviousStep">go back to room selection</a> and try again.
           </div>
-        </form> <!-- Kết thúc form -->
+        </form>
       </div>
-      <!-- Phần Booking Summary -->
       <div class="col-lg-5">
         <div class="booking-summary-section sticky-top-summary" v-if="details">
           <h5 class="summary-title">Booking Summary</h5>
@@ -182,38 +198,67 @@
 
 <script setup>
 import { ref, reactive, computed, watch, onMounted, defineEmits } from 'vue';
-import Button from "../../Button.vue"; // Đảm bảo đường dẫn đúng
+import Button from "../../Button.vue";
 import { useBookingStore } from '@/store/bookingStore';
 
 const emit = defineEmits(['booking-finalization-requested']);
-
 const bookingStore = useBookingStore();
 
 const defaultFormData = () => ({
-  guestInfo: { title: 'Mr.', firstName: '', lastName: '', nationalId: '', phone: '', email: '' },
-  paymentInfo: { nameOnCard: '', cardNumber: '', expiryDate: '', cvv: '' },
-  // Thêm services và promotionCode nếu bạn muốn thu thập từ form này
-  services: [], // Ví dụ: [{ MaLoaiDV: 1, quantity: 1, GiaDV: 50000 }, ...]
+  guestInfo: {
+    title: 'Mr.',
+    firstName: '',
+    lastName: '',
+    nationalId: '',
+    phone: '',
+    email: '',
+    birthDate: '', // Thêm birthDate
+    gender: ''      // Thêm gender
+  },
+  paymentInfo: {
+    nameOnCard: '',
+    cardNumber: '',
+    expiryDate: '',
+    cvv: ''
+  },
+  services: [], // Giả sử bạn có thể thêm services sau này
   promotionCode: '',
   agreedToTerms: false,
-  billingAddressSameAsContact: true,
-  billingAddress: { street: '', city: '', postalCode: '', country: '' }
+  // billingAddressSameAsContact đã bị BỎ
+  billingAddress: {
+    street: '',
+    city: '',
+    postalCode: '',
+    country: '' // Nên có giá trị mặc định, ví dụ 'VN' nếu phổ biến nhất
+  }
 });
 const formData = reactive(defaultFormData());
 
 const errors = reactive({
-  guestInfo: { title: '', firstName: '', lastName: '', nationalId: '', phone: '', email: '' },
+  guestInfo: { title: '', firstName: '', lastName: '', nationalId: '', phone: '', email: '', birthDate: '', gender: '' },
   paymentInfo: { nameOnCard: '', cardNumber: '', expiryDate: '', cvv: '' },
   billingAddress: { street: '', city: '', postalCode: '', country: '' },
   agreedToTerms: ''
 });
 const formSubmitted = ref(false);
 
-const countries = ref([ { code: 'VN', name: 'Vietnam' }, { code: 'US', name: 'United States' }, { code: 'SG', name: 'Singapore' }, { code: 'KR', name: 'South Korea' }, { code: 'JP', name: 'Japan' }, { code: 'OTHER', name: 'Other' } ]);
+const countries = ref([
+    { code: 'VN', name: 'Vietnam' }, { code: 'US', name: 'United States' },
+    { code: 'SG', name: 'Singapore' }, { code: 'KR', name: 'South Korea' },
+    { code: 'JP', name: 'Japan' }, { code: 'OTHER', name: 'Other' },
+]);
 const details = computed(() => bookingStore.dataForStep3Display);
 
 function resetFormToDefaults() {
-    Object.assign(formData, defaultFormData());
+    // Sao chép sâu object mặc định để tránh tham chiếu
+    const defaults = JSON.parse(JSON.stringify(defaultFormData()));
+    Object.assign(formData.guestInfo, defaults.guestInfo);
+    Object.assign(formData.paymentInfo, defaults.paymentInfo);
+    formData.services = defaults.services;
+    formData.promotionCode = defaults.promotionCode;
+    formData.agreedToTerms = defaults.agreedToTerms;
+    Object.assign(formData.billingAddress, defaults.billingAddress);
+
     Object.keys(errors.guestInfo).forEach(key => errors.guestInfo[key] = '');
     Object.keys(errors.paymentInfo).forEach(key => errors.paymentInfo[key] = '');
     Object.keys(errors.billingAddress).forEach(key => errors.billingAddress[key] = '');
@@ -223,7 +268,7 @@ function resetFormToDefaults() {
 
 function initializeFormDataFromStore() {
   if (bookingStore.guestAndPaymentInput && typeof bookingStore.guestAndPaymentInput === 'object') {
-    const stored = bookingStore.guestAndPaymentInput;
+    const stored = JSON.parse(JSON.stringify(bookingStore.guestAndPaymentInput)); // Deep clone
     const defaults = defaultFormData();
 
     formData.guestInfo = { ...defaults.guestInfo, ...(stored.guestInfo || {}) };
@@ -231,7 +276,7 @@ function initializeFormDataFromStore() {
     formData.services = Array.isArray(stored.services) ? [...stored.services] : defaults.services;
     formData.promotionCode = typeof stored.promotionCode === 'string' ? stored.promotionCode : defaults.promotionCode;
     formData.agreedToTerms = typeof stored.agreedToTerms === 'boolean' ? stored.agreedToTerms : defaults.agreedToTerms;
-    formData.billingAddressSameAsContact = typeof stored.billingAddressSameAsContact === 'boolean' ? stored.billingAddressSameAsContact : defaults.billingAddressSameAsContact;
+    // billingAddressSameAsContact đã bị bỏ
     formData.billingAddress = { ...defaults.billingAddress, ...(stored.billingAddress || {}) };
   } else {
     resetFormToDefaults();
@@ -248,44 +293,51 @@ watch(() => bookingStore.guestAndPaymentInput, () => {
 
 function validateFormFields() {
   let isValid = true;
-  const guest = formData.guestInfo; const payment = formData.paymentInfo; const billing = formData.billingAddress;
-  const guestErrs = errors.guestInfo; const paymentErrs = errors.paymentInfo; const billingErrs = errors.billingAddress;
+  const guest = formData.guestInfo;
+  const payment = formData.paymentInfo;
+  const billing = formData.billingAddress; // billingAddress giờ luôn được dùng
+  const guestErrs = errors.guestInfo;
+  const paymentErrs = errors.paymentInfo;
+  const billingErrs = errors.billingAddress;
 
+  // Guest Info Validation
   guestErrs.title = !guest.title ? 'Title is required.' : ''; if (guestErrs.title) isValid = false;
   guestErrs.firstName = !guest.firstName ? 'First name is required.' : ''; if (guestErrs.firstName) isValid = false;
   guestErrs.lastName = !guest.lastName ? 'Last name is required.' : ''; if (guestErrs.lastName) isValid = false;
   guestErrs.nationalId = !guest.nationalId ? 'National ID/Passport is required.' : ''; if (guestErrs.nationalId) isValid = false;
-  
   if (!guest.phone) { guestErrs.phone = 'Phone number is required.'; isValid = false;
   } else if (!/^\+?[0-9\s-()]{7,20}$/.test(guest.phone)) { guestErrs.phone = 'Valid phone number required (7-20 digits).'; isValid = false;
   } else { guestErrs.phone = ''; }
-  
   if (!guest.email) { guestErrs.email = 'Email address is required.'; isValid = false;
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guest.email)) { guestErrs.email = 'Valid email address required.'; isValid = false;
   } else { guestErrs.email = ''; }
-  
+  // Validation cho Ngày sinh và Giới tính (nếu bạn muốn chúng bắt buộc)
+  // guestErrs.birthDate = !guest.birthDate ? 'Date of birth is required.' : ''; if (guestErrs.birthDate) isValid = false;
+  // guestErrs.gender = !guest.gender ? 'Gender is required.' : ''; if (guestErrs.gender) isValid = false;
+  // Nếu không bắt buộc, thì không cần set lỗi trừ khi có định dạng sai
+  guestErrs.birthDate = ''; // Ví dụ: không bắt buộc
+  guestErrs.gender = '';   // Ví dụ: không bắt buộc
+
+
+  // Billing Address Validation (BẮT BUỘC)
+  billingErrs.street = !billing.street ? 'Billing street address is required.' : ''; if (billingErrs.street) isValid = false;
+  billingErrs.city = !billing.city ? 'Billing city is required.' : ''; if (billingErrs.city) isValid = false;
+  billingErrs.postalCode = !billing.postalCode ? 'Billing postal code is required.' : ''; if (billingErrs.postalCode) isValid = false;
+  billingErrs.country = !billing.country ? 'Billing country is required.' : ''; if (billingErrs.country) isValid = false;
+
+  // Payment Info Validation
   paymentErrs.nameOnCard = !payment.nameOnCard ? 'Name on card is required.' : ''; if (paymentErrs.nameOnCard) isValid = false;
-  
   if (!payment.cardNumber) { paymentErrs.cardNumber = 'Card number is required.'; isValid = false;
   } else if (!/^[0-9]{13,19}$/.test(payment.cardNumber.replace(/\s/g, ''))) { paymentErrs.cardNumber = 'Valid card number required (13-19 digits).'; isValid = false;
   } else { paymentErrs.cardNumber = ''; }
-  
-  if (!payment.expiryDate) { paymentErrs.expiryDate = 'Expiry date (MM/YY) is required.'; isValid = false; }
-  else if (!/^(0[1-9]|1[0-2])\/?([0-9]{2})$/.test(payment.expiryDate)) { paymentErrs.expiryDate = 'Valid MM/YY format required (e.g., 12/25).'; isValid = false; }
-  else { paymentErrs.expiryDate = ''; }
+  if (!payment.expiryDate) { paymentErrs.expiryDate = 'Expiry date (MM/YY) is required.'; isValid = false;
+  } else if (!/^(0[1-9]|1[0-2])\/?([0-9]{2})$/.test(payment.expiryDate)) { paymentErrs.expiryDate = 'Valid MM/YY format required (e.g., 12/25).'; isValid = false;
+  } else { paymentErrs.expiryDate = ''; }
+  if (!payment.cvv) { paymentErrs.cvv = 'CVV/CVC is required.'; isValid = false;
+  } else if (!/^[0-9]{3,4}$/.test(payment.cvv)) { paymentErrs.cvv = 'Valid CVV (3 or 4 digits).'; isValid = false;
+  } else { paymentErrs.cvv = ''; }
 
-  if (!payment.cvv) { paymentErrs.cvv = 'CVV/CVC is required.'; isValid = false; }
-  else if (!/^[0-9]{3,4}$/.test(payment.cvv)) { paymentErrs.cvv = 'Valid CVV (3 or 4 digits).'; isValid = false; }
-  else { paymentErrs.cvv = ''; }
-  
-  if (!formData.billingAddressSameAsContact) {
-    billingErrs.street = !billing.street ? 'Street address is required.' : ''; if (billingErrs.street) isValid = false;
-    billingErrs.city = !billing.city ? 'City is required.' : ''; if (billingErrs.city) isValid = false;
-    billingErrs.postalCode = !billing.postalCode ? 'Postal code is required.' : ''; if (billingErrs.postalCode) isValid = false;
-    billingErrs.country = !billing.country ? 'Country for billing is required.' : ''; if (billingErrs.country) isValid = false;
-  } else {
-    Object.keys(billingErrs).forEach(key => billingErrs[key] = '');
-  }
+  // Terms and Conditions Validation
   errors.agreedToTerms = !formData.agreedToTerms ? 'You must agree to terms and conditions.' : ''; if (errors.agreedToTerms) isValid = false;
   
   return isValid;
@@ -300,7 +352,6 @@ const handleSubmit = () => {
       return;
   }
   
-  // Reset lỗi cũ từ store trước khi emit để không hiển thị lỗi cũ nếu lần này thành công
   if (bookingStore.finalizeError) bookingStore.finalizeError = null;
   
   emit('booking-finalization-requested', JSON.parse(JSON.stringify(formData)));
@@ -316,18 +367,18 @@ function clearFinalizeError() {
 
 const formatPriceBase = (value) => {
   if (value == null || isNaN(parseFloat(value))) return 'N/A';
-  value = Math.round(parseFloat(value)); // Ensure it's a number before rounding
-  return value.toLocaleString('vi-VN'); // Using toLocaleString for number formatting
+  value = Math.round(parseFloat(value));
+  return value.toLocaleString('vi-VN');
 };
 const formatPrice = (value) => formatPriceBase(value) + ' VND';
 const formatPricePerNight = (value) => formatPriceBase(value) + '/night';
 </script>
 
 <style scoped>
-/* ... Các style bạn đã cung cấp ... */
+/* ... style của bạn giữ nguyên từ lần trước ... */
 .form-label-sm { font-size: 0.8rem; margin-bottom: 0.25rem; color: #555; }
 .section-title { font-size: 1.1rem; color: #4A4A4A; border-bottom: 1px solid #E0DACC; padding-bottom: 0.75rem; margin-bottom: 1.25rem !important; font-weight: 600; }
-.sticky-top-summary { top: 90px; z-index: 1000; position: sticky; }
+.sticky-top-summary { top: 90px; z-index: 1000; position: sticky; } 
 .booking-summary-section { background-color: #F8F5F0; border: 1px solid #E7E0D7 !important; border-radius: 6px !important; padding: 1.25rem !important; color: #4B4B4B; font-size: 0.875rem; }
 .summary-title { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 1.4rem; font-weight: 700; color: #333333; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1.5rem; padding-bottom: 0.75rem; border-bottom: 1px solid #E7E0D7; }
 .hotel-name, .room-name { font-weight: 600; color: #333333; font-size: 1rem; margin-bottom: 0.3rem; }

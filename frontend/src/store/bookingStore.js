@@ -237,13 +237,21 @@ export const useBookingStore = defineStore('booking', {
         // API updateBookingDetails của bạn lấy MaDat từ session.
         // Payload gồm guestInfo, services, paymentInfo, promotionCode.
         const updatePayload = {
-          guestInfo: formDataFromStep3.guestInfo,
+          guestInfo: {
+            HoTen: `${formDataFromStep3.guestInfo.firstName} ${formDataFromStep3.guestInfo.lastName}`,
+            Email: formDataFromStep3.guestInfo.email,
+            SDT: formDataFromStep3.guestInfo.phone,
+            CCCD: formDataFromStep3.guestInfo.nationalId,
+            NgaySinh: formDataFromStep3.guestInfo.birthDate ? format(parseISO(formDataFromStep3.guestInfo.birthDate), 'yyyy-MM-dd') : null,
+            GioiTinh: formDataFromStep3.guestInfo.gender ? formDataFromStep3.gender : null,
+          }  ,
           services: formDataFromStep3.services || [],
           paymentInfo: formDataFromStep3.paymentInfo, // API của bạn cũng nhận paymentInfo
           promotionCode: formDataFromStep3.promotionCode || null,
           // Không cần gửi MaDat vì API lấy từ session
         };
-        const updateResponse = await axios.post(`/api/bookings/update-details`, updatePayload);
+        console.log('Pinia store: Updating booking details with payload:', updatePayload);
+        const updateResponse = await axios.put(`api/bookings/${this.heldBookingMaDat}/details`, updatePayload);
         if (!updateResponse.data || !updateResponse.data.success) {
           throw new Error(updateResponse.data.message || 'Failed to update booking details.');
         }
@@ -254,7 +262,7 @@ export const useBookingStore = defineStore('booking', {
         const confirmPayload = {
           paymentInfo: formDataFromStep3.paymentInfo
         };
-        const confirmResponse = await axios.post(`/api/bookings/confirm/${this.heldBookingMaDat}`, confirmPayload);
+        const confirmResponse = await axios.put(`api/bookings/${this.heldBookingMaDat}/confirm`, confirmPayload);
 
         if (confirmResponse.data && confirmResponse.data.success) {
           this.finalBookingReference = confirmResponse.data.data; // {MaDat, MaHD, priceDetails (nếu có từ BE), ...}
@@ -312,5 +320,6 @@ export const useBookingStore = defineStore('booking', {
     resetBookingProcess() {
       this.startBookingFromScratch(); // Gọi startBookingFromScratch để reset kỹ hơn
     }
-  }
+  },
+  persist: true, // Sử dụng Pinia Persist để lưu trữ trạng thái
 });
