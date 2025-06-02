@@ -225,7 +225,7 @@ exports.updateHotel = async (req, res) => {
 
 exports.getAllHotels = async (req, res) => {
     try {
-        const { page = 1, limit = 10 } = req.query;
+        const { page = 1, limit = 10, sortBy = 'rating', sortOrder = 'desc' } = req.query;
         const offset = (page - 1) * limit;
         const pool = await poolPromise;
         const isAdmin = req.user && req.user.Role === 'admin';
@@ -257,11 +257,38 @@ exports.getAllHotels = async (req, res) => {
             `;
         }
 
-        // Add GROUP BY, ORDER BY and pagination
+        // Add GROUP BY
         query += `
             GROUP BY ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh
             ${isAdmin ? ', nd.HoTen' : ''}
-            ORDER BY ks.HangSao DESC
+        `;
+
+        // Handle sorting based on parameters
+        let orderByClause = '';
+        const validSortFields = ['rating', 'price', 'name'];
+        const validSortOrders = ['asc', 'desc'];
+        
+        // Validate parameters
+        const safeSortBy = validSortFields.includes(sortBy) ? sortBy : 'rating';
+        const safeSortOrder = validSortOrders.includes(sortOrder.toLowerCase()) ? sortOrder.toUpperCase() : 'DESC';
+        
+        switch (safeSortBy) {
+            case 'rating':
+                orderByClause = `ORDER BY ks.HangSao ${safeSortOrder}`;
+                break;
+            case 'price':
+                orderByClause = `ORDER BY MIN(lp.GiaCoSo) ${safeSortOrder}`;
+                break;
+            case 'name':
+                orderByClause = `ORDER BY ks.TenKS ${safeSortOrder}`;
+                break;
+            default:
+                orderByClause = 'ORDER BY ks.HangSao DESC'; // Default fallback
+        }
+
+        // Add ORDER BY and pagination
+        query += `
+            ${orderByClause}
             OFFSET @offset ROWS
             FETCH NEXT @limit ROWS ONLY
         `;
@@ -279,6 +306,10 @@ exports.getAllHotels = async (req, res) => {
                 page: parseInt(page),
                 limit: parseInt(limit),
                 totalPages: Math.ceil(countResult.recordset[0].total / parseInt(limit))
+            },
+            sorting: {
+                sortBy: safeSortBy,
+                sortOrder: safeSortOrder
             }
         });
     } catch (err) {
@@ -305,7 +336,7 @@ exports.getHotelById = async (req, res) => {
             .input('MaKS', sql.Int, MaKS)
             .query(`
                 SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh,
-                       ks.MoTaCoSoVatChat, ks.QuyDinh, ks.MotaChung
+                       ks.MoTaCoSoVatChat, ks.QuyDinh, ks.MoTaChung
                 FROM KhachSan ks
                 WHERE ks.MaKS = @MaKS
             `);
@@ -321,15 +352,19 @@ exports.getHotelById = async (req, res) => {
         const roomTypesResult = await pool.request()
             .input('MaKS', sql.Int, MaKS)
             .query(`
-                SELECT lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo, lp.SoNguoiToiDa,
+                SELECT lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo, lp.SoGiuong,
                        lp.DienTich, lp.MoTa, lp.TienNghi,
-                       COUNT(p.MaPhong) as SoPhongTrong
+                       chg.TenCauHinh as CauHinhGiuong,
+                       chg.SoGiuongDoi,
+                       chg.SoGiuongDon,
+                       COUNT(DISTINCT CASE WHEN p.TrangThaiPhong = N'Trong' THEN p.MaPhong END) as SoPhongTrong
                 FROM LoaiPhong lp
-                LEFT JOIN Phong p ON lp.MaLoaiPhong = p.MaLoaiPhong 
-                    AND p.TrangThai = N'Trống'
+                LEFT JOIN Phong p ON lp.MaLoaiPhong = p.MaLoaiPhong
+                LEFT JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
                 WHERE lp.MaKS = @MaKS
-                GROUP BY lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo, lp.SoNguoiToiDa,
-                         lp.DienTich, lp.MoTa, lp.TienNghi
+                GROUP BY lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo, lp.SoGiuong,
+                         lp.DienTich, lp.MoTa, lp.TienNghi,
+                         chg.TenCauHinh, chg.SoGiuongDoi, chg.SoGiuongDon
                 ORDER BY lp.GiaCoSo ASC
             `);
 
@@ -337,10 +372,10 @@ exports.getHotelById = async (req, res) => {
         const servicesResult = await pool.request()
             .input('MaKS', sql.Int, MaKS)
             .query(`
-                SELECT dv.MaDichVu, dv.TenDichVu, dv.MoTa, dv.Gia
-                FROM DichVu dv
-                WHERE dv.MaKS = @MaKS
-                ORDER BY dv.TenDichVu
+                SELECT ldv.MaLoaiDV, ldv.TenLoaiDV, ldv.MoTaDV, ldv.GiaDV
+                FROM LoaiDichVu ldv
+                WHERE ldv.MaKS = @MaKS
+                ORDER BY ldv.TenLoaiDV
             `);
 
         // Calculate price range

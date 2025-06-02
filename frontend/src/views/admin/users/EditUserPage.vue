@@ -82,16 +82,12 @@
           </div>
 
            <!-- IsActive (Read-only or toggle, tùy theo nhu cầu) -->
-          <div class="col-md-12 mt-3">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" v-model="editableUserData.IsActive" id="IsActiveCheck">
-              <label class="form-check-label" for="IsActiveCheck">
-                Is Active
-              </label>
+          <div class="col-md-6 d-flex align-items-center mt-4">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch" id="isActiveSwitch" v-model="editableUserData.IsActive">
+              <label class="form-check-label" for="isActiveSwitch">Is Active</label>
             </div>
           </div>
-
-
         </div>
 
         <div class="mt-4 d-flex justify-content-end">
@@ -209,7 +205,9 @@ async function submitUpdateUser() {
     if (response.status === 200 && response.data?.message) {
       updateSuccessMessage.value = response.data.message;
       // Sau khi cập nhật thành công, có thể fetch lại dữ liệu để form hiển thị giá trị mới nhất
-      // hoặc chỉ hiển thị thông báo.
+      setTimeout(() => {
+        goBackToUserList();
+      }, 1000);
       // fetchUserDetails(userId.value); // Option: fetch lại để cập nhật userToEdit và originalUserName
     } else {
       updateError.value = response.data?.message || 'Failed to update user: Unknown server response.';

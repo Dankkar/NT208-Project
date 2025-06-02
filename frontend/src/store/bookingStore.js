@@ -32,8 +32,8 @@ export const useBookingStore = defineStore('booking', {
 
     // --- Step 3 Data (Guest Info & Finalize) ---
     guestAndPaymentInput: null,   // Dữ liệu form đầy đủ từ Step 3 (sau khi API confirm)
-    isFinalizingBooking: false,   // Loading khi đang gọi API updateDetails/confirmBooking
-    finalizeError: null,          // Lỗi khi gọi API updateDetails/confirmBooking
+    isCreatingBooking: false,   // Loading khi đang gọi API updateDetails/confirmBooking
+    createBookingError: null,          // Lỗi khi gọi API updateDetails/confirmBooking
 
     // --- Step 4 Data (Confirmation) ---
     finalBookingReference: null,  // Object chứa thông tin xác nhận cuối cùng { MaDat, MaHD, priceDetails, ... }
@@ -218,66 +218,67 @@ export const useBookingStore = defineStore('booking', {
       }
     },
 
-    async finalizeBooking(formDataFromStep3) {
-      this.isFinalizingBooking = true;
-      this.finalizeError = null;
+     async finalizeBooking(formDataFromStep3) {
+      this.isCreatingBooking = true; // Sử dụng cờ state mới
+      this.createBookingError = null;  // Sử dụng state lỗi mới
 
       if (!this.heldBookingMaDat) {
-        this.finalizeError = "No active booking hold found. Please select a room first.";
-        this.isFinalizingBooking = false; this.currentStep = 2; return;
+        this.createBookingError = "No active booking hold found. Please select a room first.";
+        this.isCreatingBooking = false; this.currentStep = 2; return;
       }
       if (this.heldBookingExpiresAt && Date.now() > this.heldBookingExpiresAt) {
-          this.finalizeError = "Your booking hold has expired. Please start over.";
-          this.isFinalizingBooking = false; this.heldBookingMaDat = null; this.heldBookingExpiresAt = null;
+          this.createBookingError = "Your booking hold has expired. Please start over.";
+          this.isCreatingBooking = false; this.heldBookingMaDat = null; this.heldBookingExpiresAt = null;
           this.selectedHotelDetails = null; this.selectedRoomTypeDetails = null; this.currentStep = 1; return;
       }
 
-      try {
-        // Bước 1: Cập nhật thông tin chi tiết (guestInfo, services)
-        // API updateBookingDetails của bạn lấy MaDat từ session.
-        // Payload gồm guestInfo, services, paymentInfo, promotionCode.
-        const updatePayload = {
-          guestInfo: {
+      // API createBooking lấy bookingInfo (bao gồm MaDat) từ session của backend.
+      // Frontend chỉ cần gửi các thông tin mà createBooking cần trong req.body.
+      const payloadForCreateBooking = {
+        guestInfo: { // Chuyển đổi tên trường từ frontend formData sang backend guestInfo
             HoTen: `${formDataFromStep3.guestInfo.firstName} ${formDataFromStep3.guestInfo.lastName}`,
             Email: formDataFromStep3.guestInfo.email,
             SDT: formDataFromStep3.guestInfo.phone,
             CCCD: formDataFromStep3.guestInfo.nationalId,
+            // Đảm bảo ngày sinh được gửi đúng định dạng yyyy-MM-dd nếu backend cần
             NgaySinh: formDataFromStep3.guestInfo.birthDate ? format(parseISO(formDataFromStep3.guestInfo.birthDate), 'yyyy-MM-dd') : null,
-            GioiTinh: formDataFromStep3.guestInfo.gender ? formDataFromStep3.gender : null,
-          }  ,
-          services: formDataFromStep3.services || [],
-          paymentInfo: formDataFromStep3.paymentInfo, // API của bạn cũng nhận paymentInfo
-          promotionCode: formDataFromStep3.promotionCode || null,
-          // Không cần gửi MaDat vì API lấy từ session
-        };
-        console.log('Pinia store: Updating booking details with payload:', updatePayload);
-        const updateResponse = await axios.put(`api/bookings/${this.heldBookingMaDat}/details`, updatePayload);
-        if (!updateResponse.data || !updateResponse.data.success) {
-          throw new Error(updateResponse.data.message || 'Failed to update booking details.');
-        }
+            GioiTinh: formDataFromStep3.guestInfo.gender || null
+        },
+        paymentInfo: { // Gửi toàn bộ object paymentInfo, backend sẽ lấy HinhThucTT từ đây
+            ...formDataFromStep3.paymentInfo,
+            // Ví dụ, nếu backend cần một trường cụ thể cho hình thức thanh toán
+            // HinhThucTT: 'Credit Card', // Hoặc lấy từ một lựa chọn trong form
+        },
+        services: formDataFromStep3.services || [], // Lấy từ formData nếu có
+        promotionCode: formDataFromStep3.promotionCode || null // Lấy từ formData nếu có
+        // billingAddress sẽ được backend xử lý thông qua guestInfo nếu nó tạo User từ guestInfo
+        // Hoặc API createBooking của bạn cần một cách khác để nhận billingAddress
+      };
+      // Backend sẽ sử dụng req.session.bookingInfo để lấy MaDat và các thông tin đã giữ
 
-        // Bước 2: Xác nhận và hoàn tất đặt phòng
-        // API confirmBooking của bạn lấy guestInfo, services, promotionCode từ session (vừa được update)
-        // và chỉ cần paymentInfo trong body.
-        const confirmPayload = {
-          paymentInfo: formDataFromStep3.paymentInfo
-        };
-        const confirmResponse = await axios.put(`api/bookings/${this.heldBookingMaDat}/confirm`, confirmPayload);
+      try {
+        // Gọi API createBooking (POST /api/bookings/)
+        console.log('Calling API POST /bookings with payload:', payloadForCreateBooking);
+        const response = await axios.post(`/bookings`, payloadForCreateBooking);
 
-        if (confirmResponse.data && confirmResponse.data.success) {
-          this.finalBookingReference = confirmResponse.data.data; // {MaDat, MaHD, priceDetails (nếu có từ BE), ...}
-          this.guestAndPaymentInput = formDataFromStep3;
+        if (response.data && response.data.success) {
+          this.finalBookingReference = response.data.data; // Lưu response { MaDat, MaHD, priceDetails, guestInfo (optional), ... }
+          this.guestAndPaymentInput = formDataFromStep3; // Lưu lại form cuối cùng đã submit thành công
           this.currentStep = 4;
           this.maxCompletedStep = Math.max(this.maxCompletedStep, 3);
-          this.heldBookingMaDat = null; this.heldBookingExpiresAt = null; // Xóa thông tin giữ chỗ
+          // Xóa thông tin giữ chỗ cục bộ (backend sẽ xóa session của nó)
+          this.heldBookingMaDat = null;
+          this.heldBookingExpiresAt = null;
+          this.holdError = null; // Xóa lỗi giữ phòng cũ nếu có
         } else {
-          throw new Error(confirmResponse.data.message || 'Failed to confirm booking.');
+          throw new Error(response.data.message || response.data.error || 'Failed to create booking.');
         }
       } catch (error) {
-        console.error('Pinia store: Error finalizing booking:', error);
-        this.finalizeError = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to finalize booking.';
+        console.error('Pinia store: Error calling createBooking API:', error);
+        this.createBookingError = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to create booking.';
+        // Không chuyển bước, giữ người dùng ở Step 3 để họ thấy lỗi
       } finally {
-        this.isFinalizingBooking = false;
+        this.isCreatingBooking = false;
       }
     },
 

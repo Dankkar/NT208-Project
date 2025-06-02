@@ -15,35 +15,35 @@ const {
 
 // --------- PUBLIC ROUTES ---------
 
-// GET /services - Tất cả dịch vụ
+// GET /services - Tất cả loại dịch vụ
 router.get('/', getAllServices);
 
-// GET /services/hotel/:MaKS - Dịch vụ theo khách sạn
+// GET /services/:MaDV
+router.get('/:MaLoaiDV', getServiceById);
+
+// GET /services/hotel/:MaKS - loại dịch vụ theo khách sạn
 router.get('/hotel/:MaKS', getServicesByHotel);
 
-// --------- BOOKING - liên quan đến đơn đặt dịch vụ ---------
+// --------- BOOKING - liên quan đến đơn đặt loại dịch vụ ---------
 
-// GET /services/booking/:MaDat - Lấy các dịch vụ đã đặt
+// GET /services/booking/:MaDat - Lấy các loại dịch vụ đã đặt
 router.get('/booking/:MaDat', authenticateToken, getBookingServices);
 
-// POST /services/booking/:MaDat - Thêm dịch vụ vào đơn
+// POST /services/booking/:MaDat - Thêm loại dịch vụ vào đơn
 router.post('/booking/:MaDat', authenticateToken, addServiceToBooking);
 
-// DELETE /services/booking/:MaDat/:MaDV - Gỡ dịch vụ khỏi đơn
+// DELETE /services/booking/:MaDat/:MaDV - Gỡ loại dịch vụ khỏi đơn
 router.delete('/booking/:MaDat/:MaDV', authenticateToken, removeServiceFromBooking);
 
 // --------- ADMIN/STAFF ONLY ---------
 
-// POST /services - Tạo dịch vụ
-router.post('/', authenticateToken, isStaff, createService);
+// POST /services - Tạo loại dịch vụ
+router.post('/:MaKS', authenticateToken, isAdmin, createService);
 
-// PUT /services/:MaDV - Cập nhật dịch vụ
-router.put('/:MaDV', authenticateToken, isStaff, updateService);
+// PUT /services/:MaDV - Cập nhật loại dịch vụ
+router.put('/:MaLoaiDV', authenticateToken, isAdmin, updateService);
 
-// DELETE /services/:MaDV - Xóa dịch vụ
-router.delete('/:MaDV', authenticateToken, isStaff, deleteService);
-
-// --------- ĐỂ CUỐI: GET /services/:MaDV ---------
-router.get('/:MaDV', getServiceById);
+// DELETE /services/:MaDV - Xóa loại dịch vụ
+router.delete('/:MaLoaiDV', authenticateToken, isAdmin, deleteService);
 
 module.exports = router;
