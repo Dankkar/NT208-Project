@@ -25,7 +25,8 @@ import EditRoomTypePage from '../views/admin/branches/EditRoomTypePage.vue'
 import FindAmenityPage from '../views/admin/branches/FindAmenityPage.vue'
 import AddAmenityPage    from '../views/admin/branches/AddAmenityPage.vue'
 import EditAmenityPage from '../views/admin/branches/EditAmenityPage.vue'
-// import StatsPage      from '../views/admin/bookings/StatsPage.vue'
+import StatsPage      from '../views/admin/bookings/StatsPage.vue'
+import CheckInOutPage from '../views/admin/bookings/AdminCheckInOutPage.vue'
 // import RemoveBookPage from '../views/admin/bookings/RemoveBookPage.vue'
 import FindUserPage    from '../views/admin/users/FindUserPage.vue'
 import EditUserPage from '../views/admin/users/EditUserPage.vue'
@@ -70,7 +71,8 @@ const routes = [
       { path: 'branches/edit-amenity/:amenityId',    name: 'AdminEditAmenity',    component: EditAmenityPage, props: true },
 
       // Bookings
-      // { path: 'bookings/statistics', name: 'BookingsStats', component: StatsPage },
+      { path: 'bookings/statistics', name: 'BookingsStats', component: StatsPage },
+      { path: 'bookings/check-in-out/', name: 'BookingsCheckInOut', component: CheckInOutPage, props: true },
       // { path: 'bookings/remove',     name: 'BookingsRemove', component: RemoveBookPage },
 
       // Users

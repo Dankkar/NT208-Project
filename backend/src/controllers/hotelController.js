@@ -280,16 +280,17 @@ exports.getAllHotels = async (req, res) => {
         const { page = 1, limit = 10 } = req.query;
         const offset = (page - 1) * limit;
         const pool = await poolPromise;
-        const isAdmin = req.user && req.user.role === 'Admin';
+        const currentUser = req.user;
+        const isAdmin = currentUser && currentUser.role === 'Admin';
 
         const countResult = await pool.request().query(`
             SELECT COUNT(*) as total
             FROM KhachSan
         `);
 
-        // Base query with NguoiQuanLy
+        // Base query
         let query = `
-            SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh, ks.MaNguoiQuanLy, ks.IsActive,
+            SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh, ks.IsActive,
                    nd.HoTen AS NguoiQuanLy,
                    MIN(lp.GiaCoSo) as GiaThapNhat
             FROM KhachSan ks
@@ -298,23 +299,9 @@ exports.getAllHotels = async (req, res) => {
             LEFT JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
         `;
 
-        //Add NguoiQuanLy to query if user is admin
-        if (isAdmin) {
-            query = `
-                SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh, ks.IsActive,
-                       nd.HoTen AS NguoiQuanLy,
-                       MIN(lp.GiaCoSo) as GiaThapNhat
-                FROM KhachSan ks
-                LEFT JOIN NguoiDung nd ON ks.MaNguoiQuanLy = nd.MaKH
-                LEFT JOIN Phong p ON ks.MaKS = p.MaKS
-                LEFT JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
-            `;
-        }
-
         // Add GROUP BY, ORDER BY and pagination
         query += `
             GROUP BY ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh, ks.MaNguoiQuanLy, ks.IsActive, nd.HoTen
-            ${isAdmin ? ', nd.HoTen' : ''}
             ORDER BY ks.HangSao DESC
             OFFSET @offset ROWS
             FETCH NEXT @limit ROWS ONLY
