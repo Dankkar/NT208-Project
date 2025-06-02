@@ -1,12 +1,17 @@
 <!-- src/components/booking/steps/Step3_GuestInfo.vue -->
 <template>
   <div class="step3-guest-info py-4">
+    <BookingTimer v-if="bookingStore.isTimerActive && bookingStore.heldBookingMaDat" />
     <!-- Loading khi store đang finalize booking hoặc không có details cho tóm tắt -->
-    <div v-if="bookingStore.isFinalizingBooking" class="text-center py-5">
+    <div v-if="bookingStore.isFinalizingBooking || isLoadingServices" class="text-center py-5">
         <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
-            <span class="visually-hidden">Finalizing...</span>
+            <span class="visually-hidden">
+                {{ bookingStore.isFinalizingBooking ? 'Finalizing...' : 'Loading data...' }}
+            </span>
         </div>
-        <p class="mt-3 text-muted h5">Finalizing your booking, please wait...</p>
+        <p class="mt-3 text-muted h5">
+            {{ bookingStore.isFinalizingBooking ? 'Finalizing your booking, please wait...' : 'Loading information...' }}
+        </p>
     </div>
     <div v-else-if="!details && !bookingStore.isFinalizingBooking" class="text-center">
       <p class="text-muted">Loading booking details or previous steps are incomplete.</p>
@@ -18,7 +23,7 @@
     <div v-else class="row g-4 g-lg-5">
       <div class="col-lg-7">
         <form @submit.prevent="handleSubmit" class="guest-form-section">
-          <h4 class="mb-4 fw-semibold">Guest & Payment Information</h4>
+          <h4 class="mb-4 fw-semibold">Guest, Payment & Services</h4>
 
           <div v-if="bookingStore.finalizeError" class="alert alert-danger alert-dismissible fade show" role="alert">
             <strong>Error:</strong> {{ bookingStore.finalizeError }}
@@ -58,17 +63,17 @@
                 <input type="tel" class="form-control form-control-sm" id="guestPhone" v-model.trim="formData.guestInfo.phone" required placeholder="Enter phone number" :disabled="bookingStore.isFinalizingBooking">
                 <div v-if="formSubmitted && errors.guestInfo.phone" class="text-danger small mt-1">{{ errors.guestInfo.phone }}</div>
               </div>
-              <div class="col-md-6"> <!-- Thay đổi col-12 thành col-md-6 -->
+              <div class="col-md-6">
                 <label for="guestNationalId" class="form-label small">National ID / Passport <span class="text-danger">*</span></label>
                 <input type="text" class="form-control form-control-sm" id="guestNationalId" v-model.trim="formData.guestInfo.nationalId" required placeholder="Enter National ID or Passport" :disabled="bookingStore.isFinalizingBooking">
                 <div v-if="formSubmitted && errors.guestInfo.nationalId" class="text-danger small mt-1">{{ errors.guestInfo.nationalId }}</div>
               </div>
-              <div class="col-md-3 col-6"> <!-- Điều chỉnh cột cho Date of Birth -->
+              <div class="col-md-3 col-6">
                 <label for="guestBirthDate" class="form-label small">Date of Birth</label>
                 <input type="date" class="form-control form-control-sm" id="guestBirthDate" v-model="formData.guestInfo.birthDate" :disabled="bookingStore.isFinalizingBooking">
                 <div v-if="formSubmitted && errors.guestInfo.birthDate" class="text-danger small mt-1">{{ errors.guestInfo.birthDate }}</div>
               </div>
-              <div class="col-md-3 col-6"> <!-- Điều chỉnh cột cho Gender -->
+              <div class="col-md-3 col-6">
                 <label for="guestGender" class="form-label small">Gender</label>
                 <select id="guestGender" class="form-select form-select-sm" v-model="formData.guestInfo.gender" :disabled="bookingStore.isFinalizingBooking">
                   <option value="">Select...</option>
@@ -108,6 +113,54 @@
                     <div v-if="formSubmitted && errors.billingAddress.country" class="text-danger small mt-1">{{ errors.billingAddress.country }}</div>
                 </div>
             </div>
+          </section>
+
+          <!-- Additional Services Section -->
+          <section class="mb-4">
+            <h5 class="mb-3 fw-medium pb-2 border-bottom">Additional Services</h5>
+            <div v-if="isLoadingServices" class="text-center my-3">
+              <div class="spinner-border spinner-border-sm text-secondary" role="status">
+                <span class="visually-hidden">Loading services...</span>
+              </div>
+            </div>
+            <div v-else-if="availableHotelServices.length > 0" class="row g-3">
+              <div v-for="service in availableHotelServices" :key="service.MaLoaiDV" class="col-12 col-md-6">
+                <div class="card service-card h-100">
+                  <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                      <div>
+                        <h6 class="card-title small fw-semibold mb-1">{{ service.TenLoaiDV }}</h6>
+                        <p v-if="service.MoTaDV" class="card-text extra-small text-muted mb-2">{{ service.MoTaDV }}</p>
+                      </div>
+                      <p class="card-text small fw-bold mb-0 ms-2 text-nowrap">{{ formatPrice(service.GiaDV) }}</p>
+                    </div>
+                    <div class="d-flex align-items-center mt-2">
+                      <input
+                        type="checkbox"
+                        :id="`service-${service.MaLoaiDV}`"
+                        :value="service.MaLoaiDV"
+                        @change="toggleService(service, $event.target.checked)"
+                        :checked="isServiceSelected(service.MaLoaiDV)"
+                        class="form-check-input me-2"
+                        :disabled="bookingStore.isFinalizingBooking"
+                      />
+                      <label :for="`service-${service.MaLoaiDV}`" class="form-check-label small">Add</label>
+                      <input
+                        v-if="isServiceSelected(service.MaLoaiDV)"
+                        type="number"
+                        min="1"
+                        :value="getSelectedService(service.MaLoaiDV).quantity"
+                        @input="updateServiceQuantity(service.MaLoaiDV, parseInt($event.target.value))"
+                        class="form-control form-control-sm ms-auto"
+                        style="width: 70px;"
+                        :disabled="bookingStore.isFinalizingBooking"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+             <p v-else class="text-muted small">No additional services currently available for this hotel.</p>
           </section>
 
           <section class="mb-4">
@@ -183,11 +236,28 @@
                 <span class="item-value">{{ formatPrice(details.paymentSummaryPreview.subtotal) }}</span>
             </div>
           </div>
+           <div class="summary-block" v-if="formData.services.length > 0">
+            <h6 class="room-name">Selected Services</h6>
+            <div v-for="service in formData.services" :key="service.MaLoaiDV" class="summary-item">
+              <span class="item-label">{{ service.TenLoaiDV }} (x{{ service.quantity }})</span>
+              <span class="item-value">{{ formatPrice(service.GiaDV * service.quantity) }}</span>
+            </div>
+          </div>
           <div class="summary-block summary-total-final" v-if="details.paymentSummaryPreview">
-            <div class="summary-item"><span class="item-label summary-text-light">Subtotal</span><span class="item-value summary-text-light">{{ formatPrice(details.paymentSummaryPreview.subtotal) }}</span></div>
-            <div class="summary-item"><span class="item-label summary-text-light">Taxes & Fees (est. 10%)</span><span class="item-value summary-text-light">{{ formatPrice(details.paymentSummaryPreview.taxesAndFees) }}</span></div>
+            <div class="summary-item"><span class="item-label summary-text-light">Subtotal (Rooms)</span><span class="item-value summary-text-light">{{ formatPrice(details.paymentSummaryPreview.subtotal) }}</span></div>
+            <div class="summary-item" v-if="totalSelectedServicesPrice > 0">
+              <span class="item-label summary-text-light">Subtotal (Services)</span>
+              <span class="item-value summary-text-light">{{ formatPrice(totalSelectedServicesPrice) }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="item-label summary-text-light">Taxes & Fees (est. 10%)</span>
+              <span class="item-value summary-text-light">{{ formatPrice(estimatedTaxesAndFees) }}</span>
+            </div>
             <hr class="summary-divider my-2">
-            <div class="summary-item total-amount-display"><span class="item-label">TOTAL</span><span class="item-value">{{ formatPrice(details.paymentSummaryPreview.totalAmount) }}</span></div>
+            <div class="summary-item total-amount-display">
+              <span class="item-label">TOTAL (EST.)</span>
+              <span class="item-value">{{ formatPrice(estimatedGrandTotal) }}</span>
+            </div>
           </div>
         </div>
         <div v-else class="text-center p-3 border rounded bg-light sticky-top-summary"><p class="text-muted">Summary not available.</p></div>
@@ -200,37 +270,19 @@
 import { ref, reactive, computed, watch, onMounted, defineEmits } from 'vue';
 import Button from "../../Button.vue";
 import { useBookingStore } from '@/store/bookingStore';
+import axios from 'axios';
+import BookingTimer from '../../booking/BookingTimer.vue';
 
 const emit = defineEmits(['booking-finalization-requested']);
 const bookingStore = useBookingStore();
 
 const defaultFormData = () => ({
-  guestInfo: {
-    title: 'Mr.',
-    firstName: '',
-    lastName: '',
-    nationalId: '',
-    phone: '',
-    email: '',
-    birthDate: '', // Thêm birthDate
-    gender: ''      // Thêm gender
-  },
-  paymentInfo: {
-    nameOnCard: '',
-    cardNumber: '',
-    expiryDate: '',
-    cvv: ''
-  },
-  services: [], // Giả sử bạn có thể thêm services sau này
+  guestInfo: { title: 'Mr.', firstName: '', lastName: '', nationalId: '', phone: '', email: '', birthDate: '', gender: '' },
+  paymentInfo: { nameOnCard: '', cardNumber: '', expiryDate: '', cvv: '' },
+  services: [],
   promotionCode: '',
   agreedToTerms: false,
-  // billingAddressSameAsContact đã bị BỎ
-  billingAddress: {
-    street: '',
-    city: '',
-    postalCode: '',
-    country: '' // Nên có giá trị mặc định, ví dụ 'VN' nếu phổ biến nhất
-  }
+  billingAddress: { street: '', city: '', postalCode: '', country: 'VN' } // Đặt VN làm mặc định nếu muốn
 });
 const formData = reactive(defaultFormData());
 
@@ -249,12 +301,90 @@ const countries = ref([
 ]);
 const details = computed(() => bookingStore.dataForStep3Display);
 
+const availableHotelServices = ref([]);
+const isLoadingServices = ref(false);
+
+async function fetchHotelServices(maKS) {
+  if (!maKS) return;
+  isLoadingServices.value = true;
+  availableHotelServices.value = []; // Xóa danh sách cũ
+  // Reset services đã chọn trong formData nếu fetch lại services
+  // Hoặc chỉ reset nếu danh sách mới không chứa service đã chọn (logic phức tạp hơn)
+  // Cách đơn giản: formData.services = [];
+  try {
+    const response = await axios.get(`api/services/hotel/${maKS}`); // Giả sử baseURL đã có /api
+    if (response.data && response.data.success) {
+      availableHotelServices.value = response.data.data || [];
+    } else {
+      console.error("Failed to fetch hotel services:", response.data.message);
+      availableHotelServices.value = []; // Đảm bảo là mảng rỗng khi lỗi
+    }
+  } catch (error) {
+    console.error("Error fetching hotel services:", error);
+    availableHotelServices.value = [];
+  } finally {
+    isLoadingServices.value = false;
+  }
+}
+
+const isServiceSelected = (maLoaiDV) => {
+  return formData.services.some(s => s.MaLoaiDV === maLoaiDV);
+};
+
+const getSelectedService = (maLoaiDV) => {
+  return formData.services.find(s => s.MaLoaiDV === maLoaiDV) || { quantity: 1 }; // Fallback quantity
+};
+
+const toggleService = (service, isChecked) => {
+  const index = formData.services.findIndex(s => s.MaLoaiDV === service.MaLoaiDV);
+  if (isChecked) {
+    if (index === -1) { // Chỉ thêm nếu chưa có
+      formData.services.push({
+        MaLoaiDV: service.MaLoaiDV,
+        TenLoaiDV: service.TenLoaiDV,
+        GiaDV: service.GiaDV,
+        quantity: 1
+      });
+    }
+  } else {
+    if (index !== -1) { // Chỉ xóa nếu có
+      formData.services.splice(index, 1);
+    }
+  }
+};
+
+const updateServiceQuantity = (maLoaiDV, quantityString) => {
+  const serviceInForm = getSelectedService(maLoaiDV);
+  if (serviceInForm && serviceInForm.MaLoaiDV) { // Kiểm tra serviceInForm có tồn tại thực sự trong formData.services
+    const newQuantity = parseInt(quantityString, 10);
+    if (!isNaN(newQuantity) && newQuantity >= 1) {
+      serviceInForm.quantity = newQuantity;
+    } else if (!isNaN(newQuantity) && newQuantity < 1) {
+      serviceInForm.quantity = 1; // Hoặc xóa service nếu số lượng là 0 (toggleService sẽ làm điều này nếu uncheck)
+    }
+    // Nếu quantityString không phải là số, không làm gì cả hoặc set lại giá trị cũ
+  }
+};
+
+const totalSelectedServicesPrice = computed(() => {
+    return formData.services.reduce((total, service) => total + (service.GiaDV * service.quantity), 0);
+});
+
+const estimatedTaxesAndFees = computed(() => {
+    const roomSubtotal = details.value?.paymentSummaryPreview?.subtotal || 0;
+    return (roomSubtotal + totalSelectedServicesPrice.value) * 0.1;
+});
+
+const estimatedGrandTotal = computed(() => {
+    const roomSubtotal = details.value?.paymentSummaryPreview?.subtotal || 0;
+    return roomSubtotal + totalSelectedServicesPrice.value + estimatedTaxesAndFees.value;
+});
+
 function resetFormToDefaults() {
-    // Sao chép sâu object mặc định để tránh tham chiếu
-    const defaults = JSON.parse(JSON.stringify(defaultFormData()));
+    const defaults = defaultFormData(); // Lấy object mới từ hàm
     Object.assign(formData.guestInfo, defaults.guestInfo);
     Object.assign(formData.paymentInfo, defaults.paymentInfo);
-    formData.services = defaults.services;
+    formData.services = [...defaults.services]; // Sao chép mảng
     formData.promotionCode = defaults.promotionCode;
     formData.agreedToTerms = defaults.agreedToTerms;
     Object.assign(formData.billingAddress, defaults.billingAddress);
@@ -268,15 +398,14 @@ function resetFormToDefaults() {
 
 function initializeFormDataFromStore() {
   if (bookingStore.guestAndPaymentInput && typeof bookingStore.guestAndPaymentInput === 'object') {
-    const stored = JSON.parse(JSON.stringify(bookingStore.guestAndPaymentInput)); // Deep clone
+    const stored = JSON.parse(JSON.stringify(bookingStore.guestAndPaymentInput));
     const defaults = defaultFormData();
 
     formData.guestInfo = { ...defaults.guestInfo, ...(stored.guestInfo || {}) };
     formData.paymentInfo = { ...defaults.paymentInfo, ...(stored.paymentInfo || {}) };
-    formData.services = Array.isArray(stored.services) ? [...stored.services] : defaults.services;
+    formData.services = Array.isArray(stored.services) ? [...stored.services] : [...defaults.services];
     formData.promotionCode = typeof stored.promotionCode === 'string' ? stored.promotionCode : defaults.promotionCode;
     formData.agreedToTerms = typeof stored.agreedToTerms === 'boolean' ? stored.agreedToTerms : defaults.agreedToTerms;
-    // billingAddressSameAsContact đã bị bỏ
     formData.billingAddress = { ...defaults.billingAddress, ...(stored.billingAddress || {}) };
   } else {
     resetFormToDefaults();
@@ -285,22 +414,37 @@ function initializeFormDataFromStore() {
 
 onMounted(() => {
   initializeFormDataFromStore();
+  if (details.value && bookingStore.selectedHotelDetails?.MaKS) { // Chỉ fetch nếu có details (tức là Step 2 đã xong)
+    fetchHotelServices(bookingStore.selectedHotelDetails.MaKS);
+  }
 });
 
-watch(() => bookingStore.guestAndPaymentInput, () => {
-    initializeFormDataFromStore();
+watch(() => bookingStore.selectedHotelDetails?.MaKS, (newMaKS, oldMaKS) => {
+  if (newMaKS && newMaKS !== oldMaKS) {
+    fetchHotelServices(newMaKS);
+    formData.services = []; // Reset services đã chọn khi khách sạn thay đổi
+  }
+});
+
+watch(() => bookingStore.guestAndPaymentInput, (newVal, oldVal) => {
+    // Chỉ initialize lại nếu guestAndPaymentInput thực sự thay đổi và khác với formData hiện tại
+    // để tránh ghi đè khi người dùng đang nhập liệu.
+    if (newVal === null && oldVal !== null) { // Trường hợp store reset guestAndPaymentInput
+        initializeFormDataFromStore();
+    } else if (newVal && JSON.stringify(newVal) !== JSON.stringify(formData)) {
+        initializeFormDataFromStore();
+    }
 }, { deep: true });
 
 function validateFormFields() {
   let isValid = true;
   const guest = formData.guestInfo;
   const payment = formData.paymentInfo;
-  const billing = formData.billingAddress; // billingAddress giờ luôn được dùng
+  const billing = formData.billingAddress;
   const guestErrs = errors.guestInfo;
   const paymentErrs = errors.paymentInfo;
   const billingErrs = errors.billingAddress;
 
-  // Guest Info Validation
   guestErrs.title = !guest.title ? 'Title is required.' : ''; if (guestErrs.title) isValid = false;
   guestErrs.firstName = !guest.firstName ? 'First name is required.' : ''; if (guestErrs.firstName) isValid = false;
   guestErrs.lastName = !guest.lastName ? 'Last name is required.' : ''; if (guestErrs.lastName) isValid = false;
@@ -311,33 +455,26 @@ function validateFormFields() {
   if (!guest.email) { guestErrs.email = 'Email address is required.'; isValid = false;
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guest.email)) { guestErrs.email = 'Valid email address required.'; isValid = false;
   } else { guestErrs.email = ''; }
-  // Validation cho Ngày sinh và Giới tính (nếu bạn muốn chúng bắt buộc)
-  // guestErrs.birthDate = !guest.birthDate ? 'Date of birth is required.' : ''; if (guestErrs.birthDate) isValid = false;
-  // guestErrs.gender = !guest.gender ? 'Gender is required.' : ''; if (guestErrs.gender) isValid = false;
-  // Nếu không bắt buộc, thì không cần set lỗi trừ khi có định dạng sai
-  guestErrs.birthDate = ''; // Ví dụ: không bắt buộc
-  guestErrs.gender = '';   // Ví dụ: không bắt buộc
+  // Optional validation for birthDate and gender
+  guestErrs.birthDate = '';
+  guestErrs.gender = '';
 
-
-  // Billing Address Validation (BẮT BUỘC)
   billingErrs.street = !billing.street ? 'Billing street address is required.' : ''; if (billingErrs.street) isValid = false;
   billingErrs.city = !billing.city ? 'Billing city is required.' : ''; if (billingErrs.city) isValid = false;
   billingErrs.postalCode = !billing.postalCode ? 'Billing postal code is required.' : ''; if (billingErrs.postalCode) isValid = false;
   billingErrs.country = !billing.country ? 'Billing country is required.' : ''; if (billingErrs.country) isValid = false;
 
-  // Payment Info Validation
   paymentErrs.nameOnCard = !payment.nameOnCard ? 'Name on card is required.' : ''; if (paymentErrs.nameOnCard) isValid = false;
   if (!payment.cardNumber) { paymentErrs.cardNumber = 'Card number is required.'; isValid = false;
-  } else if (!/^[0-9]{13,19}$/.test(payment.cardNumber.replace(/\s/g, ''))) { paymentErrs.cardNumber = 'Valid card number required (13-19 digits).'; isValid = false;
+  } else if (!/^[0-9]{13,19}$/.test(payment.cardNumber.replace(/\s/g, ''))) { paymentErrs.cardNumber = 'Valid card number (13-19 digits).'; isValid = false;
   } else { paymentErrs.cardNumber = ''; }
   if (!payment.expiryDate) { paymentErrs.expiryDate = 'Expiry date (MM/YY) is required.'; isValid = false;
-  } else if (!/^(0[1-9]|1[0-2])\/?([0-9]{2})$/.test(payment.expiryDate)) { paymentErrs.expiryDate = 'Valid MM/YY format required (e.g., 12/25).'; isValid = false;
+  } else if (!/^(0[1-9]|1[0-2])\/?([0-9]{2})$/.test(payment.expiryDate)) { paymentErrs.expiryDate = 'Valid MM/YY format (e.g., 12/25).'; isValid = false;
   } else { paymentErrs.expiryDate = ''; }
   if (!payment.cvv) { paymentErrs.cvv = 'CVV/CVC is required.'; isValid = false;
   } else if (!/^[0-9]{3,4}$/.test(payment.cvv)) { paymentErrs.cvv = 'Valid CVV (3 or 4 digits).'; isValid = false;
   } else { paymentErrs.cvv = ''; }
 
-  // Terms and Conditions Validation
   errors.agreedToTerms = !formData.agreedToTerms ? 'You must agree to terms and conditions.' : ''; if (errors.agreedToTerms) isValid = false;
   
   return isValid;
@@ -346,24 +483,16 @@ function validateFormFields() {
 const handleSubmit = () => {
   formSubmitted.value = true;
   if (!validateFormFields()) return;
-
   if (!bookingStore.isTimerActive && bookingStore.heldBookingMaDat) {
       alert("Your booking hold has expired. Please go back to room selection and try again.");
       return;
   }
-  
   if (bookingStore.finalizeError) bookingStore.finalizeError = null;
-  
   emit('booking-finalization-requested', JSON.parse(JSON.stringify(formData)));
 };
 
-function goToPreviousStep() {
-    bookingStore.navigateToStep(2);
-}
-
-function clearFinalizeError() {
-    bookingStore.finalizeError = null;
-}
+function goToPreviousStep() { bookingStore.navigateToStep(2); }
+function clearFinalizeError() { bookingStore.finalizeError = null; }
 
 const formatPriceBase = (value) => {
   if (value == null || isNaN(parseFloat(value))) return 'N/A';
@@ -375,7 +504,6 @@ const formatPricePerNight = (value) => formatPriceBase(value) + '/night';
 </script>
 
 <style scoped>
-/* ... style của bạn giữ nguyên từ lần trước ... */
 .form-label-sm { font-size: 0.8rem; margin-bottom: 0.25rem; color: #555; }
 .section-title { font-size: 1.1rem; color: #4A4A4A; border-bottom: 1px solid #E0DACC; padding-bottom: 0.75rem; margin-bottom: 1.25rem !important; font-weight: 600; }
 .sticky-top-summary { top: 90px; z-index: 1000; position: sticky; } 
@@ -394,4 +522,7 @@ const formatPricePerNight = (value) => formatPriceBase(value) + '/night';
 .payment-icons i:hover { opacity: 1; }
 .form-control-sm { border-radius: 0.2rem; }
 .form-select-sm { border-radius: 0.2rem; }
+.service-card { font-size: 0.9rem; margin-bottom: 0.75rem; }
+.service-card .card-body { padding: 0.75rem 1rem; }
+.extra-small { font-size: 0.75rem; }
 </style>

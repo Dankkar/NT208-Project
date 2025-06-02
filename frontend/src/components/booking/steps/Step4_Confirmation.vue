@@ -162,6 +162,7 @@
 import { computed, ref, watchEffect } from 'vue'; // Đã thêm watchEffect
 import { useBookingStore } from '@/store/bookingStore';
 import { useRouter } from 'vue-router';
+import { onBeforeUnmount } from 'vue';
 
 const bookingStore = useBookingStore();
 const router = useRouter();
@@ -195,6 +196,15 @@ watchEffect(() => {
   } else {
     console.log('Step 4 Confirmation: No details yet from store.');
     console.log('Step 4 Confirmation:', confirmationDetails.value);
+  }
+});
+
+onBeforeUnmount(() => {
+  if (bookingStore.currentStep === 4 && bookingStore.finalBookingReference) {
+    // Chỉ reset nếu thực sự đã hoàn thành booking và đang rời khỏi trang xác nhận
+    // (không phải do F5 ngay trên trang Step 4)
+    console.log("Step4_Confirmation: Unmounting after successful booking, resetting store.");
+    bookingStore.resetBookingProcess();
   }
 });
 </script>
