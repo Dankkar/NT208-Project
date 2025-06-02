@@ -147,6 +147,7 @@ const search = reactive({
 const featuredHotels = ref([])
 const loading = ref(true)
 const error = ref(null)
+const searchedHotels = ref([])
 const locationSuggestions = ref([])
 const showSuggestions = ref(false)
 let debounceTimer = null
@@ -165,7 +166,7 @@ async function fetchLocationSuggestions() {
   if (search.location.length > 0) {
     try {
       const suggestions = await hotelService.suggestLocations(search.location)
-      locationSuggestions.value = suggestions
+      locationSuggestions.value = suggestions.data || suggestions
     } catch (err) {
       console.error('Error fetching location suggestions:', err)
     }
@@ -183,7 +184,7 @@ async function handleLocationInput() {
 
 async function onSearch() {
 
-  this.isSearched = true
+  isSearched.value = true
   
 
 
@@ -215,7 +216,10 @@ async function loadFeaturedHotels() {
   try {
     loading.value = true
     const response = await hotelService.getFeaturedHotels()
-    featuredHotels.value = response.data
+    featuredHotels.value = response.data.map(hotel => ({
+      ...hotel,
+      AnhKS: hotel.MainImagePath || 'https://via.placeholder.com/400x220.png?text=No+Image',
+    }))
   } catch (err) {
     error.value = 'Không thể tải danh sách khách sạn. Vui lòng thử lại sau.'
     console.error('Error loading featured hotels:', err)

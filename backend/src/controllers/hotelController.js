@@ -75,26 +75,33 @@ exports.createHotel = async (req, res) => {
              request.input('Longitude', sql.Decimal(11,8), null);
         }
 
-        await request.query(`
-            INSERT INTO KhachSan (TenKS, DiaChi, HangSao, LoaiHinh, MoTaCoSoVatChat, QuyDinh, MotaChung, MaNguoiQuanLy, Latitude, Longitude)
-            VALUES (@TenKS, @DiaChi, @HangSao, @LoaiHinh, @MoTaCoSoVatChat, @QuyDinh, @MotaChung, @MaNguoiQuanLy, @Latitude, @Longitude)
-        `);
-
-        let successMsg = 'Khách sạn đã được tạo thành công';
-        if (finalMaNguoiQuanLy) {
-            // Lấy tên người quản lý để hiển thị (nếu cần)
-            const managerInfo = await pool.request().input('ManagerID', sql.Int, finalMaNguoiQuanLy).query('SELECT HoTen FROM NguoiDung WHERE MaKH = @ManagerID');
-            if(managerInfo.recordset.length > 0){
-                 successMsg += ` với người quản lý: ${managerInfo.recordset[0].HoTen}`;
+        const result = await pool.request()
+            .input('TenKS', sql.VarChar, TenKS)
+            .input('DiaChi', sql.VarChar, DiaChi)
+            .input('HangSao', sql.VarChar, HangSao)
+            .input('LoaiHinh', sql.VarChar, LoaiHinh)
+            .input('MoTaCoSoVatChat', sql.Text, MoTaCoSoVatChat)
+            .input('QuyDinh', sql.Text, QuyDinh)
+            .input('MotaChung', sql.Text, MotaChung)
+            .input('MaNguoiQuanLy', sql.Int, finalMaNguoiQuanLy)
+            .query(`
+                INSERT INTO KhachSan (TenKS, DiaChi, HangSao, LoaiHinh, MoTaCoSoVatChat, QuyDinh, MotaChung, MaNguoiQuanLy)
+                VALUES (@TenKS, @DiaChi, @HangSao, @LoaiHinh, @MoTaCoSoVatChat, @QuyDinh, @MotaChung, @MaNguoiQuanLy)
+            `);
+        
+        res.status(201).json({
+            success: true,
+            message: `Khách sạn đã được tạo thành công với người quản lý: ${manager.HoTen}`,
+            data: {
+                MaKS: result.recordset[0].MaKS,
+                TenKS: TenKS,
+                TenNguoiQuanLy: manager.HoTen
             }
-        }
-
-        res.status(201).json({ message: successMsg });
-
-    } catch (err) {
-        console.error('Lỗi createHotel:', err.message, err.stack);
-        const errorMessage = process.env.NODE_ENV === 'development' ? err.message : 'Lỗi server khi tạo khách sạn.';
-        res.status(500).json({ error: errorMessage });
+        });
+    }
+    catch (err) {
+        console.error('Lỗi createHotel:', err);
+        res.status(500).json({error: 'Lỗi server'});
     }
 };
 
@@ -249,6 +256,234 @@ exports.updateHotel = async (req, res) => {
     }
 };
 
+exports.uploadHotelWithImages = async (req, res) => {
+    const { MaKS } = req.params;
+    const {
+        TenKS,
+        DiaChi,
+        HangSao,
+        LoaiHinh,
+        MoTaCoSoVatChat,
+        QuyDinh,
+        MotaChung,
+        MaNguoiQuanLy,
+        mainImageIndex // Index của ảnh sẽ làm main trong danh sách files được upload
+    } = req.body;
+
+    if (!MaKS || isNaN(MaKS)) {
+        return res.status(400).json({ error: 'Mã khách sạn không hợp lệ' });
+    }
+
+    try {
+        const pool = await poolPromise;
+
+        // Kiểm tra khách sạn tồn tại
+        const hotelCheck = await pool.request()
+            .input('MaKS', sql.Int, parseInt(MaKS))
+            .query('SELECT MaKS, TenKS FROM KhachSan WHERE MaKS = @MaKS AND IsActive = 1');
+
+        if (hotelCheck.recordset.length === 0) {
+            return res.status(404).json({ error: 'Không tìm thấy khách sạn' });
+        }
+
+        // Validate manager nếu có
+        if (MaNguoiQuanLy !== undefined && MaNguoiQuanLy !== null) {
+            const managerValidation = await pool.request()
+                .input('MaKH', sql.Int, MaNguoiQuanLy)
+                .query(`
+                    SELECT MaKH, LoaiUser, HoTen 
+                    FROM NguoiDung 
+                    WHERE MaKH = @MaKH AND IsActive = 1
+                `);
+
+            if (managerValidation.recordset.length === 0) {
+                return res.status(400).json({
+                    error: 'Không tìm thấy người dùng với mã này hoặc tài khoản đã bị vô hiệu hóa'
+                });
+            }
+
+            const manager = managerValidation.recordset[0];
+            if (manager.LoaiUser !== 'QuanLyKS' && manager.LoaiUser !== 'Admin') {
+                return res.status(400).json({
+                    error: `Người dùng "${manager.HoTen}" không có quyền làm người quản lý khách sạn.`
+                });
+            }
+        }
+
+        // 1. Cập nhật thông tin khách sạn
+        let updateFields = [];
+        let queryParams = { MaKS: parseInt(MaKS) };
+
+        if (TenKS !== undefined) {
+            updateFields.push('TenKS = @TenKS');
+            queryParams.TenKS = TenKS;
+        }
+        if (DiaChi !== undefined) {
+            updateFields.push('DiaChi = @DiaChi');
+            queryParams.DiaChi = DiaChi;
+        }
+        if (HangSao !== undefined) {
+            updateFields.push('HangSao = @HangSao');
+            queryParams.HangSao = HangSao;
+        }
+        if (LoaiHinh !== undefined) {
+            updateFields.push('LoaiHinh = @LoaiHinh');
+            queryParams.LoaiHinh = LoaiHinh;
+        }
+        if (MoTaCoSoVatChat !== undefined) {
+            updateFields.push('MoTaCoSoVatChat = @MoTaCoSoVatChat');
+            queryParams.MoTaCoSoVatChat = MoTaCoSoVatChat;
+        }
+        if (QuyDinh !== undefined) {
+            updateFields.push('QuyDinh = @QuyDinh');
+            queryParams.QuyDinh = QuyDinh;
+        }
+        if (MotaChung !== undefined) {
+            updateFields.push('MotaChung = @MotaChung');
+            queryParams.MotaChung = MotaChung;
+        }
+        if (MaNguoiQuanLy !== undefined) {
+            updateFields.push('MaNguoiQuanLy = @MaNguoiQuanLy');
+            queryParams.MaNguoiQuanLy = MaNguoiQuanLy;
+        }
+
+        // Cập nhật thông tin khách sạn nếu có thay đổi
+        if (updateFields.length > 0) {
+            const query = `
+                UPDATE KhachSan
+                SET ${updateFields.join(', ')}
+                WHERE MaKS = @MaKS
+            `;
+
+            const request = pool.request();
+            Object.keys(queryParams).forEach(key => {
+                if (key === 'MaKS' || key === 'MaNguoiQuanLy') {
+                    request.input(key, sql.Int, queryParams[key]);
+                } else if (key === 'MoTaCoSoVatChat' || key === 'QuyDinh' || key === 'MotaChung') {
+                    request.input(key, sql.Text, queryParams[key]);
+                } else {
+                    request.input(key, sql.VarChar, queryParams[key]);
+                }
+            });
+
+            await request.query(query);
+        }
+
+        // 2. Xử lý upload ảnh nếu có
+        const uploadedImages = [];
+        if (req.files && req.files.length > 0) {
+            // Đặt tất cả ảnh hiện tại về gallery trước
+            if (mainImageIndex !== undefined && mainImageIndex !== null) {
+                await pool.request()
+                    .input('MaKS', sql.Int, parseInt(MaKS))
+                    .query(`
+                        UPDATE AnhKhachSan 
+                        SET LoaiAnh = 'gallery' 
+                        WHERE MaKS = @MaKS AND LoaiAnh = 'main'
+                    `);
+            }
+
+            // Upload từng file
+            for (let i = 0; i < req.files.length; i++) {
+                const file = req.files[i];
+                const isMainImage = (mainImageIndex == i); // So sánh index
+                
+                try {
+                    const insertResult = await pool.request()
+                        .input('MaKS', sql.Int, parseInt(MaKS))
+                        .input('TenFile', sql.NVarChar, file.filename)
+                        .input('DuongDanAnh', sql.NVarChar, `uploads/hotels/${file.filename}`)
+                        .input('LoaiAnh', sql.NVarChar, isMainImage ? 'main' : 'gallery')
+                        .input('ThuTu', sql.Int, i)
+                        .input('MoTa', sql.NVarChar, `Ảnh khách sạn ${TenKS || ''}`)
+                        .query(`
+                            INSERT INTO AnhKhachSan (MaKS, TenFile, DuongDanAnh, LoaiAnh, ThuTu, MoTa)
+                            OUTPUT INSERTED.MaAnh
+                            VALUES (@MaKS, @TenFile, @DuongDanAnh, @LoaiAnh, @ThuTu, @MoTa)
+                        `);
+
+                    uploadedImages.push({
+                        MaAnh: insertResult.recordset[0].MaAnh,
+                        TenFile: file.filename,
+                        DuongDanAnh: `uploads/hotels/${file.filename}`,
+                        LoaiAnh: isMainImage ? 'main' : 'gallery',
+                        IsMain: isMainImage
+                    });
+                } catch (error) {
+                    console.error(`Lỗi xử lý file ${file.filename}:`, error);
+                }
+            }
+        }
+
+        let message = 'Thông tin khách sạn đã được cập nhật thành công';
+        if (uploadedImages.length > 0) {
+            message += `. Đã upload ${uploadedImages.length} ảnh mới`;
+            const mainImages = uploadedImages.filter(img => img.IsMain);
+            if (mainImages.length > 0) {
+                message += ` (bao gồm 1 ảnh chính)`;
+            }
+        }
+
+        res.json({
+            success: true,
+            message,
+            data: {
+                MaKS: parseInt(MaKS),
+                uploadedImages: uploadedImages
+            }
+        });
+
+    } catch (error) {
+        console.error('Lỗi updateHotelWithImages:', error);
+        res.status(500).json({ error: 'Lỗi server khi cập nhật khách sạn' });
+    }
+};
+
+// Hàm đặt ảnh làm ảnh chính
+exports.setMainImage = async (req, res) => {
+    try {
+        const { MaAnh } = req.params;
+        const pool = await poolPromise;
+
+        // Lấy thông tin ảnh để biết MaKS
+        const imageResult = await pool.request()
+            .input('MaAnh', sql.Int, parseInt(MaAnh))
+            .query('SELECT MaKS, TenFile FROM AnhKhachSan WHERE MaAnh = @MaAnh AND IsActive = 1');
+
+        if (imageResult.recordset.length === 0) {
+            return res.status(404).json({ error: 'Không tìm thấy ảnh' });
+        }
+
+        const { MaKS } = imageResult.recordset[0];
+
+        // Đặt tất cả ảnh của khách sạn về gallery
+        await pool.request()
+            .input('MaKS', sql.Int, MaKS)
+            .query(`
+                UPDATE AnhKhachSan 
+                SET LoaiAnh = 'gallery' 
+                WHERE MaKS = @MaKS AND IsActive = 1
+            `);
+
+        // Đặt ảnh được chọn làm main
+        await pool.request()
+            .input('MaAnh', sql.Int, parseInt(MaAnh))
+            .query(`
+                UPDATE AnhKhachSan 
+                SET LoaiAnh = 'main' 
+                WHERE MaAnh = @MaAnh
+            `);
+
+        res.json({
+            success: true,
+            message: 'Đã đặt ảnh làm ảnh chính thành công'
+        });
+
+    } catch (error) {
+        console.error('Lỗi setMainImage:', error);
+        res.status(500).json({ error: 'Lỗi server khi đặt ảnh chính' });
+    }
+};
 // exports.deleteHotel = async (req, res) => {
 //     const { MaKS } = req.params;
     
@@ -277,12 +512,10 @@ exports.updateHotel = async (req, res) => {
 
 exports.getAllHotels = async (req, res) => {
     try {
-        const { page = 1, limit = 10 } = req.query;
+        const { page = 1, limit = 10, sortBy = 'rating', sortOrder = 'desc' } = req.query;
         const offset = (page - 1) * limit;
         const pool = await poolPromise;
         const currentUser = req.user;
-        const isAdmin = currentUser && currentUser.role === 'Admin';
-
         const countResult = await pool.request().query(`
             SELECT COUNT(*) as total
             FROM KhachSan
@@ -292,17 +525,54 @@ exports.getAllHotels = async (req, res) => {
         let query = `
             SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh, ks.IsActive,
                    nd.HoTen AS NguoiQuanLy,
-                   MIN(lp.GiaCoSo) as GiaThapNhat
+                   MIN(lp.GiaCoSo) as GiaThapNhat,
+                   ak.DuongDanAnh as MainImagePath
             FROM KhachSan ks
             LEFT JOIN NguoiDung nd ON ks.MaNguoiQuanLy = nd.MaKH
             LEFT JOIN Phong p ON ks.MaKS = p.MaKS
             LEFT JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
+            LEFT JOIN AnhKhachSan ak ON ks.MaKS = ak.MaKS
+                AND ak.LoaiAnh = 'main'
+                AND ak.IsActive = 1
+                AND ak.MaAnh = (
+                    SELECT TOP 1 MaAnh 
+                    FROM AnhKhachSan 
+                    WHERE MaKS = ks.MaKS AND IsActive = 1 AND LoaiAnh = 'main'
+                    ORDER BY ThuTu ASC, NgayThem ASC
+                )
         `;
 
         // Add GROUP BY, ORDER BY and pagination
         query += `
-            GROUP BY ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh, ks.MaNguoiQuanLy, ks.IsActive, nd.HoTen
-            ORDER BY ks.HangSao DESC
+            GROUP BY ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh, ks.MaNguoiQuanLy, ks.IsActive, nd.HoTen, ak.DuongDanAnh
+        `;
+        
+        // Handle sorting based on parameters
+        let orderByClause = '';
+        const validSortFields = ['rating', 'price', 'name'];
+        const validSortOrders = ['asc', 'desc'];
+        
+        // Validate parameters
+        const safeSortBy = validSortFields.includes(sortBy) ? sortBy : 'rating';
+        const safeSortOrder = validSortOrders.includes(sortOrder.toLowerCase()) ? sortOrder.toUpperCase() : 'DESC';
+        
+        switch (safeSortBy) {
+            case 'rating':
+                orderByClause = `ORDER BY ks.HangSao ${safeSortOrder}`;
+                break;
+            case 'price':
+                orderByClause = `ORDER BY MIN(lp.GiaCoSo) ${safeSortOrder}`;
+                break;
+            case 'name':
+                orderByClause = `ORDER BY ks.TenKS ${safeSortOrder}`;
+                break;
+            default:
+                orderByClause = 'ORDER BY ks.HangSao DESC'; // Default fallback
+        }
+
+        // Add ORDER BY and pagination
+        query += `
+            ${orderByClause}
             OFFSET @offset ROWS
             FETCH NEXT @limit ROWS ONLY
         `;
@@ -312,14 +582,25 @@ exports.getAllHotels = async (req, res) => {
             .input('limit', sql.Int, limit)
             .query(query);
 
+        const hotelsWithImages = result.recordset.map(hotel => ({
+            ...hotel,
+            MainImagePath: hotel.MainImagePath
+                ? `${req.protocol}://${req.get('host')}/${hotel.MainImagePath}`
+                : null
+        }));
+
         res.json({
             success: true,
-            data: result.recordset,
+            data: hotelsWithImages,
             pagination: {
                 total: countResult.recordset[0].total,
                 page: parseInt(page),
                 limit: parseInt(limit),
                 totalPages: Math.ceil(countResult.recordset[0].total / parseInt(limit))
+            },
+            sorting: {
+                sortBy: safeSortBy,
+                sortOrder: safeSortOrder
             }
         });
     } catch (err) {
@@ -360,22 +641,46 @@ exports.getHotelById = async (req, res) => {
             });
         }
 
+        const imageResult = await pool.request()
+            .input('MaKS', sql.Int, MaKS)
+            .query(`
+               SELECT 
+                    MaAnh,
+                    TenFile,
+                    DuongDanAnh,
+                    LoaiAnh,
+                    IsActive,
+                    ThuTu,
+                    MoTa,
+                    NgayThem
+                FROM AnhKhachSan
+                WHERE MaKS = @MaKS AND IsActive = 1
+                ORDER BY 
+                    CASE WHEN LoaiAnh = 'main' THEN 1 ELSE 2 END,
+                    ThuTu ASC,
+                    NgayThem ASC
+            `);
+
+
         // Get room types and pricing information
         const roomTypesResult = await pool.request()
             .input('MaKS_Param', sql.Int, numericMaKS)
             .query(`
-                SELECT
-                    lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo, lp.SoGiuong,
-                    lp.DienTich, lp.MoTa, lp.TienNghi, lp.IsActive,
-                    COUNT(p.MaPhong) as TongSoPhongCuaLoai,
-                    SUM(CASE WHEN p.TrangThaiPhong = N'Sẵn sàng' THEN 1 ELSE 0 END) as SoPhongTrongThucTe
+                SELECT lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo, lp.SoGiuong,
+                       lp.DienTich, lp.MoTa, lp.TienNghi, lp.IsActive as LoaiPhong_IsActive,
+                       chg.TenCauHinh as CauHinhGiuong,
+                       chg.SoGiuongDoi,
+                       chg.SoGiuongDon,
+                       COUNT(DISTINCT CASE WHEN p.TrangThaiPhong = N'Trong' THEN p.MaPhong END) as SoPhongTrongThucTe
                 FROM LoaiPhong lp
                 LEFT JOIN Phong p ON lp.MaLoaiPhong = p.MaLoaiPhong
-                WHERE lp.MaKS = @MaKS_Param AND lp.IsActive = 1
-                GROUP BY
-                    lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo, lp.SoGiuong,
-                    lp.DienTich, lp.MoTa, lp.TienNghi, lp.IsActive
+                LEFT JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
+                WHERE lp.MaKS = @MaKS_RoomTypes AND lp.IsActive = 1
+                GROUP BY lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo, lp.SoGiuong,
+                         lp.DienTich, lp.MoTa, lp.TienNghi, lp.IsActive,
+                         chg.TenCauHinh, chg.SoGiuongDoi, chg.SoGiuongDon
                 ORDER BY lp.GiaCoSo ASC
+
             `);
 
         // Get hotel amenities/services (LoaiDichVu)
@@ -393,7 +698,16 @@ exports.getHotelById = async (req, res) => {
                 ORDER BY dv.TenLoaiDV
             `);
 
-        // Calculate price range for room types
+        const images = imagesResult.recordset.map(img => ({
+            ...img,
+            FullPath: `${req.protocol}://${req.get('host')}/${img.DuongDanAnh}`
+        }));
+
+        // Phân loại ảnh
+        const mainImage = images.find(img => img.LoaiAnh === 'main');
+        const galleryImages = images.filter(img => img.LoaiAnh === 'gallery');
+
+        // Calculate price range
         const priceRange = roomTypesResult.recordset.length > 0 ? {
             min: Math.min(...roomTypesResult.recordset.map(room => room.GiaCoSo)),
             max: Math.max(...roomTypesResult.recordset.map(room => room.GiaCoSo))
@@ -401,8 +715,12 @@ exports.getHotelById = async (req, res) => {
 
         const hotelData = {
             ...hotelResult.recordset[0],
-            roomTypes: roomTypesResult.recordset || [], // Đảm bảo là mảng nếu không có record
-            services: servicesResult.recordset || [],   // Đảm bảo là mảng
+            MainImagePath: mainImage ? mainImage.FullPath : null,
+            GalleryImages: galleryImages,
+            AllImages: images,
+            TotalImages: images.length,
+            roomTypes: roomTypesResult.recordset,
+            services: servicesResult.recordset,
             priceRange: priceRange,
             totalRoomTypes: roomTypesResult.recordset ? roomTypesResult.recordset.length : 0,
             totalServices: servicesResult.recordset ? servicesResult.recordset.length : 0
@@ -457,17 +775,34 @@ exports.getFeaturedHotels = async (req, res) => {
                 ks.TenKS,
                 ks.DiaChi,
                 ks.HangSao,
-                MIN(lp.GiaCoSo) as GiaThapNhat
+                MIN(lp.GiaCoSo) as GiaThapNhat,
+                ak.DuongDanAnh as MainImagePath
             FROM KhachSan ks
             LEFT JOIN Phong p ON ks.MaKS = p.MaKS
             LEFT JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
-            GROUP BY ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao
+            LEFT JOIN AnhKhachSan ak ON ks.MaKS = ak.MaKS
+                AND ak.LoaiAnh = 'main'
+                AND ak.IsActive = 1
+                AND ak.MaAnh = (
+                    SELECT TOP 1 MaAnh 
+                    FROM AnhKhachSan 
+                    WHERE MaKS = ks.MaKS AND IsActive = 1 AND LoaiAnh = 'main'
+                    ORDER BY ThuTu ASC, NgayThem ASC
+                )
+            GROUP BY ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ak.DuongDanAnh
             ORDER BY ks.HangSao DESC
         `);
 
+        const hotelsWithImages = result.recordset.map(hotel => ({
+            ...hotel,
+            MainImagePath: hotel.MainImagePath
+                ? `${req.protocol}://${req.get('host')}/${hotel.MainImagePath}`
+                : null
+        }));
+
         res.json({
             success: true,
-            data: result.recordset
+            data: hotelsWithImages
         });
     } catch (error) {
         console.error('Lỗi getFeaturedHotels:', error);
@@ -885,7 +1220,6 @@ exports.getBasicHotelListForAdmin = async (req, res) => {
             LEFT JOIN NguoiDung nd ON ks.MaNguoiQuanLy = nd.MaKH
             ORDER BY ks.HangSao DESC
         `);
-
         res.json({
             success: true,
             data: result.recordset
@@ -1003,5 +1337,353 @@ exports.getAvailableManagers = async (req, res) => {
     } catch (err) {
         console.error('Lỗi getAvailableManagers:', err);
         res.status(500).json({ error: 'Lỗi server' });
+    }
+};
+
+exports.getHotelWithImages = async (req, res) => {
+    try {
+        const { MaKS } = req.params;
+        const pool = await poolPromise;
+
+        // Lấy thông tin khách sạn
+        const hotelResult = await pool.request()
+            .input('MaKS', sql.Int, MaKS)
+            .query(`
+                SELECT 
+                    ks.*,
+                    nd.HoTen as TenNguoiQuanLy
+                FROM KhachSan ks
+                LEFT JOIN NguoiDung nd ON ks.MaNguoiQuanLy = nd.MaKH
+                WHERE ks.MaKS = @MaKS AND ks.IsActive = 1
+            `);
+
+        if (hotelResult.recordset.length === 0) {
+            return res.status(404).json({ error: 'Không tìm thấy khách sạn' });
+        }
+
+        const hotel = hotelResult.recordset[0];
+
+        // Lấy ảnh khách sạn
+        const imagesResult = await pool.request()
+            .input('MaKS', sql.Int, MaKS)
+            .query(`
+                SELECT 
+                    MaAnh,
+                    TenFile,
+                    DuongDanAnh,
+                    LoaiAnh,
+                    ThuTu,
+                    MoTa,
+                    NgayThem
+                FROM AnhKhachSan
+                WHERE MaKS = @MaKS AND IsActive = 1
+                ORDER BY 
+                    CASE WHEN LoaiAnh = 'main' THEN 1 ELSE 2 END,
+                    ThuTu ASC,
+                    NgayThem ASC
+            `);
+
+        // Tạo đường dẫn đầy đủ cho ảnh
+        const images = imagesResult.recordset.map(img => ({
+            ...img,
+            FullPath: `${req.protocol}://${req.get('host')}/${img.DuongDanAnh}`
+        }));
+
+        // Phân loại ảnh
+        const mainImage = images.find(img => img.LoaiAnh === 'main');
+        const galleryImages = images.filter(img => img.LoaiAnh === 'gallery');
+
+        res.json({
+            success: true,
+            data: {
+                ...hotel,
+                MainImage: mainImage ? mainImage.FullPath : null,
+                GalleryImages: galleryImages,
+                AllImages: images
+            }
+        });
+
+    } catch (error) {
+        console.error('Lỗi lấy thông tin khách sạn:', error);
+        res.status(500).json({ error: 'Lỗi server' });
+    }
+};
+
+// Hàm xóa ảnh khách sạn
+exports.deleteHotelImage = async (req, res) => {
+    try {
+        const { MaAnh } = req.params;
+        const pool = await poolPromise;
+        const fs = require('fs').promises;
+        const path = require('path');
+
+        // Lấy thông tin ảnh trước khi xóa
+        const imageResult = await pool.request()
+            .input('MaAnh', sql.Int, parseInt(MaAnh))
+            .query(`
+                SELECT 
+                    MaAnh, 
+                    TenFile, 
+                    DuongDanAnh, 
+                    LoaiAnh, 
+                    MaKS
+                FROM AnhKhachSan 
+                WHERE MaAnh = @MaAnh AND IsActive = 1
+            `);
+
+        if (imageResult.recordset.length === 0) {
+            return res.status(404).json({ 
+                success: false,
+                message: 'Không tìm thấy ảnh hoặc ảnh đã bị xóa' 
+            });
+        }
+
+        const imageInfo = imageResult.recordset[0];
+
+        // Kiểm tra xem có phải ảnh chính không
+        if (imageInfo.LoaiAnh === 'main') {
+            // Kiểm tra xem còn ảnh nào khác không
+            const otherImagesResult = await pool.request()
+                .input('MaKS', sql.Int, imageInfo.MaKS)
+                .input('MaAnh', sql.Int, parseInt(MaAnh))
+                .query(`
+                    SELECT COUNT(*) as SoAnhKhac
+                    FROM AnhKhachSan 
+                    WHERE MaKS = @MaKS AND MaAnh != @MaAnh AND IsActive = 1
+                `);
+
+            if (otherImagesResult.recordset[0].SoAnhKhac > 0) {
+                // Có ảnh khác, đặt ảnh đầu tiên làm main
+                await pool.request()
+                    .input('MaKS', sql.Int, imageInfo.MaKS)
+                    .input('MaAnh', sql.Int, parseInt(MaAnh))
+                    .query(`
+                        UPDATE AnhKhachSan 
+                        SET LoaiAnh = 'main' 
+                        WHERE MaKS = @MaKS 
+                        AND MaAnh != @MaAnh 
+                        AND IsActive = 1
+                        AND MaAnh = (
+                            SELECT TOP 1 MaAnh 
+                            FROM AnhKhachSan 
+                            WHERE MaKS = @MaKS AND MaAnh != @MaAnh AND IsActive = 1
+                            ORDER BY ThuTu ASC, NgayThem ASC
+                        )
+                    `);
+            }
+        }
+
+        // Xóa record trong database (soft delete)
+        await pool.request()
+            .input('MaAnh', sql.Int, parseInt(MaAnh))
+            .query(`
+                UPDATE AnhKhachSan 
+                SET IsActive = 0, NgayCapNhat = GETDATE()
+                WHERE MaAnh = @MaAnh
+            `);
+
+        // Xóa file vật lý
+        try {
+            const filePath = path.join(__dirname, '../../uploads/hotels', imageInfo.TenFile);
+            await fs.access(filePath); // Kiểm tra file tồn tại
+            await fs.unlink(filePath); // Xóa file
+        } catch (fileError) {
+            console.warn(`Không thể xóa file vật lý: ${imageInfo.TenFile}`, fileError);
+            // Không return error vì database đã cập nhật thành công
+        }
+
+        res.json({
+            success: true,
+            message: 'Đã xóa ảnh thành công',
+            data: {
+                deletedImage: {
+                    MaAnh: parseInt(MaAnh),
+                    TenFile: imageInfo.TenFile,
+                    WasMainImage: imageInfo.LoaiAnh === 'main'
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Lỗi deleteHotelImage:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Lỗi server khi xóa ảnh' 
+        });
+    }
+};
+
+// Hàm cập nhật thông tin ảnh
+exports.updateHotelImage = async (req, res) => {
+    try {
+        const { MaAnh } = req.params;
+        const { MoTa, ThuTu } = req.body;
+        const pool = await poolPromise;
+
+        // Kiểm tra ảnh tồn tại
+        const imageCheck = await pool.request()
+            .input('MaAnh', sql.Int, parseInt(MaAnh))
+            .query(`
+                SELECT MaAnh, MaKS 
+                FROM AnhKhachSan 
+                WHERE MaAnh = @MaAnh AND IsActive = 1
+            `);
+
+        if (imageCheck.recordset.length === 0) {
+            return res.status(404).json({ 
+                success: false,
+                message: 'Không tìm thấy ảnh' 
+            });
+        }
+
+        // Chuẩn bị câu update
+        const updateFields = [];
+        const params = { MaAnh: parseInt(MaAnh) };
+
+        if (MoTa !== undefined) {
+            updateFields.push('MoTa = @MoTa');
+            params.MoTa = MoTa;
+        }
+
+        if (ThuTu !== undefined && !isNaN(ThuTu)) {
+            updateFields.push('ThuTu = @ThuTu');
+            params.ThuTu = parseInt(ThuTu);
+        }
+
+        if (updateFields.length === 0) {
+            return res.status(400).json({ 
+                success: false,
+                message: 'Không có thông tin nào để cập nhật' 
+            });
+        }
+
+        updateFields.push('NgayCapNhat = GETDATE()');
+
+        // Thực hiện update
+        const request = pool.request();
+        Object.keys(params).forEach(key => {
+            if (key === 'MaAnh' || key === 'ThuTu') {
+                request.input(key, sql.Int, params[key]);
+            } else {
+                request.input(key, sql.NVarChar, params[key]);
+            }
+        });
+
+        await request.query(`
+            UPDATE AnhKhachSan 
+            SET ${updateFields.join(', ')}
+            WHERE MaAnh = @MaAnh
+        `);
+
+        // Lấy thông tin ảnh sau khi update
+        const updatedImage = await pool.request()
+            .input('MaAnh', sql.Int, parseInt(MaAnh))
+            .query(`
+                SELECT 
+                    MaAnh,
+                    TenFile,
+                    DuongDanAnh,
+                    LoaiAnh,
+                    ThuTu,
+                    MoTa,
+                    NgayThem,
+                    NgayCapNhat
+                FROM AnhKhachSan
+                WHERE MaAnh = @MaAnh
+            `);
+
+        res.json({
+            success: true,
+            message: 'Đã cập nhật thông tin ảnh thành công',
+            data: {
+                ...updatedImage.recordset[0],
+                FullPath: `${req.protocol}://${req.get('host')}/${updatedImage.recordset[0].DuongDanAnh}`
+            }
+        });
+
+    } catch (error) {
+        console.error('Lỗi updateHotelImage:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Lỗi server khi cập nhật ảnh' 
+        });
+    }
+};
+
+exports.getHotelWithImages = async (req, res) => {
+    try {
+        const { MaKS } = req.params;
+        const pool = await poolPromise;
+
+        // Lấy thông tin khách sạn
+        const hotelResult = await pool.request()
+            .input('MaKS', sql.Int, MaKS)
+            .query(`
+                SELECT 
+                    ks.*,
+                    nd.HoTen as TenNguoiQuanLy
+                FROM KhachSan ks
+                LEFT JOIN NguoiDung nd ON ks.MaNguoiQuanLy = nd.MaKH
+                WHERE ks.MaKS = @MaKS AND ks.IsActive = 1
+            `);
+
+        if (hotelResult.recordset.length === 0) {
+            return res.status(404).json({ 
+                success: false,
+                message: 'Không tìm thấy khách sạn' 
+            });
+        }
+
+        const hotel = hotelResult.recordset[0];
+
+        // Lấy ảnh khách sạn
+        const imagesResult = await pool.request()
+            .input('MaKS', sql.Int, MaKS)
+            .query(`
+                SELECT 
+                    MaAnh,
+                    TenFile,
+                    DuongDanAnh,
+                    LoaiAnh,
+                    ThuTu,
+                    MoTa,
+                    NgayThem
+                FROM AnhKhachSan
+                WHERE MaKS = @MaKS AND IsActive = 1
+                ORDER BY 
+                    CASE WHEN LoaiAnh = 'main' THEN 1 ELSE 2 END,
+                    ThuTu ASC,
+                    NgayThem ASC
+            `);
+
+        // Tạo đường dẫn đầy đủ cho ảnh
+        const images = imagesResult.recordset.map(img => {
+            return {
+                ...img,
+                FullPath: `${req.protocol}://${req.get('host')}/${img.DuongDanAnh}`
+            };
+        });
+
+        // Phân loại ảnh
+        const mainImage = images.find(img => img.LoaiAnh === 'main');
+        const galleryImages = images.filter(img => img.LoaiAnh === 'gallery');
+
+        res.json({
+            success: true,
+            data: {
+                ...hotel,
+                MainImage: mainImage ? mainImage.FullPath : null,
+                GalleryImages: galleryImages,
+                AllImages: images,
+                TotalImages: images.length
+            }
+        });
+
+    } catch (error) {
+        console.error('Lỗi lấy thông tin khách sạn:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Lỗi server khi lấy thông tin khách sạn' 
+        });
     }
 };

@@ -33,7 +33,9 @@
     "express-validator": "^7.2.1",
     "jsonwebtoken": "^9.0.2",
     "mssql": "^11.0.1",
-    "nodemailer": "^7.0.3"
+    "nodemailer": "^7.0.3",
+    "pinia": "^3.0.2",
+    "pinia-plugin-persistedstate": "^4.3.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
