@@ -5,9 +5,10 @@
     <div class="card hotel-card h-100 shadow-sm">
       <div class="img-wrapper">
         <img
-          :src="hotel.AnhKS || 'https://via.placeholder.com/400x220.png?text=No+Image'"
+          :src="hotelImage || 'https://via.placeholder.com/400x220.png?text=No+Image'"
           class="card-img-top"
           :alt="hotel.TenKS"
+          @error="handleImageError"
         />
       </div>
       <div class="card-body d-flex flex-column">
@@ -32,7 +33,7 @@
 </template>
 
 <script setup>
-import { defineProps, computed } from 'vue';
+import { defineProps, computed, ref } from 'vue';
 import { generateSlug } from '../utils/generateSlug.js'; // Import hàm generateSlug
 
 const props = defineProps({
@@ -41,6 +42,21 @@ const props = defineProps({
     required: true,
   },
 });
+
+const imageError = ref(false);
+
+//Uu tien MainImagePage tu APi sau do moi toi AnhKS (Legacy)
+
+const hotelImage = computed(() => {
+  if(imageError.value) {
+    return 'https://via.placeholder.com/400x220.png?text=No+Image';
+  }
+  return props.hotel.MainImagePath || props.hotel.AnhKS || 'https://via.placeholder.com/400x220.png?text=No+Image';
+})
+
+const handleImageError = () => {
+  imageError.value = true;
+}
 
 // Tạo computed property cho slug
 const hotelSlug = computed(() => {
