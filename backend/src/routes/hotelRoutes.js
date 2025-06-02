@@ -3,7 +3,7 @@ const { check } = require('express-validator');
 const {
   createHotel,
   updateHotel,
-  deleteHotel,
+  // deleteHotel,
   getHotelsByNguoiQuanLy,
   getHotelById,
   getAllHotels,
@@ -48,7 +48,7 @@ router.get('/', getAllHotels);
 router.get('/suggest-locations', LocationSuggestLimiter, suggestLocations);
 
 // GET /hotels - tất cả khách sạn
-router.get('/', getAllHotels);
+// router.get('/', getAllHotels);
 
 // ----------- ADMIN ROUTES (PRIVATE) -----------
 // GET /hotels/nguoi-quan-ly/:MaKH - khách sạn theo người quản lý

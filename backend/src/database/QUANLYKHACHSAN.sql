@@ -383,3 +383,4 @@ ADD MaKhach INT NULL,
 select * from LoaiPhong
 SELECT * FROM NguoiDung
 select * from LoaiDichVu
+select * from KhachSan

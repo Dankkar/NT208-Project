@@ -16,6 +16,9 @@ import BookingProcess from '../views/BookingProcess.vue'
 import BookingHistory from '../views/BookingHistory.vue'
 import TransactionHistory from '../views/TransactionHistory.vue'
 import CompleteProfilePage from '../views/CompleteProfilePage.vue'
+import FindHotelPage from '../views/admin/branches/FindHotelPage.vue'
+import AddHotelPage    from '../views/admin/branches/AddHotelPage.vue'
+import EditHotelPage from '../views/admin/branches/EditHotelPage.vue'
 import FindRoomTypePage   from '../views/admin/branches/FindRoomTypePage.vue'
 import AddRoomTypePage      from '../views/admin/branches/AddRoomTypePage.vue'
 import EditRoomTypePage from '../views/admin/branches/EditRoomTypePage.vue'
@@ -56,7 +59,9 @@ const routes = [
       // { path: 'reviews',      name: 'Reviews',      component: ReviewsPage },
 
       // Branches
-      //{path: 'branches/find-hotel',       name: 'AdminFindHotel',       component: FindHotelPage },
+      {path: 'branches/find-hotel',       name: 'AdminFindHotel',       component: FindHotelPage },
+      {path: 'branches/add-hotel',    name: 'AdminAddHotel',    component: AddHotelPage, props: true },
+      { path: 'branches/edit-hotel/:hotelId',    name: 'AdminEditHotel',    component: EditHotelPage, props: true },
       { path: 'branches/find-room-type',       name: 'AdminFindRoomType',       component: FindRoomTypePage },
       { path: 'branches/add-room-type/:hotelId',    name: 'AdminAddRoomType',    component: AddRoomTypePage, props: true },
       { path: 'branches/edit-room-type/:roomTypeId',    name: 'AdminEditRoomType',    component: EditRoomTypePage, props: true },
