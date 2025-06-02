@@ -2,6 +2,7 @@
 
 require('dotenv').config();
 const { initBookingCleanupJob } = require('./services/bookingCleanupService');
+const path = require('path');
 
 const express = require('express');
 const app = express();
@@ -35,6 +36,8 @@ app.use(cors({
 app.use(express.urlencoded({ extended: true })); // ✅ Đọc URL-encoded body
 app.use(cookieParser());          // ✅ Đặt TRƯỚC các route cần đọc cookie
 app.use(express.json());          // ✅ Đọc JSON body
+
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 //Logging
 app.use((req, res, next) => {
   console.log(`→ ${req.method} ${req.url}`);
@@ -74,6 +77,7 @@ app.use('/api/promotions', promotionRoutes);
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+    console.log(`Static files served from: ${path.join(__dirname, '../uploads')}`);
     initBookingCleanupJob();
 })
 
