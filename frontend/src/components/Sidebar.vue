@@ -76,6 +76,7 @@ const sections = [
     title: 'Bookings',
     children: [
       { name: 'Statistics', route: '/admin/bookings/statistics' },
+      { name: 'CheckIn/CheckOut', route: '/admin/bookings/check-in-out' },
       { name: 'Remove Bookings', route: '/admin/bookings/remove' },
     ],
   },

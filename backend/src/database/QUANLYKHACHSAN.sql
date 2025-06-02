@@ -327,8 +327,8 @@ VALUES
 
 INSERT INTO Booking (MaKH, MaKS, MaPhong, NgayNhanPhong, NgayTraPhong, SoLuongKhach, YeuCauDacBiet, TongTienDuKien)
 VALUES
-(1, 1, 1, '2025-07-01 14:00', '2025-07-03 12:00', 2, N'Cần phòng tầng thấp', 1400000),
-(2, 2, 3, '2025-08-10 15:00', '2025-08-15 11:00', 2, N'Yêu cầu xe đưa đón', 7500000);
+(46, 1, 1, '2025-07-01 14:00', '2025-07-03 12:00', 2, N'Cần phòng tầng thấp', 1400000),
+(49, 2, 3, '2025-08-10 15:00', '2025-08-15 11:00', 2, N'Yêu cầu xe đưa đón', 7500000);
 
 
 INSERT INTO SuDungDichVu (MaDat, MaLoaiDV, SoLuong, GiaTaiThoiDiemSuDung)
@@ -339,8 +339,8 @@ VALUES
 
 INSERT INTO HoaDon (MaDat, MaKH, MaKM, TongTienPhong, TongTienDichVu, TienGiamGia, ThueVAT, HinhThucTT, TrangThaiThanhToan)
 VALUES
-(1, 1, 1, 1400000, 100000, 280000, 150000, N'Thẻ tín dụng', N'Đã thanh toán'),
-(2, 2, NULL, 7500000, 300000, 0, 300000, N'Tiền mặt', N'Chưa thanh toán');
+(1, 46, 1, 1400000, 100000, 280000, 150000, N'Thẻ tín dụng', N'Đã thanh toán'),
+(2, 49, NULL, 7500000, 300000, 0, 300000, N'Tiền mặt', N'Chưa thanh toán');
 
 INSERT INTO BaiDanhGia (MaKH, MaDat, MaKS, Sao, NoiDung)
 VALUES
@@ -402,3 +402,11 @@ ADD MaKhach INT NULL,
 select * from LoaiPhong
 SELECT * FROM NguoiDung
 select * from LoaiDichVu
+select * from KhachSan
+select * from hoadon
+
+INSERT INTO AnhKhachSan (MaKS, TenFile, DuongDanAnh, LoaiAnh, ThuTu, MoTa)
+VALUES 
+(1, 'test1.jpg', 'uploads/hotels/test1.jpg', 'main', 1, 'Ảnh chính khách sạn'),
+(2, 'test2.jpg', 'uploads/hotels/test2.jpg', 'main', 2, 'Ảnh gallery 1'),
+(3, 'test3.jpg', 'uploads/hotels/test3.jpg', 'main', 3, 'Ảnh gallery 2');

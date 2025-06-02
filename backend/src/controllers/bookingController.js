@@ -610,7 +610,8 @@ exports.getAllBookings = async (req, res) => {
         const currentUser = req.user;
 
         // Kiểm tra quyền xem tất cả đơn
-        if (currentUser.LoaiUser !== 'Admin' && currentUser.LoaiUser !== 'QuanLyKS') {
+        if (!currentUser || !currentUser.role || (currentUser.role !== 'Admin' && currentUser.role !== 'Admin')) {
+            console.error("[getAllBookings] Permission Denied based on currentUser.role. currentUser.role is:", currentUser ? currentUser.role : 'currentUser or currentUser.role is undefined');
             return res.status(403).json({ error: 'Bạn không có quyền xem tất cả đơn đặt phòng' });
         }
 
@@ -623,7 +624,7 @@ exports.getAllBookings = async (req, res) => {
         let whereClause = '';
         let params = [];
 
-        if (currentUser.LoaiUser === 'QuanLyKS') {
+        if (currentUser.LoaiUser === 'Admin') {
             whereClause = 'WHERE b.MaKS = @MaKS';
             params.push({ name: 'MaKS', value: currentUser.MaKS });
         }
