@@ -225,6 +225,25 @@ CREATE TABLE BaiDanhGia (
     -- Nên tạo Index cho các cột FK để tăng tốc truy vấn
 );
 
+-- Tạo bảng lưu trữ ảnh khách sạn
+CREATE TABLE AnhKhachSan (
+    MaAnh INT PRIMARY KEY IDENTITY(1,1),
+    MaKS INT NOT NULL,
+    TenFile NVARCHAR(255) NOT NULL,
+    DuongDanAnh NVARCHAR(500) NOT NULL,
+    LoaiAnh NVARCHAR(50) NOT NULL DEFAULT 'gallery', -- 'main', 'gallery'
+    ThuTu INT DEFAULT 0,
+    MoTa NVARCHAR(255),
+    NgayThem DATETIME2 DEFAULT GETDATE(),
+    IsActive BIT DEFAULT 1,
+    
+    CONSTRAINT FK_AnhKhachSan_KhachSan FOREIGN KEY (MaKS) REFERENCES KhachSan(MaKS) ON DELETE CASCADE
+);
+
+-- Tạo index
+CREATE INDEX IDX_AnhKhachSan_MaKS ON AnhKhachSan(MaKS);
+CREATE INDEX IDX_AnhKhachSan_LoaiAnh ON AnhKhachSan(LoaiAnh);
+
 -- Tạo Index cho các Foreign Keys phổ biến
 CREATE INDEX IDX_Booking_MaKH ON Booking(MaKH);
 CREATE INDEX IDX_Booking_MaKS ON Booking(MaKS);
