@@ -250,7 +250,7 @@ exports.updateRoomType = async (req, res) => {
           let finalPath = req.file.path;
           let relativePath = '';
 
-          if(req.file.path.include('temp')) {
+          if(req.file.path.includes('temp')) {
             //Di chuyen tu temp folder den dung thu muc
             const targetDir = path.join(__dirname, `../../uploads/hotels/${hotelId}/room-types`);
             if(!fs.existsSync(targetDir)) {

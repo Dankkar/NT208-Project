@@ -26,13 +26,19 @@ router.get('/hotel/:MaKS', getRoomTypesByHotel);
 // -------- ADMIN / STAFF ROUTES --------
 
 // POST /roomTypes - Thêm loại phòng
-router.post('/:MaKS', authenticateToken, isAdmin, uploadRoomTypeImage.single('image'), createRoomType);
+router.post(
+  '/',
+  authenticateToken, 
+  isAdmin, 
+  uploadRoomTypeImage.single('image'), 
+  createRoomType
+);
 
 // GET /roomTypes/:id - Lấy loại phòng theo id
 router.get('/:MaLoaiPhong', getRoomTypeById);
 
 // PUT /roomTypes/:MaLoaiPhong - Cập nhật loại phòng
-router.put('/:MaLoaiPhong',uploadRoomTypeImage.single('image'), authenticateToken, isAdmin, updateRoomType);
+router.put('/:MaLoaiPhong', authenticateToken, isAdmin, uploadRoomTypeImage.single('image'), updateRoomType);
 
 // DELETE /roomTypes/:MaLoaiPhong - Xóa loại phòng
 //router.delete('/:MaLoaiPhong', authenticateToken, isAdmin, deleteRoomType);

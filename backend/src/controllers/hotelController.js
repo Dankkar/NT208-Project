@@ -9,11 +9,14 @@ exports.createHotel = async (req, res) => {
         MoTaCoSoVatChat,
         QuyDinh,
         MotaChung,
-        MaNguoiQuanLy // Cho phép admin chỉ định người quản lý khác
+        MaNguoiQuanLy, // Cho phép admin chỉ định người quản lý khác
+        mainImageIndex // Index của ảnh sẽ làm main trong danh sách files
     } = req.body;
     
     try {
         const pool = await poolPromise;
+        const fs = require('fs');
+        const path = require('path');
         
         // Xác định MaNguoiQuanLy - ưu tiên từ body, nếu không có thì dùng user hiện tại
         let finalMaNguoiQuanLy = MaNguoiQuanLy || req.user.MaKH;
@@ -40,6 +43,7 @@ exports.createHotel = async (req, res) => {
             });
         }
 
+        // Tạo khách sạn trước
         const result = await pool.request()
             .input('TenKS', sql.VarChar, TenKS)
             .input('DiaChi', sql.VarChar, DiaChi)
@@ -51,16 +55,78 @@ exports.createHotel = async (req, res) => {
             .input('MaNguoiQuanLy', sql.Int, finalMaNguoiQuanLy)
             .query(`
                 INSERT INTO KhachSan (TenKS, DiaChi, HangSao, LoaiHinh, MoTaCoSoVatChat, QuyDinh, MotaChung, MaNguoiQuanLy)
+                OUTPUT INSERTED.MaKS
                 VALUES (@TenKS, @DiaChi, @HangSao, @LoaiHinh, @MoTaCoSoVatChat, @QuyDinh, @MotaChung, @MaNguoiQuanLy)
             `);
         
+        const newHotelId = result.recordset[0].MaKS;
+        const uploadedImages = [];
+
+        // Xử lý upload ảnh nếu có
+        if (req.files && req.files.length > 0) {
+            // Tạo thư mục cho khách sạn mới
+            const hotelDir = path.join(__dirname, `../../uploads/hotels/${newHotelId}`);
+            if(!fs.existsSync(hotelDir)) {
+                fs.mkdirSync(hotelDir, {recursive: true});
+            }
+
+            // Upload từng file
+            for (let i = 0; i < req.files.length; i++) {
+                const file = req.files[i];
+                const isMainImage = (mainImageIndex == i) || (mainImageIndex === undefined && i === 0);
+                
+                try {
+                    // Di chuyển file vào thư mục khách sạn
+                    let targetPath = path.join(hotelDir, file.filename);
+                    let relativePath = `uploads/hotels/${newHotelId}/${file.filename}`;
+
+                    if(file.path !== targetPath) {
+                        fs.renameSync(file.path, targetPath);
+                    }
+
+                    // Lưu thông tin ảnh vào database
+                    const insertResult = await pool.request()
+                        .input('MaKS', sql.Int, newHotelId)
+                        .input('TenFile', sql.NVarChar, file.filename)
+                        .input('DuongDanAnh', sql.NVarChar, relativePath)
+                        .input('LoaiAnh', sql.NVarChar, isMainImage ? 'main' : 'gallery')
+                        .input('ThuTu', sql.Int, i)
+                        .input('MoTa', sql.NVarChar, `Ảnh khách sạn ${TenKS}`)
+                        .query(`
+                            INSERT INTO AnhKhachSan (MaKS, TenFile, DuongDanAnh, LoaiAnh, ThuTu, MoTa)
+                            OUTPUT INSERTED.MaAnh
+                            VALUES (@MaKS, @TenFile, @DuongDanAnh, @LoaiAnh, @ThuTu, @MoTa)
+                        `);
+
+                    uploadedImages.push({
+                        MaAnh: insertResult.recordset[0].MaAnh,
+                        TenFile: file.filename,
+                        DuongDanAnh: relativePath,
+                        LoaiAnh: isMainImage ? 'main' : 'gallery',
+                        IsMain: isMainImage,
+                        FullPath: `${req.protocol}://${req.get('host')}/${relativePath}`
+                    });
+
+                } catch (error) {
+                    console.error(`Lỗi xử lý file ${file.filename}:`, error);
+                }
+            }
+        }
+
+        let message = `Khách sạn đã được tạo thành công với người quản lý: ${manager.HoTen}`;
+        if (uploadedImages.length > 0) {
+            const mainImages = uploadedImages.filter(img => img.IsMain);
+            message += `. Đã upload ${uploadedImages.length} ảnh${mainImages.length > 0 ? ' (bao gồm 1 ảnh chính)' : ''}`;
+        }
+        
         res.status(201).json({
             success: true,
-            message: `Khách sạn đã được tạo thành công với người quản lý: ${manager.HoTen}`,
+            message: message,
             data: {
-                MaKS: result.recordset[0].MaKS,
+                MaKS: newHotelId,
                 TenKS: TenKS,
-                TenNguoiQuanLy: manager.HoTen
+                TenNguoiQuanLy: manager.HoTen,
+                uploadedImages: uploadedImages
             }
         });
     }
@@ -80,7 +146,10 @@ exports.updateHotel = async (req, res) => {
         MoTaCoSoVatChat,
         QuyDinh,
         MotaChung,
-        MaNguoiQuanLy
+        MaNguoiQuanLy,
+        mainImageIndex, //Index cua anh se lam main trong danh sach files duoc upload
+        deleteImageIds, //MaAnh cua anh se xoa
+        deleteAllImages //true/false
     } = req.body;
 
     if(!MaKS || isNaN(MaKS))
@@ -89,7 +158,20 @@ exports.updateHotel = async (req, res) => {
     try
     {
         const pool = await poolPromise;
-        
+        const fs = require('fs');
+        const path = require('path');
+        //Kiem tra khach san ton tai
+        const hotelCheck = await pool.request()
+            .input('MaKS', sql.Int, parseInt(MaKS))
+            .query('SELECT MaKS, TenKS FROM KhachSan WHERE MaKS = @MaKS AND IsActive = 1');
+
+        if(hotelCheck.recordset.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Không tìm thấy khách sạn'
+            });
+        }
+
         // Nếu có MaNguoiQuanLy, validate role của người được chỉ định
         if (MaNguoiQuanLy !== undefined && MaNguoiQuanLy !== null) {
             const managerValidation = await pool.request()
@@ -114,7 +196,100 @@ exports.updateHotel = async (req, res) => {
             }
         }
 
-        // Xây dựng query update động
+        //1. Xu ly xoa anh
+        let deletedImagesCount = 0;
+        let imageActions = [];
+
+        if(deleteAllImages === 'true' || deleteAllImages === true) {
+            //Xoa tat ca anh hien tai
+            const currentImages = await pool.request()
+                .input('MaKS', sql.Int, parseInt(MaKS))
+                .query(`
+                    SELECT MaAnh, TenFile, DuongDanAnh, LoaiAnh, ThuTu, MoTa
+                    FROM AnhKhachSan
+                    WHERE MaKS = @MaKS AND IsActive = 1
+                `);
+            
+            for (const img of currentImages.recordset) {
+                try {
+                    //Xoa file vat ly
+                    const filePath = path.join(__dirname, '../../', img.DuongDanAnh);
+                    if(fs.existsSync(filePath)) {
+                        fs.unlinkSync(filePath);
+                    }
+
+                    //Soft delete trong database
+                    await pool.request()
+                        .input('MaAnh', sql.Int, img.MaAnh)
+                        .query(`
+                            UPDATE AnhKhachSan
+                            SET IsActive = 0
+                            WHERE MaAnh = @MaAnh
+                        `);
+                    deletedImagesCount++;
+                } catch (error) {
+                    console.warn(`Lỗi xóa ảnh ${img.TenFile}:`, error);
+                }
+            }
+
+            if (deletedImagesCount > 0) {
+                imageActions.push(`Đã xóa ${deletedImagesCount} ảnh`);
+            }
+        } else if (deleteImageIds) {
+            //Xoa cac anh cu the
+            let imageIds = [];
+            if (typeof deleteImageIds === 'string') {
+                imageIds = deleteImageIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+            } else if (Array.isArray(deleteImageIds)) {
+                imageIds = deleteImageIds.map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+            }
+
+            if (imageIds.length > 0) {
+                for (const imageId of imageIds) {
+                    try {
+                        //Lay thong tin anh
+                        const imageInfo = await pool.request()
+                            .input('MaAnh', sql.Int, imageId)
+                            .input('MaKS', sql.Int, parseInt(MaKS))
+                            .query(`
+                                SELECT MaAnh, TenFile, DuongDanAnh, LoaiAnh, ThuTu, MoTa
+                                FROM AnhKhachSan
+                                WHERE MaAnh = @MaAnh AND MaKS = @MaKS AND IsActive = 1
+                            `);
+
+                        if (imageInfo.recordset.length > 0) {
+                            const img = imageInfo.recordset[0];
+
+                            //Xoa file vat ly
+                            const filePath = path.join(__dirname, '../../', img.DuongDanAnh);
+                            if(fs.existsSync(filePath)) {
+                                fs.unlinkSync(filePath);
+                            }
+
+                            //Soft delete trong database
+                            await pool.request()
+                                .input('MaAnh', sql.Int, img.MaAnh)
+                                .query(`
+                                    UPDATE AnhKhachSan
+                                    SET IsActive = 0
+                                    WHERE MaAnh = @MaAnh
+                                `);
+                            deletedImagesCount++;
+                        }
+                    }   catch (error) {
+                        console.warn(`Lỗi xóa ảnh ID ${imageId}:`, error);
+                    } 
+                }
+
+                if(deletedImagesCount > 0) {
+                    imageActions.push(`Đã xóa ${deletedImagesCount} ảnh được chỉ định`);
+                }
+            }
+        }
+
+        
+
+        //2.Xây dựng query update động
         let updateFields = [];
         let queryParams = { MaKS: parseInt(MaKS) };
 
@@ -151,34 +326,109 @@ exports.updateHotel = async (req, res) => {
             queryParams.MaNguoiQuanLy = MaNguoiQuanLy;
         }
 
-        if (updateFields.length === 0) {
-            return res.status(400).json({error: 'Không có thông tin nào để cập nhật'});
+        if (updateFields.length > 0) {
+            const query = `
+                UPDATE KhachSan
+                SET ${updateFields.join(', ')}
+                WHERE MaKS = @MaKS
+            `;
+
+            const request = pool.request();
+            Object.keys(queryParams).forEach(key => {
+                if (key === 'MaKS' || key === 'MaNguoiQuanLy') {
+                    request.input(key, sql.Int, queryParams[key]);
+                } else if (key === 'MoTaCoSoVatChat' || key === 'QuyDinh' || key === 'MotaChung') {
+                    request.input(key, sql.Text, queryParams[key]);
+                } else {
+                    request.input(key, sql.VarChar, queryParams[key]);
+                }
+            });
+            
+            const result = await request.query(query);
+
+            if (result.rowsAffected[0] === 0) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Không tìm thấy khách sạn để cập nhật'
+                });
+            }   
         }
 
-        const query = `
-            UPDATE KhachSan
-            SET ${updateFields.join(', ')}
-            WHERE MaKS = @MaKS
-        `;
-
-        const request = pool.request();
-        Object.keys(queryParams).forEach(key => {
-            if (key === 'MaKS' || key === 'MaNguoiQuanLy') {
-                request.input(key, sql.Int, queryParams[key]);
-            } else if (key === 'MoTaCoSoVatChat' || key === 'QuyDinh' || key === 'MotaChung') {
-                request.input(key, sql.Text, queryParams[key]);
-            } else {
-                request.input(key, sql.VarChar, queryParams[key]);
+        //3. Xu ly upload anh neu co
+        const uploadedImages = [];
+        if (req.files && req.files.length > 0) {
+            //Tao thu muc neu chua co
+            const hotelDir = path.join(__dirname, `../../uploads/hotels/${MaKS}`);
+            if(!fs.existsSync(hotelDir)) {
+                fs.mkdirSync(hotelDir, {recursive: true});
             }
-        });
 
-        const result = await request.query(query);
+            // Đặt tất cả ảnh hiện tại về gallery trước nếu có chỉ định ảnh main mới
+            if(mainImageIndex !== undefined && mainImageIndex !== null) {
+                await pool.request()
+                    .input('MaKS', sql.Int, parseInt(MaKS))
+                    .query(`
+                        UPDATE AnhKhachSan
+                        SET LoaiAnh = 'gallery'
+                        WHERE MaKS = @MaKS AND LoaiAnh = 'main' AND IsActive = 1
+                    `);
+            }
 
-        if (result.rowsAffected[0] === 0) {
-            return res.status(404).json({error: 'Không tìm thấy khách sạn để cập nhật'});
+            //Upload tung file
+            for (let i = 0; i < req.files.length; i++) {
+                const file = req.files[i];
+                const isMainImage = (mainImageIndex == i) || (mainImageIndex === undefined && i === 0); //Ảnh đầu tiên làm main nếu không chỉ định
+                
+                try {
+                    //Di chuyen file vao thu muc khach san
+                    let finalPath = file.path;
+                    let targetPath = path.join(hotelDir, file.filename);
+                    let relativePath = `uploads/hotels/${MaKS}/${file.filename}`;
+
+                    if(file.path !== targetPath) {
+                        fs.renameSync(file.path, targetPath);
+                        finalPath = targetPath;
+                    }
+
+                    const insertResult = await pool.request()
+                    .input('MaKS', sql.Int, parseInt(MaKS))
+                    .input('TenFile', sql.NVarChar, file.filename)
+                    .input('DuongDanAnh', sql.NVarChar, relativePath)
+                    .input('LoaiAnh', sql.NVarChar, isMainImage ? 'main' : 'gallery')
+                    .input('ThuTu', sql.Int, i)
+                    .input('MoTa', sql.NVarChar, `Ảnh khách sạn ${TenKS || hotelCheck.recordset[0].TenKS}`)
+                    .query(`
+                        INSERT INTO AnhKhachSan (MaKS, TenFile, DuongDanAnh, LoaiAnh, ThuTu, MoTa)
+                        OUTPUT INSERTED.MaAnh
+                        VALUES (@MaKS, @TenFile, @DuongDanAnh, @LoaiAnh, @ThuTu, @MoTa)
+                    `);
+
+                    uploadedImages.push({
+                        MaAnh: insertResult.recordset[0].MaAnh,
+                        TenFile: file.filename,
+                        DuongDanAnh: relativePath,
+                        LoaiAnh: isMainImage ? 'main' : 'gallery',
+                        IsMain: isMainImage,
+                        FullPath: `${req.protocol}://${req.get('host')}/${relativePath}`
+                    });
+
+                } catch (error) {
+                    console.error(`Lỗi xử lý file ${file.filename}:`, error);
+                }
+            }
+            
+            if (uploadedImages.length > 0) {
+                const mainImages = uploadedImages.filter(img => img.IsMain);
+                imageActions.push(`Đã upload ${uploadedImages.length} ảnh mới${mainImages.length > 0 ? ' (bao gồm 1 ảnh chính)' : ''}`);
+            }
         }
 
+        //4. Tạo response message
         let message = 'Thông tin khách sạn đã được cập nhật thành công';
+        if (imageActions.length > 0) {
+            message += '. ' + imageActions.join(', ');
+        }
+
         if (MaNguoiQuanLy !== undefined) {
             if (MaNguoiQuanLy === null) {
                 message += '. Đã xóa người quản lý khỏi khách sạn.';
@@ -194,12 +444,23 @@ exports.updateHotel = async (req, res) => {
             }
         }
 
-        res.json({message});
+        res.json({
+            success: true,
+            message: message,
+            data: {
+                MaKS: parseInt(MaKS),
+                uploadedImages: uploadedImages,
+                deletedImagesCount: deletedImagesCount,
+                imageActions: imageActions
+            }
+        });
     }
-    catch (err)
-    {
+    catch (err) {
         console.error('Lỗi updateHotel:', err);
-        res.status(500).json({error: 'Lỗi server'});
+        res.status(500).json({
+            success: false,
+            error: 'Lỗi server'
+        });
     }
 };
 
@@ -668,7 +929,8 @@ exports.getHotelById = async (req, res) => {
         // Phân loại ảnh
         const mainImage = images.find(img => img.LoaiAnh === 'main');
         const galleryImages = images.filter(img => img.LoaiAnh === 'gallery');
-        const roomTypesWithImages = rommTypesResult.recordset.map(roomType => ({
+
+        const roomTypesWithImages = roomTypesResult.recordset.map(roomType => ({
             ...roomType,
             RoomImagePath: roomType.DuongDanAnh
                 ? `${req.protocol}://${req.get('host')}/${roomType.DuongDanAnh}`
