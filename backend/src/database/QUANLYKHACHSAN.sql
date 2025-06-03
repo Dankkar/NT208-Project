@@ -415,12 +415,21 @@ VALUES
 (3, 'test3.jpg', 'uploads/hotels/test3.jpg', 'gallery', 3, 'Ảnh gallery 2');
 
 update booking
-set NgayTraPhong = '2025-04-20 17:00'
+set NgayNhanPhong = '2025-06-02 17:00'
 where MaDat = 7
 
 select * from booking
 
-update hoadon
-set NgayLapHD = '2025-04-05 17:00'
+select * from Phong
+
+update booking
+set MaPhong = 4
+where MaDat = 6
+
+select * from hoadon
+
+select * from NguoiDung
+
+select * from LoaiPhong
 
 

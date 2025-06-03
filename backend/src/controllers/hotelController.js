@@ -751,8 +751,7 @@ exports.getAllHotels = async (req, res) => {
 
         // Add GROUP BY
         query += `
-            GROUP BY ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh, ak.DuongDanAnh, ks.IsActive
-            ${isAdmin ? ', nd.HoTen' : ''}
+            GROUP BY ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh, ak.DuongDanAnh, ks.IsActive, nd.HoTen
         `;
 
         // Handle sorting based on parameters
