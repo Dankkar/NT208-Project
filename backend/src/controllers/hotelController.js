@@ -732,7 +732,7 @@ exports.getAllHotels = async (req, res) => {
 
         // Base query without NguoiQuanLy
         let query = `
-            SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh,
+            SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh, ks.IsActive,
                    MIN(lp.GiaCoSo) as GiaThapNhat,
                    ak.DuongDanAnh as MainImagePath
             FROM KhachSan ks
@@ -752,7 +752,7 @@ exports.getAllHotels = async (req, res) => {
         // Add NguoiQuanLy to query if user is admin
         if (isAdmin) {
             query = `
-                SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh,
+                SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh, ks.IsActive,
                        nd.HoTen AS NguoiQuanLy,
                        MIN(lp.GiaCoSo) as GiaThapNhat,
                        ak.DuongDanAnh as MainImagePath
@@ -774,7 +774,7 @@ exports.getAllHotels = async (req, res) => {
 
         // Add GROUP BY
         query += `
-            GROUP BY ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh, ak.DuongDanAnh
+            GROUP BY ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh, ak.DuongDanAnh, ks.IsActive
             ${isAdmin ? ', nd.HoTen' : ''}
         `;
 
@@ -980,11 +980,42 @@ exports.getHotelsByNguoiQuanLy = async (req, res) => {
         const result = await pool.request()
         .input('MaKH', sql.Int, parseInt(MaKH))
         .query(`
-            SELECT * FROM KhachSan
-            WHERE MaNguoiQuanLy = @MaKH
+            SELECT 
+                ks.MaKS, 
+                ks.TenKS, 
+                ks.DiaChi, 
+                ks.HangSao, 
+                ks.LoaiHinh,
+                ks.MoTaCoSoVatChat,
+                ks.QuyDinh,
+                ks.MotaChung,
+                ks.IsActive,
+                ak.DuongDanAnh as MainImagePath
+            FROM KhachSan ks
+            LEFT JOIN AnhKhachSan ak ON ks.MaKS = ak.MaKS
+                AND ak.LoaiAnh = 'main'
+                AND ak.IsActive = 1
+                AND ak.MaAnh = (
+                    SELECT TOP 1 MaAnh 
+                    FROM AnhKhachSan 
+                    WHERE MaKS = ks.MaKS AND IsActive = 1 AND LoaiAnh = 'main'
+                    ORDER BY ThuTu ASC, NgayThem ASC
+                )
+            WHERE ks.MaNguoiQuanLy = @MaKH
+            ORDER BY ks.TenKS
         `);
 
-        res.json(result.recordset);
+        const hotelsWithImages = result.recordset.map(hotel => ({
+            ...hotel,
+            MainImagePath: hotel.MainImagePath
+                ? `${req.protocol}://${req.get('host')}/${hotel.MainImagePath}`
+                : null
+        }));
+
+        res.json({
+            success: true,
+            data: hotelsWithImages
+        });
     }
     catch (err)
     {
