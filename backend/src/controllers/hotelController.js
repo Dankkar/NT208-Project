@@ -45,13 +45,13 @@ exports.createHotel = async (req, res) => {
 
         // Tạo khách sạn trước
         const result = await pool.request()
-            .input('TenKS', sql.VarChar, TenKS)
-            .input('DiaChi', sql.VarChar, DiaChi)
-            .input('HangSao', sql.VarChar, HangSao)
-            .input('LoaiHinh', sql.VarChar, LoaiHinh)
-            .input('MoTaCoSoVatChat', sql.Text, MoTaCoSoVatChat)
-            .input('QuyDinh', sql.Text, QuyDinh)
-            .input('MotaChung', sql.Text, MotaChung)
+            .input('TenKS', sql.NVarChar, TenKS)
+            .input('DiaChi', sql.NVarChar, DiaChi)
+            .input('HangSao', sql.Decimal(2,1), parseFloat(HangSao))
+            .input('LoaiHinh', sql.NVarChar, LoaiHinh)
+            .input('MoTaCoSoVatChat', sql.NVarChar, MoTaCoSoVatChat)
+            .input('QuyDinh', sql.NVarChar, QuyDinh)
+            .input('MotaChung', sql.NVarChar, MotaChung)
             .input('MaNguoiQuanLy', sql.Int, finalMaNguoiQuanLy)
             .query(`
                 INSERT INTO KhachSan (TenKS, DiaChi, HangSao, LoaiHinh, MoTaCoSoVatChat, QuyDinh, MotaChung, MaNguoiQuanLy)
@@ -70,19 +70,19 @@ exports.createHotel = async (req, res) => {
                 fs.mkdirSync(hotelDir, {recursive: true});
             }
 
-            // Upload từng file
+            // Upload từng file từ thư mục temp
             for (let i = 0; i < req.files.length; i++) {
                 const file = req.files[i];
                 const isMainImage = (mainImageIndex == i) || (mainImageIndex === undefined && i === 0);
                 
                 try {
-                    // Di chuyển file vào thư mục khách sạn
+                    // Di chuyển file từ thư mục temp vào thư mục khách sạn
+                    const sourceFilePath = file.path; // Đường dẫn tạm thời
                     let targetPath = path.join(hotelDir, file.filename);
                     let relativePath = `uploads/hotels/${newHotelId}/${file.filename}`;
 
-                    if(file.path !== targetPath) {
-                        fs.renameSync(file.path, targetPath);
-                    }
+                    //Di chuyển file từ temp folder
+                    fs.renameSync(sourceFilePath, targetPath);
 
                     // Lưu thông tin ảnh vào database
                     const insertResult = await pool.request()
@@ -109,7 +109,32 @@ exports.createHotel = async (req, res) => {
 
                 } catch (error) {
                     console.error(`Lỗi xử lý file ${file.filename}:`, error);
+                    // Nếu có lỗi, thử xóa file gốc trong temp
+                    try {
+                        if (fs.existsSync(file.path)) {
+                            fs.unlinkSync(file.path);
+                        }
+                    } catch (deleteError) {
+                        console.error('Lỗi xóa file temp:', deleteError);
+                    }
                 }
+            }
+            // Xóa thư mục temp sau khi upload xong
+            try {
+                const tempDir = path.join(__dirname, `../../uploads/temp/hotels`);
+                if(fs.existsSync(tempDir)) {
+                    const tempFiles = fs.readdirSync(tempDir);
+                    tempFiles.forEach(file => {
+                        const filePath = path.join(tempDir, file);
+                        const stats = fs.statSync(filePath);
+                        //Xóa file cũ hơn 1 giờ
+                        if(Date.now() - stats.mtime > 1000 * 60 * 60) {
+                            fs.unlinkSync(filePath);
+                        }
+                    });
+                }
+            } catch (cleanupError) {
+                console.error('Lỗi xóa file temp:', cleanupError);
             }
         }
 

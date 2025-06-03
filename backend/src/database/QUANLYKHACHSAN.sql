@@ -120,6 +120,8 @@ CREATE TABLE LoaiDichVu (
     CONSTRAINT FK_LoaiDichVu_KhachSan FOREIGN KEY (MaKS) REFERENCES KhachSan(MaKS) ON DELETE CASCADE -- Nếu KS xóa, dịch vụ cũng xóa
 );
 
+ALTER TABLE LoaiDichVu
+ADD IsActive BIT DEFAULT 1 NOT NULL
 -- Bảng Khuyến Mãi (Promotion)
 CREATE TABLE KhuyenMai (
     MaKM INT PRIMARY KEY IDENTITY(1,1),         -- Mã Khuyến mãi (PK)
@@ -433,3 +435,5 @@ select * from NguoiDung
 select * from LoaiPhong
 
 
+SELECT * FROM AnhKhachSan
+select * from KhachSan
