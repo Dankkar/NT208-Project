@@ -229,7 +229,7 @@ async function handleEmailLogin() {
 .divider .line { flex: 1; height: 1px; background: #ccc; }
 .divider small { padding: 0 0.75rem; color: #666; font-size: 0.9rem; }
 .underline-input { border: none; border-bottom: 1px solid #ccc; border-radius: 0; background: transparent; padding: 0.5rem 0; }
-.underline-input:focus { outline: none; border-bottom-color: #888; }
+.underline-input:focus { outline: none; box-shadow: none; border-color: tránsparent; border-bottom: 1px solid #888; }
 .underline-input.is-invalid { border-bottom-color: #dc3545; }
 .btn-login { width: 100%; padding: 0.75rem 0; background: #000; color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
 .btn-login:hover:not(:disabled) { opacity: 0.9; }

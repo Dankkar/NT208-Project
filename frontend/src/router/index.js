@@ -16,13 +16,17 @@ import BookingProcess from '../views/BookingProcess.vue'
 import BookingHistory from '../views/BookingHistory.vue'
 import TransactionHistory from '../views/TransactionHistory.vue'
 import CompleteProfilePage from '../views/CompleteProfilePage.vue'
+import FindHotelPage from '../views/admin/branches/FindHotelPage.vue'
+import AddHotelPage    from '../views/admin/branches/AddHotelPage.vue'
+import EditHotelPage from '../views/admin/branches/EditHotelPage.vue'
 import FindRoomTypePage   from '../views/admin/branches/FindRoomTypePage.vue'
 import AddRoomTypePage      from '../views/admin/branches/AddRoomTypePage.vue'
 import EditRoomTypePage from '../views/admin/branches/EditRoomTypePage.vue'
 import FindAmenityPage from '../views/admin/branches/FindAmenityPage.vue'
 import AddAmenityPage    from '../views/admin/branches/AddAmenityPage.vue'
 import EditAmenityPage from '../views/admin/branches/EditAmenityPage.vue'
-// import StatsPage      from '../views/admin/bookings/StatsPage.vue'
+import StatsPage      from '../views/admin/bookings/StatsPage.vue'
+import CheckInOutPage from '../views/admin/bookings/AdminCheckInOutPage.vue'
 // import RemoveBookPage from '../views/admin/bookings/RemoveBookPage.vue'
 import FindUserPage    from '../views/admin/users/FindUserPage.vue'
 import EditUserPage from '../views/admin/users/EditUserPage.vue'
@@ -57,7 +61,9 @@ const routes = [
       // { path: 'reviews',      name: 'Reviews',      component: ReviewsPage },
 
       // Branches
-      //{path: 'branches/find-hotel',       name: 'AdminFindHotel',       component: FindHotelPage },
+      {path: 'branches/find-hotel',       name: 'AdminFindHotel',       component: FindHotelPage },
+      {path: 'branches/add-hotel',    name: 'AdminAddHotel',    component: AddHotelPage, props: true },
+      { path: 'branches/edit-hotel/:hotelId',    name: 'AdminEditHotel',    component: EditHotelPage, props: true },
       { path: 'branches/find-room-type',       name: 'AdminFindRoomType',       component: FindRoomTypePage },
       { path: 'branches/add-room-type/:hotelId',    name: 'AdminAddRoomType',    component: AddRoomTypePage, props: true },
       { path: 'branches/edit-room-type/:roomTypeId',    name: 'AdminEditRoomType',    component: EditRoomTypePage, props: true },
@@ -66,7 +72,8 @@ const routes = [
       { path: 'branches/edit-amenity/:amenityId',    name: 'AdminEditAmenity',    component: EditAmenityPage, props: true },
 
       // Bookings
-      // { path: 'bookings/statistics', name: 'BookingsStats', component: StatsPage },
+      { path: 'bookings/statistics', name: 'BookingsStats', component: StatsPage },
+      { path: 'bookings/check-in-out/', name: 'BookingsCheckInOut', component: CheckInOutPage, props: true },
       // { path: 'bookings/remove',     name: 'BookingsRemove', component: RemoveBookPage },
 
       // Users

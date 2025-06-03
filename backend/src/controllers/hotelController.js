@@ -493,11 +493,21 @@ exports.getAllHotels = async (req, res) => {
             query = `
                 SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh,
                        nd.HoTen AS NguoiQuanLy,
-                       MIN(lp.GiaCoSo) as GiaThapNhat
+                       MIN(lp.GiaCoSo) as GiaThapNhat,
+                       ak.DuongDanAnh as MainImagePath
                 FROM KhachSan ks
                 LEFT JOIN NguoiDung nd ON ks.MaNguoiQuanLy = nd.MaKH
                 LEFT JOIN Phong p ON ks.MaKS = p.MaKS
                 LEFT JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
+                LEFT JOIN AnhKhachSan ak ON ks.MaKS = ak.MaKS
+                    AND ak.LoaiAnh = 'main'
+                    AND ak.IsActive = 1
+                    AND ak.MaAnh = (
+                        SELECT TOP 1 MaAnh 
+                        FROM AnhKhachSan 
+                        WHERE MaKS = ks.MaKS AND IsActive = 1 AND LoaiAnh = 'main'
+                        ORDER BY ThuTu ASC, NgayThem ASC
+                    )
             `;
         }
 
@@ -599,7 +609,7 @@ exports.getHotelById = async (req, res) => {
             });
         }
 
-        const imageResult = await pool.request()
+        const imagesResult = await pool.request()
             .input('MaKS', sql.Int, MaKS)
             .query(`
                SELECT 
@@ -625,7 +635,7 @@ exports.getHotelById = async (req, res) => {
             .input('MaKS', sql.Int, MaKS)
             .query(`
                 SELECT lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo, lp.SoGiuong,
-                       lp.DienTich, lp.MoTa, lp.TienNghi,
+                       lp.DienTich, lp.MoTa, lp.TienNghi, lp.DuongDanAnh,
                        chg.TenCauHinh as CauHinhGiuong,
                        chg.SoGiuongDoi,
                        chg.SoGiuongDon,
@@ -635,7 +645,7 @@ exports.getHotelById = async (req, res) => {
                 LEFT JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
                 WHERE lp.MaKS = @MaKS
                 GROUP BY lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo, lp.SoGiuong,
-                         lp.DienTich, lp.MoTa, lp.TienNghi,
+                         lp.DienTich, lp.MoTa, lp.TienNghi, lp.DuongDanAnh,
                          chg.TenCauHinh, chg.SoGiuongDoi, chg.SoGiuongDon
                 ORDER BY lp.GiaCoSo ASC
             `);
@@ -658,6 +668,12 @@ exports.getHotelById = async (req, res) => {
         // Phân loại ảnh
         const mainImage = images.find(img => img.LoaiAnh === 'main');
         const galleryImages = images.filter(img => img.LoaiAnh === 'gallery');
+        const roomTypesWithImages = rommTypesResult.recordset.map(roomType => ({
+            ...roomType,
+            RoomImagePath: roomType.DuongDanAnh
+                ? `${req.protocol}://${req.get('host')}/${roomType.DuongDanAnh}`
+                : null
+        }));
 
         // Calculate price range
         const priceRange = roomTypesResult.recordset.length > 0 ? {
@@ -671,7 +687,7 @@ exports.getHotelById = async (req, res) => {
             GalleryImages: galleryImages,
             AllImages: images,
             TotalImages: images.length,
-            roomTypes: roomTypesResult.recordset,
+            roomTypes: roomTypesWithImages,
             services: servicesResult.recordset,
             priceRange: priceRange,
             totalRoomTypes: roomTypesResult.recordset.length
@@ -853,13 +869,24 @@ exports.searchAvailableHotels = async (req, res) => {
                     lp.GiaCoSo,
                     lp.DienTich,
                     lp.TienNghi,
+                    lp.DuongDanAnh as RoomImagePath,
                     chg.TenCauHinh as CauHinhGiuong,
                     chg.SoGiuongDoi,
-                    chg.SoGiuongDon
+                    chg.SoGiuongDon,
+                    ak.DuongDanAnh as HotelMainImagePath
                 FROM KhachSan ks
                 JOIN LoaiPhong lp ON ks.MaKS = lp.MaKS
                 JOIN Phong p ON lp.MaLoaiPhong = p.MaLoaiPhong
                 JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
+                LEFT JOIN AnhKhachSan ak ON ks.MaKS = ak.MaKS
+                    AND ak.LoaiAnh = 'main'
+                    AND ak.IsActive = 1
+                    AND ak.MaAnh = (
+                        SELECT TOP 1 MaAnh 
+                        FROM AnhKhachSan 
+                        WHERE MaKS = ks.MaKS AND IsActive = 1 AND LoaiAnh = 'main'
+                        ORDER BY ThuTu ASC, NgayThem ASC
+                    )
                 WHERE (chg.SoGiuongDoi * 2 + chg.SoGiuongDon) >= @numberOfGuests
                 AND (ks.DiaChi COLLATE Latin1_General_CI_AI LIKE @location OR ks.TenKS COLLATE Latin1_General_CI_AI LIKE @location)
                 ORDER BY ks.HangSao DESC, lp.GiaCoSo ASC;
@@ -917,6 +944,9 @@ exports.searchAvailableHotels = async (req, res) => {
                     MoTaChung: record.MoTaChung,
                     Latitude: record.Latitude,
                     Longitude: record.Longitude,
+                    MainImagePath: record.HotelMainImagePath
+                        ? `${req.protocol}://${req.get('host')}/${record.HotelMainImagePath}`
+                        : null,
                     roomTypes: []
                 };
             }
@@ -930,6 +960,9 @@ exports.searchAvailableHotels = async (req, res) => {
                 GiaCoSo: record.GiaCoSo,
                 DienTich: record.DienTich,
                 TienNghi: record.TienNghi,
+                RoomImagePath: record.RoomImagePath
+                    ? `${req.protocol}://${req.get('host')}/${record.RoomImagePath}`
+                    : null,
                 CauHinhGiuong: record.CauHinhGiuong,
                 SoGiuongDoi: record.SoGiuongDoi,
                 SoGiuongDon: record.SoGiuongDon,

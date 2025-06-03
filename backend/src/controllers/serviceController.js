@@ -150,7 +150,7 @@ exports.updateService = async (req, res) => {
         TenLoaiDV,
         GiaDV,
         MoTaDV,
-        IsActive     // Bắt buộc phải có trong body nếu muốn cập nhật nó
+        IsActive
     } = req.body;
 
     if(!MaLoaiDV || isNaN(MaLoaiDV)) {
