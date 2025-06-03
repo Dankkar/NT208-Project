@@ -404,9 +404,21 @@ SELECT * FROM NguoiDung
 select * from LoaiDichVu
 select * from KhachSan
 select * from hoadon
+select * from booking
 
 INSERT INTO AnhKhachSan (MaKS, TenFile, DuongDanAnh, LoaiAnh, ThuTu, MoTa)
 VALUES 
 (1, 'test1.jpg', 'uploads/hotels/test1.jpg', 'main', 1, 'Ảnh chính khách sạn'),
 (2, 'test2.jpg', 'uploads/hotels/test2.jpg', 'main', 2, 'Ảnh gallery 1'),
 (3, 'test3.jpg', 'uploads/hotels/test3.jpg', 'main', 3, 'Ảnh gallery 2');
+
+update booking
+set NgayTraPhong = '2025-04-20 17:00'
+where MaDat = 7
+
+select * from booking
+
+update hoadon
+set NgayLapHD = '2025-04-05 17:00'
+
+

@@ -515,7 +515,6 @@ exports.getAllHotels = async (req, res) => {
         const { page = 1, limit = 10, sortBy = 'rating', sortOrder = 'desc' } = req.query;
         const offset = (page - 1) * limit;
         const pool = await poolPromise;
-        const currentUser = req.user;
         const countResult = await pool.request().query(`
             SELECT COUNT(*) as total
             FROM KhachSan
@@ -641,7 +640,7 @@ exports.getHotelById = async (req, res) => {
             });
         }
 
-        const imageResult = await pool.request()
+        const imagesResult = await pool.request()
             .input('MaKS', sql.Int, MaKS)
             .query(`
                SELECT 

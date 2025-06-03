@@ -52,24 +52,6 @@
           />
         </router-link>
       </li>
-      <!-- ROOM BOOKING Dropdown -->
-      <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle" href="#" id="roomBookingDesktopDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-          <Button
-            content="ROOM BOOKING"
-            isDropdown
-            :textColor="computedDesktopButtonTextColor"
-            :colorHover="computedDesktopButtonColorHover"
-            :bgColorOnHover="computedDesktopButtonBgColorHover"
-            :bgActiveColor="activeDropdownButtonBgColor"
-            :textActiveColor="activeDropdownButtonTextColor"
-          />
-        </a>
-        <ul class="dropdown-menu" aria-labelledby="roomBookingDesktopDropdown">
-          <li><router-link class="dropdown-item" to="/room-booking/by-city">By City</router-link></li>
-          <li><router-link class="dropdown-item" to="/room-booking/by-date">By Date</router-link></li>
-        </ul>
-      </li>
       <!-- LOGIN (if not authenticated) -->
       <li class="nav-item" v-if="!authStore.isAuthenticated">
         <router-link class="nav-link" to="/login">
@@ -203,7 +185,7 @@ const logoSrc = computed(() => actualShowBg.value ? logouitblue : logouitwhite);
 const menuButtonNavigationItems = computed(() => {
   const baseItems = [
     { label: 'Home', path: '/homepage', icon: 'bi-house' },
-    { label: 'Hotels', path: '/hotels', icon: 'bi-building' },
+    { label: 'Hotels', path: '/hotel', icon: 'bi-building' },
     { label: 'Ratings', path: '/ratings', icon: 'bi-star' },
     { label: 'Reserve', path: '/bookingprocess', icon: 'bi-bookmark-plus' },
   ];
