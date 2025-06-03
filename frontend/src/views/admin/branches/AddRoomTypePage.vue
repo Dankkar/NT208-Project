@@ -129,7 +129,7 @@ async function submitAddRoomType() {
 
   try {
     // Gọi API createRoomType của bạn
-    const response = await axios.post('http://localhost:5000/api/roomTypes/${hotelId.value}', roomTypeData, {
+    const response = await axios.post(`http://localhost:5000/api/roomTypes/${hotelId.value}`, roomTypeData, {
       withCredentials: true
     });
     if (response.status === 201 && response.data?.message) { // API trả về 201 khi tạo thành công
