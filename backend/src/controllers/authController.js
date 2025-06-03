@@ -7,6 +7,17 @@ const {OAuth2Client} = require('google-auth-library');
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const schema = 'dbo';
 
+// In-memory set to track used reset tokens (for security)
+const usedResetTokens = new Set();
+
+// Clean up expired tokens every hour
+setInterval(() => {
+  // Since tokens expire in 15 minutes, we can clear tokens older than 1 hour
+  // In a production environment, you might want to use Redis for this
+  console.log('Cleaning up used reset tokens cache...');
+  usedResetTokens.clear();
+}, 60 * 60 * 1000); // 1 hour
+
 // Initialize session for guest users
 exports.initializeGuestSession = (req, res) => {
     // Check if user is already authenticated
@@ -270,6 +281,14 @@ exports.resetPassword = async (req, res) => {
   const { token, newPassword} = req.body;
   
   try{
+    // Check if token has already been used
+    if (usedResetTokens.has(token)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Token đã được sử dụng. Vui lòng yêu cầu reset password mới.'
+      });
+    }
+
     const decoded = jwt.verify(token, process.env.RESET_PASSWORD_SECRET);
 
     const pool = await poolPromise;
@@ -294,6 +313,9 @@ exports.resetPassword = async (req, res) => {
       .input('MaKH', sql.Int, decoded.MaKH)
       .input('MatKhauHash', sql.NVarChar, hasedPassword)
       .query(`UPDATE ${schema}.NguoiDung SET MatKhauHash = @MatKhauHash WHERE MaKH = @MaKH`);
+    
+    // Mark token as used to prevent reuse
+    usedResetTokens.add(token);
     
     res.status(200).json({ 
       success: true,

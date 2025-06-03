@@ -21,7 +21,7 @@ const {
 } = require('../controllers/hotelController');
 const { authenticateToken, isAdmin } = require('../middlewares/auth');
 const { LocationSuggestLimiter } = require('../middlewares/rateLimiter');
-const { uploadHotelImages } = require('../middlewares/upload');
+const { uploadHotelImages, uploadHotelImagesCreate } = require('../middlewares/upload');
 const router = express.Router();
 
 // ----------- PUBLIC ROUTES (NO AUTH) -----------
@@ -56,6 +56,7 @@ router.post(
   '/',
   authenticateToken,
   isAdmin,
+  uploadHotelImagesCreate.array('images', 10), // Upload ảnh optional
   [
     check('TenKS', 'Tên khách sạn không được để trống').notEmpty(),
     check('DiaChi', 'Địa chỉ không được để trống').notEmpty(),
@@ -67,8 +68,14 @@ router.post(
   createHotel
 );
 
-// PUT /hotels/:MaKS - cập nhật khách sạn (không có ảnh)
-router.put('/:MaKS', authenticateToken, isAdmin, updateHotel);
+// PUT /hotels/:MaKS - cập nhật khách sạn (với upload ảnh và quản lý ảnh)
+router.put(
+  '/:MaKS', 
+  authenticateToken, 
+  isAdmin, 
+  uploadHotelImages.array('images', 10), // Upload ảnh mới optional
+  updateHotel
+);
 
 // DELETE /hotels/:MaKS - xóa khách sạn (nếu cần)
 // router.delete('/:MaKS', authenticateToken, isAdmin, deleteHotel);

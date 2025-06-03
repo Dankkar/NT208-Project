@@ -9,7 +9,7 @@
           v-model="searchQuery"
           type="text"
           class="form-control"
-          placeholder="Enter user ID"
+          placeholder="Enter user email"
           aria-label="Search query"
         />
         <button class="btn btn-primary" type="submit" :disabled="isProcessing">

@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import LoginPage from "../views/LoginPage.vue"
 import SignupPage from "../views/SignupPage.vue"
 import ForgotPassPage from "../views/ForgotPassPage.vue"
+import ResetPasswordPage from "../views/ResetPasswordPage.vue"
 import HomePage from "../views/HomePage.vue"
 import MenuButton from '../components/MenuButton.vue'
 import Profile from '../views/Profile.vue'
@@ -38,6 +39,8 @@ const routes = [
   { path: '/login', name: 'Login', component: LoginPage },
   { path: '/signup',name: 'Signup', component: SignupPage },
   { path: '/forgotpass',name: 'Forgotpass', component: ForgotPassPage },
+  { path: '/reset-password/:token', name: 'ResetPassword', component: ResetPasswordPage },
+  { path: '/reset-password', name: 'ResetPasswordQuery', component: ResetPasswordPage },
   { path: '/Homepage',name: 'Homepage', component: HomePage,     meta: {navbarBehavior: 'homepage'}},
   { path: '/Menu', name: "Menu", component: MenuButton},
   { path: '/profile', name: "Profile", component:Profile, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},

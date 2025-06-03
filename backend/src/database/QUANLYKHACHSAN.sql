@@ -78,9 +78,11 @@ CREATE TABLE LoaiPhong (
     CONSTRAINT FK_LoaiPhong_KhachSan FOREIGN KEY (MaKS) REFERENCES KhachSan(MaKS) ON DELETE CASCADE -- Nếu KS bị xóa, các loại phòng cũng bị xóa
 );
 
+
 ALTER TABLE LoaiPhong
 ADD IsActive BIT DEFAULT 1 NOT NULL
 
+ALTER TABLE LoaiPhong ADD DuongDanAnh NVARCHAR(500) NULL;
 -- Bảng Cấu Hình Giường (Bed Configuration)
 CREATE TABLE CauHinhGiuong (
     MaCauHinhGiuong INT PRIMARY KEY IDENTITY(1,1),  -- Mã cấu hình giường (PK)
@@ -118,6 +120,8 @@ CREATE TABLE LoaiDichVu (
     CONSTRAINT FK_LoaiDichVu_KhachSan FOREIGN KEY (MaKS) REFERENCES KhachSan(MaKS) ON DELETE CASCADE -- Nếu KS xóa, dịch vụ cũng xóa
 );
 
+ALTER TABLE LoaiDichVu
+ADD IsActive BIT DEFAULT 1 NOT NULL
 -- Bảng Khuyến Mãi (Promotion)
 CREATE TABLE KhuyenMai (
     MaKM INT PRIMARY KEY IDENTITY(1,1),         -- Mã Khuyến mãi (PK)
@@ -402,11 +406,12 @@ ADD MaKhach INT NULL,
 select * from LoaiPhong
 SELECT * FROM NguoiDung
 select * from LoaiDichVu
-select * from KhachSan
-select * from hoadon
-
+-- Chạy trong SQL Server Management Studio
 INSERT INTO AnhKhachSan (MaKS, TenFile, DuongDanAnh, LoaiAnh, ThuTu, MoTa)
 VALUES 
 (1, 'test1.jpg', 'uploads/hotels/test1.jpg', 'main', 1, 'Ảnh chính khách sạn'),
-(2, 'test2.jpg', 'uploads/hotels/test2.jpg', 'main', 2, 'Ảnh gallery 1'),
-(3, 'test3.jpg', 'uploads/hotels/test3.jpg', 'main', 3, 'Ảnh gallery 2');
+(1, 'test2.jpg', 'uploads/hotels/test2.jpg', 'gallery', 2, 'Ảnh gallery 1'),
+(1, 'test3.jpg', 'uploads/hotels/test3.jpg', 'gallery', 3, 'Ảnh gallery 2');
+
+SELECT * FROM AnhKhachSan
+select * from KhachSan
