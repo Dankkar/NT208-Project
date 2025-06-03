@@ -32,10 +32,6 @@
                     Giá từ: <strong class="text-danger">{{ formatCurrency(hotel.priceRange.min) }}</strong> / đêm
                   </span>
                 </div>
-                <!-- Nút đặt phòng tổng thể (nếu có) -->
-                <button v-if="canBookOverall" @click="initiateBookingForHotel(hotel)" class="btn btn-success btn-lg">
-                    Book This Hotel Now
-                </button>
               </div>
               <div class="col-lg-5">
                 <img :src="hotel.MainImagePath || defaultPlaceholderImage" @error="onImageError" :alt="hotel.TenKS" class="img-fluid rounded shadow-sm main-hotel-image">
@@ -172,7 +168,7 @@ const fetchHotelDetails = async (hotelId) => {
   hotel.value = null;
   try {
     console.log(`Fetching details for hotel ID from API: ${hotelId}`);
-    const response = await axios.get(`/api/hotels/${hotelId}`); // Đã có /api từ baseURL
+    const response = await axios.get(`/api/hotels/${hotelId}`); 
 
     if (response.data && response.data.success) {
       const apiHotelData = response.data.data;
@@ -244,19 +240,6 @@ const initiateBookingForRoom = (currentHotel, selectedRoomType) => {
 
 
 
-};
-
-// (Tùy chọn) Nếu có nút "Book This Hotel Now" tổng thể
-const initiateBookingForHotel = (currentHotel) => {
-    console.log(`HotelDetails: Initiating booking for Hotel ID: ${currentHotel.MaKS}`);
-     bookingStore.setPreselectedBookingIntent({
-        hotelId: currentHotel.MaKS,
-        hotelName: currentHotel.TenKS,
-        // roomTypeId, roomName, roomPrice, roomMaxGuests sẽ là null hoặc undefined
-        // Step1_SearchForm sẽ cần xử lý trường hợp này (chỉ có thông tin khách sạn)
-    });
-    bookingStore.startBookingFromScratch();
-    router.push('/BookingProcess');
 };
 
 const goBack = () => {
