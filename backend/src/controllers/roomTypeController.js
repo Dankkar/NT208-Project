@@ -11,8 +11,60 @@ exports.createRoomType = async (req, res) => {
         MoTa
     } = req.body;
 
+    //Validate required fields
+    if (!MaKS || !TenLoaiPhong || !SoGiuong || !GiaCoSo) {
+        return res.status(400).json({
+            success: false,
+            error: 'Vui lòng điền đầy đủ các trường bắt buộc'
+        });
+    }
+
+    
     try {
         const pool = await poolPromise;
+        const fs = require('fs');
+        const path = require('path');
+
+        const hotelCheck = await pool.request()
+            .input('MaKS', sql.Int, MaKS)
+            .query(`
+                SELECT * FROM KhachSan WHERE MaKS = @MaKS AND IsActive = 1
+            `);
+
+        if (hotelCheck.recordset.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Không tìm thấy khách sạn hợp lệ'
+            });
+        }
+
+        const hotel = hotelCheck.recordset[0];
+        let imagePath = null;
+        let imageAction = 'none';
+
+        //Xu ly anh
+        if(req.file) {
+            let finalPath = req.file.path;
+            let relativePath = '';
+
+            if(req.file.path.includes('temp')) {
+                //Di chuyen tu temp folder den dung thu muc
+                const targetDir = path.join(__dirname, `../../uploads/hotels/${hotel.MaKS}/room-types`);
+                if(!fs.existsSync(targetDir)) {
+                    fs.mkdirSync(targetDir, {recursive: true}); 
+                }
+                const targetPath = path.join(targetDir, req.file.filename);
+                fs.renameSync(req.file.path, targetPath);
+                finalPath = targetPath;
+                relativePath = `uploads/hotels/${hotel.MaKS}/room-types/${req.file.filename}`;
+            } else {
+                relativePath = `uploads/hotels/${hotel.MaKS}/room-types/${req.file.filename}`;
+            }
+            imagePath = relativePath;
+            imageAction = 'uploaded';
+        }
+
+        //Tao loai phong
         const result = await pool.request()
             .input('MaKS', sql.Int, MaKS)
             .input('TenLoaiPhong', sql.NVarChar, TenLoaiPhong)
@@ -21,18 +73,41 @@ exports.createRoomType = async (req, res) => {
             .input('DienTich', sql.Decimal(8, 2), DienTich)
             .input('GiaCoSo', sql.Decimal(18, 2), GiaCoSo)
             .input('MoTa', sql.NVarChar, MoTa)
+            .input('DuongDanAnh', sql.NVarChar, imagePath)
             .query(`
-                INSERT INTO LoaiPhong (MaKS, TenLoaiPhong, SoGiuong, TienNghi, DienTich, GiaCoSo, MoTa)
-                VALUES (@MaKS, @TenLoaiPhong, @SoGiuong, @TienNghi, @DienTich, @GiaCoSo, @MoTa)
+                INSERT INTO LoaiPhong (MaKS, TenLoaiPhong, SoGiuong, TienNghi, DienTich, GiaCoSo, MoTa, DuongDanAnh)
+                OUTPUT INSERTED.MaLoaiPhong
+                VALUES (@MaKS, @TenLoaiPhong, @SoGiuong, @TienNghi, @DienTich, @GiaCoSo, @MoTa, @DuongDanAnh)
             `);
-        
-        res.status(201).json({message: 'Loại phòng đã được tạo thành công'});
+
+        const newRoomTypeId = result.recordset[0].MaLoaiPhong;
+
+        let message = 'Loại phòng đã được tạo thành công';
+        if(imageAction === 'uploaded') {
+            message += ' và đã upload ảnh';
+        }
+
+        res.status(201).json({
+            success: true,
+            message: message,
+            data: {
+                MaLoaiPhong: newRoomTypeId,
+                TenLoaiPhong: TenLoaiPhong,
+                HotelName: hotel.TenKS,
+                ImagePath: imagePath ? `${req.protocol}://${req.get('host')}/${imagePath}` : null,
+                ImageAction: imageAction
+            }
+        });
     }
     catch (err) {
         console.error('Lỗi createRoomType:', err);
-        res.status(500).json({error: 'Lỗi server'});
-    }   
-}
+        res.status(500).json({
+            success: false,
+            error: 'Lỗi server'
+        });
+    }
+};
+
 
 exports.getRoomTypesByHotel = async (req, res) => {
     const { MaKS } = req.params;
@@ -66,14 +141,21 @@ exports.getRoomTypesByHotel = async (req, res) => {
                 LEFT JOIN Phong p ON lp.MaLoaiPhong = p.MaLoaiPhong
                 WHERE lp.MaKS = @MaKS
                 GROUP BY lp.MaLoaiPhong, lp.MaKS, lp.TenLoaiPhong, lp.SoGiuong, lp.TienNghi, 
-                         lp.DienTich, lp.GiaCoSo, lp.MoTa, lp.IsActive
+                         lp.DienTich, lp.GiaCoSo, lp.MoTa, lp.IsActive, lp.DuongDanAnh
                 ORDER BY lp.MaLoaiPhong DESC
                 OFFSET @offset ROWS
                 FETCH NEXT @limit ROWS ONLY
             `);
+
+        const roomTypeWithImage = result.recordset.map(roomType => {
+            return {
+                ...roomType,
+                RoomTypeImagePath: roomType.DuongDanAnh ? `${req.protocol}://${req.get('host')}/${roomType.DuongDanAnh}` : null
+            }
+        })
         res.json({
             success: true,
-            data: result.recordset,
+            data: roomTypeWithImage,
             pagination: {
                 total: countResult.recordset[0].total,
                 page: parseInt(page),
@@ -97,7 +179,8 @@ exports.updateRoomType = async (req, res) => {
         DienTich,
         GiaCoSo,
         MoTa,
-        IsActive
+        IsActive,
+        deleteImage //flag de xoa anh
     } = req.body;
 
     if(!MaLoaiPhong || isNaN(MaLoaiPhong)) {
@@ -106,6 +189,88 @@ exports.updateRoomType = async (req, res) => {
 
     try {
         const pool = await poolPromise;
+        const fs = require('fs');
+        const path = require('path');
+
+        const currentRoomTypeResult = await pool.request()
+            .input('MaLoaiPhong', sql.Int, parseInt(MaLoaiPhong))
+            .query(`
+                SELECT lp.*, ks.TenKS
+                FROM LoaiPhong lp
+                JOIN KhachSan ks ON lp.MaKS = ks.MaKS
+                WHERE lp.MaLoaiPhong = @MaLoaiPhong AND lp.IsActive = 1    
+            `);
+
+        if(currentRoomTypeResult.recordset.length === 0)
+        {
+            return res.status(404).json({
+                success: false,
+                error: 'Không tìm thấy loại phòng'
+            });
+        }
+
+        const currentRoomType = currentRoomTypeResult.recordset[0];
+        const hotelId = currentRoomType.MaKS;
+        let newImagePath = currentRoomType.DuongDanAnh; //Giu anh cu la mac dinh
+        let imageAction = 'unchanged'; //track hanh dong voi anh
+
+        //Xu ly anh
+        if (deleteImage === 'true' || deleteImage === true)
+        {
+            //Truong hop 1: Xoa anh hien tai
+            if (currentRoomType.DuongDanAnh) {
+                try {
+                    const oldFilePath = path.join(__dirname, '../../', currentRoomType.DuongDanAnh);
+                    if (fs.existsSync(oldFilePath)) {
+                        fs.unlinkSync(oldFilePath);
+                    }
+                } catch (fileError) {
+                    console.warn(`Không thể xóa file cũ: ${currentRoomType.DuongDanAnh}`, fileError);
+                }
+            }
+            newImagePath = null;
+            imageAction = 'deleted';
+        }
+        else if (req.file)
+        {
+          //Truong hop 2: Upload anh moi
+          
+          //Xoa anh cu neu co
+          if(currentRoomType.DuongDanAnh) {
+            try {
+                const oldFilePath = path.join(__dirname, '../../', currentRoomType.DuongDanAnh);
+                if (fs.existsSync(oldFilePath)) {
+                    fs.unlinkSync(oldFilePath);
+                }
+            } catch (fileError) {
+                console.warn(`Không thể xóa file cũ: ${currentRoomType.DuongDanAnh}`, fileError);
+            }
+          }
+
+          //Xu ly anh moi
+          let finalPath = req.file.path;
+          let relativePath = '';
+
+          if(req.file.path.includes('temp')) {
+            //Di chuyen tu temp folder den dung thu muc
+            const targetDir = path.join(__dirname, `../../uploads/hotels/${hotelId}/room-types`);
+            if(!fs.existsSync(targetDir)) {
+                fs.mkdirSync(targetDir, {recursive: true});
+            }
+            const targetPath = path.join(targetDir, req.file.filename);
+            fs.renameSync(req.file.path, targetPath);
+            finalPath = targetPath;
+            relativePath = `uploads/hotels/${hotelId}/room-types/${req.file.filename}`;
+          }
+          else {
+            relativePath = `uploads/hotels/${hotelId}/room-types/${req.file.filename}`;
+          }
+          newImagePath = relativePath;
+          imageAction = 'uploaded';
+        }
+        // Trường hợp 3: Giữ nguyên ảnh hiện tại (không có deleteImage và không có file mới)
+
+        //Cap nhat thong tin loai phong 
         const result = await pool.request()
             .input('MaLoaiPhong', sql.Int, MaLoaiPhong)
             .input('TenLoaiPhong', sql.NVarChar, TenLoaiPhong)
@@ -115,6 +280,7 @@ exports.updateRoomType = async (req, res) => {
             .input('GiaCoSo', sql.Decimal(18, 2), GiaCoSo)
             .input('MoTa', sql.NVarChar, MoTa)
             .input('IsActive', sql.Bit, IsActive)
+            .input('DuongDanAnh', sql.NVarChar, newImagePath)
             .query(`
                 UPDATE LoaiPhong
                 SET TenLoaiPhong = @TenLoaiPhong,
@@ -123,14 +289,42 @@ exports.updateRoomType = async (req, res) => {
                     DienTich = @DienTich,
                     GiaCoSo = @GiaCoSo,
                     MoTa = @MoTa,
-                    IsActive = @IsActive
+                    IsActive = @IsActive,
+                    DuongDanAnh = @DuongDanAnh
                 WHERE MaLoaiPhong = @MaLoaiPhong
             `);
-        res.json({message: 'Loại phòng đã được cập nhật thành công'});
+        // Tạo response message dựa trên hành động với ảnh
+        let message = 'Loại phòng đã được cập nhật thành công';
+        switch(imageAction) {
+            case 'uploaded':
+                message += ' và đã upload ảnh mới';
+                break;
+            case 'deleted':
+                message += ' và đã xóa ảnh';
+                break;
+            case 'unchanged':
+                message += ' (ảnh giữ nguyên)';
+                break;
+        }
+
+        res.json({
+            success: true,
+            message: message,
+            data: {
+                MaLoaiPhong: parseInt(MaLoaiPhong),
+                TenLoaiPhong: TenLoaiPhong,
+                HotelName: currentRoomType.TenKS,
+                ImagePath: newImagePath ? `${req.protocol}://${req.get('host')}/${newImagePath}` : null,
+                ImageAction: imageAction
+            }
+        });
     }
     catch (err) {
         console.error('Lỗi updateRoomType:', err);
-        res.status(500).json({error: 'Lỗi server'});
+        res.status(500).json({
+            success: false,
+            error: 'Lỗi server'
+        });
     }
 }
 
@@ -194,6 +388,7 @@ exports.compareRoomTypes = async (req, res) => {
                         lp.DienTich,
                         lp.GiaCoSo,
                         lp.MoTa,
+                        lp.DuongDanAnh,
                         ks.TenKS,
                         ks.HangSao,
                         ks.DiaChi,
@@ -204,7 +399,8 @@ exports.compareRoomTypes = async (req, res) => {
                     LEFT JOIN Phong p ON lp.MaLoaiPhong = p.MaLoaiPhong
                     WHERE lp.MaLoaiPhong = @typeId1
                     GROUP BY lp.MaLoaiPhong, lp.TenLoaiPhong, lp.TienNghi, 
-                             lp.DienTich, lp.GiaCoSo, lp.MoTa, ks.TenKS, ks.HangSao, ks.DiaChi
+                             lp.DienTich, lp.GiaCoSo, lp.MoTa, lp.DuongDanAnh,
+                             ks.TenKS, ks.HangSao, ks.DiaChi
                 ),
                 Type2 AS (
                     SELECT 
@@ -214,6 +410,7 @@ exports.compareRoomTypes = async (req, res) => {
                         lp.DienTich,
                         lp.GiaCoSo,
                         lp.MoTa,
+                        lp.DuongDanAnh,
                         ks.TenKS,
                         ks.HangSao,
                         ks.DiaChi,
@@ -224,7 +421,8 @@ exports.compareRoomTypes = async (req, res) => {
                     LEFT JOIN Phong p ON lp.MaLoaiPhong = p.MaLoaiPhong
                     WHERE lp.MaLoaiPhong = @typeId2
                     GROUP BY lp.MaLoaiPhong, lp.TenLoaiPhong, lp.TienNghi, 
-                             lp.DienTich, lp.GiaCoSo, lp.MoTa, ks.TenKS, ks.HangSao, ks.DiaChi
+                             lp.DienTich, lp.GiaCoSo, lp.MoTa, lp.DuongDanAnh,
+                             ks.TenKS, ks.HangSao, ks.DiaChi
                 )
                 SELECT 
                     t1.MaLoaiPhong as Type1Id,
@@ -233,6 +431,7 @@ exports.compareRoomTypes = async (req, res) => {
                     t1.DienTich as Type1Area,
                     t1.GiaCoSo as Type1Price,
                     t1.MoTa as Type1Description,
+                    t1.DuongDanAnh as Type1ImagePath,
                     t1.TenKS as Type1HotelName,
                     t1.HangSao as Type1HotelStars,
                     t1.DiaChi as Type1HotelAddress,
@@ -245,6 +444,7 @@ exports.compareRoomTypes = async (req, res) => {
                     t2.DienTich as Type2Area,
                     t2.GiaCoSo as Type2Price,
                     t2.MoTa as Type2Description,
+                    t2.DuongDanAnh as Type2ImagePath,
                     t2.TenKS as Type2HotelName,
                     t2.HangSao as Type2HotelStars,
                     t2.DiaChi as Type2HotelAddress,
@@ -270,6 +470,9 @@ exports.compareRoomTypes = async (req, res) => {
                 DienTich: result.recordset[0].Type1Area,
                 GiaCoSo: result.recordset[0].Type1Price,
                 MoTa: result.recordset[0].Type1Description,
+                RoomImagePath: result.recordset[0].Type1ImagePath
+                    ? `${req.protocol}://${req.get('host')}/${result.recordset[0].Type1ImagePath}`
+                    : null,
                 hotel: {
                     TenKS: result.recordset[0].Type1HotelName,
                     HangSao: result.recordset[0].Type1HotelStars,
@@ -287,6 +490,9 @@ exports.compareRoomTypes = async (req, res) => {
                 DienTich: result.recordset[0].Type2Area,
                 GiaCoSo: result.recordset[0].Type2Price,
                 MoTa: result.recordset[0].Type2Description,
+                RoomImagePath: result.recordset[0].Type2ImagePath
+                    ? `${req.protocol}://${req.get('host')}/${result.recordset[0].Type2ImagePath}`
+                    : null,
                 hotel: {
                     TenKS: result.recordset[0].Type2HotelName,
                     HangSao: result.recordset[0].Type2HotelStars,
@@ -324,17 +530,38 @@ exports.getRoomTypeById = async (req, res) => {
         const pool = await poolPromise;
         const result = await pool.request()
             .input('MaLoaiPhong', sql.Int, MaLoaiPhong)
-            .query('SELECT * FROM LoaiPhong WHERE MaLoaiPhong = @MaLoaiPhong'); // Chọn tất cả các cột (*) hoặc các cột cần thiết
+            .query(`
+                SELECT 
+                    lp.*,
+                    ks.TenKS,
+                    ks.DiaChi,
+                    ks.HangSao
+                FROM LoaiPhong lp
+                JOIN KhachSan ks ON lp.MaKS = ks.MaKS
+                WHERE lp.MaLoaiPhong = @MaLoaiPhong AND lp.IsActive = 1
+            `);
 
         if (result.recordset.length > 0) {
-            // Trả về toàn bộ object của loại phòng
-            // Bao gồm MaKS, TenLoaiPhong, SoGiuong, TienNghi, DienTich, GiaCoSo, MoTa, IsActive
-            res.json({ success: true, data: result.recordset[0] });
+            const roomType = result.recordset[0];
+            const roomTypeWithImage = {
+                ...roomType,
+                RoomImagePath: roomType.DuongDanAnh 
+                    ? `${req.protocol}://${req.get('host')}/${roomType.DuongDanAnh}` 
+                    : null
+            };
+
+            res.json({ 
+                success: true, 
+                data: roomTypeWithImage 
+            });
         } else {
-            res.status(404).json({ success: false, message: `Không tìm thấy loại phòng với ID ${id}.` });
+            res.status(404).json({ 
+                success: false, 
+                message: `Không tìm thấy loại phòng với ID ${MaLoaiPhong}.` 
+            });
         }
     } catch (err) {
-        console.error(`Lỗi khi lấy chi tiết loại phòng ID ${id}:`, err);
+        console.error(`Lỗi khi lấy chi tiết loại phòng ID ${MaLoaiPhong}:`, err);
         // Trong môi trường development, bạn có thể muốn trả về chi tiết lỗi
         const errorMessage = process.env.NODE_ENV === 'development' ? err.message : 'Lỗi server khi lấy chi tiết loại phòng.';
         res.status(500).json({ success: false, error: errorMessage });
