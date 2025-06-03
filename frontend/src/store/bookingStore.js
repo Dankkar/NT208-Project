@@ -157,21 +157,56 @@ export const useBookingStore = defineStore('booking', {
 
   actions: {
     async setSearchCriteriaAndFetchRooms(searchData) {
-      this.searchCriteria = searchData;
+      const oldSearchCriteria = this.searchCriteria ? JSON.parse(JSON.stringify(this.searchCriteria)) : null;
+      const newSearchIsDifferent = !oldSearchCriteria ||
+                                  searchData.startDate !== oldSearchCriteria.startDate ||
+                                  searchData.endDate !== oldSearchCriteria.endDate ||
+                                  searchData.numberOfGuests !== oldSearchCriteria.numberOfGuests;
+
+      this.searchCriteria = searchData; // Luôn cập nhật searchCriteria mới
       if (this.maxCompletedStep < 0 && searchData) this.maxCompletedStep = 0;
 
       this.isLoadingRooms = true;
-      this.roomsError = null; this.availableHotelsAndRooms = [];
-      this.preselectedIntent = null; this.heldBookingMaDat = null;
-      this.heldBookingExpiresAt = null; this.holdError = null;
+      this.roomsError = null;
+      this.availableHotelsAndRooms = [];
+
+      // QUAN TRỌNG: Logic xử lý lượt giữ hiện tại
+      const isCurrentlyHolding = !!this.heldBookingMaDat && !!this.heldBookingExpiresAt && this.heldBookingExpiresAt > Date.now();
+
+      if (isCurrentlyHolding && newSearchIsDifferent) {
+        // Có lượt giữ còn hạn VÀ người dùng thực hiện một tìm kiếm MỚI KHÁC HẲN
+        // Lúc này, không reset ngay thông tin giữ chỗ.
+        // Step2 sẽ hiển thị thông báo "Action Required" và cho phép người dùng quyết định.
+        console.log("[Store setSearch] New search criteria while a hold is active. Hold data will be kept for now.");
+        this.preselectedIntent = null;
+      } else if (!isCurrentlyHolding || newSearchIsDifferent) {
+        // Không có lượt giữ còn hạn, HOẶC có nhưng tìm kiếm mới khác hẳn VÀ người dùng đã xử lý ở Step 2 (ví dụ Discard)
+        // HOẶC đây là lần tìm kiếm đầu tiên.
+        // Reset các thông tin liên quan đến lựa chọn và giữ phòng cũ.
+        console.log("[Store setSearch] No active hold OR new search. Resetting hold/selection states.");
+        this.preselectedIntent = null;
+        this.heldBookingMaDat = null;
+        this.heldBookingExpiresAt = null;
+        this.holdError = null;
+        this.selectedHotelDetails = null;
+        this.selectedRoomTypeDetails = null;
+      }
+      // Nếu isCurrentlyHolding và newSearchIsSame, không làm gì cả với các state giữ chỗ.
+
+      // Reset các state của bước sau nếu đây là một tìm kiếm mới thực sự khác
+      if (newSearchIsDifferent) {
+        this.guestAndPaymentInput = null;
+        this.finalBookingReference = null;
+        this.isCreatingBooking = false;
+        this.createBookingError = null;
+      }
+
 
       try {
-        // Giả sử axios.defaults.baseURL = 'http://localhost:5000'
-        // và API backend có tiền tố /api
-        const res = await axios.get(`/api/bookings/search`, { params: searchData });
+        const res = await axios.get(`/api/bookings/search`, { params: this.searchCriteria }); // Dùng this.searchCriteria
         if (res.data && res.data.success) {
             this.availableHotelsAndRooms = res.data.data || [];
-            this.currentStep = 2;
+            this.currentStep = 2; // Luôn chuyển đến Step 2 để hiển thị kết quả mới hoặc thông báo "Action Required"
             this.maxCompletedStep = Math.max(this.maxCompletedStep, 1);
         } else {
             throw new Error(res.data.message || 'Search request did not return success.');
@@ -276,12 +311,19 @@ export const useBookingStore = defineStore('booking', {
     },
 
     startBookingFromScratch() {
-      const intent = this.preselectedIntent;
+      // const intent = this.preselectedIntent;
       this.$reset();
-      this.currentStep = 1; this.maxCompletedStep = 0; this.preselectedIntent = intent;
-      this.roomsError = null; this.isLoadingRooms = false; this.holdError = null;
-      this.isHoldingRoom = false; this.createBookingError = null; this.isCreatingBooking = false;
-      this.heldBookingMaDat = null; this.heldBookingExpiresAt = null;
+      this.currentStep = 1; 
+      this.maxCompletedStep = 0; 
+      // this.preselectedIntent = intent;
+      this.roomsError = null; 
+      this.isLoadingRooms = false; 
+      this.holdError = null;
+      this.isHoldingRoom = false; 
+      this.createBookingError = null; 
+      this.isCreatingBooking = false;
+      this.heldBookingMaDat = null; 
+      this.heldBookingExpiresAt = null;
     },
 
     navigateToStep(stepId) {
@@ -295,10 +337,15 @@ export const useBookingStore = defineStore('booking', {
             this.createBookingError = null; this.clearPreselectedBookingIntent();
             this.maxCompletedStep = 0;
           } else if (stepId < 3) { // Về Step 2
-            this.selectedHotelDetails = null; this.selectedRoomTypeDetails = null;
-            this.guestAndPaymentInput = null; this.finalBookingReference = null;
-            this.heldBookingMaDat = null; this.heldBookingExpiresAt = null; this.holdError = null;
-            this.createBookingError = null; this.clearPreselectedBookingIntent();
+            // this.selectedHotelDetails = null; 
+            // this.selectedRoomTypeDetails = null;
+            this.guestAndPaymentInput = null; 
+            this.finalBookingReference = null;
+            // this.heldBookingMaDat = null; 
+            // this.heldBookingExpiresAt = null;
+            // this.holdError = null;
+            this.createBookingError = null; 
+            this.clearPreselectedBookingIntent();
             this.maxCompletedStep = Math.min(this.maxCompletedStep, 1);
           } else if (stepId < 4) { // Về Step 3
             this.finalBookingReference = null; this.createBookingError = null;

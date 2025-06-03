@@ -125,6 +125,8 @@
 
 <script setup>
 import { defineProps } from 'vue';
+import {ref, onMounted} from 'vue';
+import axios from 'axios';
 
 // Helper component for star ratings (can be in a separate file)
 // Giữ nguyên component StarRating như trước, hoặc bạn có thể thay thế sao bằng Bootstrap Icons
@@ -209,6 +211,14 @@ const formatPrice = (value) => {
   if (value == null) return 'N/A';
   return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 };
+
+
+// onMounted(() => {
+//   try {
+//     const res = awwait axios.
+//   }
+// });
+
 </script>
 
 <style scoped>

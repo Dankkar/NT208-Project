@@ -14,34 +14,36 @@
          class="alert alert-warning text-center">
       <h5 class="alert-heading">Action Required</h5>
       <p>{{ bookingStore.holdError }}</p>
+      <p class="small text-muted" v-if="bookingStore.heldBookingExpiresAt">
+        Your current hold will expire in approximately: {{ formatTimeUntilExpiry(bookingStore.heldBookingExpiresAt) }}
+      </p>
       <hr>
-      <button class="btn btn-primary me-2" @click="resumeHeldBooking" :disabled="isRetrying">
+      <button class="btn btn-primary me-2" @click="resumeHeldBooking" :disabled="isProcessingAction">
         <i class="bi bi-arrow-right-circle-fill me-1"></i> Continue with Held Booking
       </button>
-      <button class="btn btn-outline-secondary me-2" @click="goToMyBookingsPage" :disabled="isRetrying">
+      <button class="btn btn-outline-secondary me-2" @click="goToMyBookingsPage" :disabled="isProcessingAction">
         <i class="bi bi-list-check me-1"></i> View My Bookings
       </button>
-      <button class="btn btn-outline-danger" @click="discardHoldAndSearchNew" :disabled="isRetrying">
-         <span v-if="isRetrying" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-         <i v-if="!isRetrying" class="bi bi-trash me-1"></i>
-         {{ isRetrying ? 'Processing...' : 'Discard Hold & Search New' }}
-      </button>
+          <button class="btn btn-outline-info" @click="waitForHoldToExpire" :disabled="isProcessingAction">
+          <i class="bi bi-hourglass-split me-1"></i> I'll Wait for Current Hold to Expire
+        </button>
+
     </div>
 
     <!-- Lỗi khác từ Store -->
     <div v-else-if="bookingStore.roomsError || bookingStore.holdError" class="alert alert-danger text-center">
       <p class="mb-1"><strong>{{ bookingStore.holdError ? 'Could not hold the room.' : 'Could not load rooms.' }}</strong></p>
       <p>{{ bookingStore.holdError || bookingStore.roomsError }}</p>
-      <button class="btn btn-sm btn-primary" @click="retryGeneralError" :disabled="isRetrying || bookingStore.isLoadingRooms">
-        <span v-if="isRetrying || bookingStore.isLoadingRooms" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-        {{ (isRetrying || bookingStore.isLoadingRooms) ? 'Processing...' : 'Try Again' }}
+      <button class="btn btn-sm btn-primary" @click="retryGeneralError" :disabled="isProcessingAction || bookingStore.isLoadingRooms">
+        <span v-if="(isProcessingAction && actionName === 'retryGeneral') || bookingStore.isLoadingRooms" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        {{ ((isProcessingAction && actionName === 'retryGeneral') || bookingStore.isLoadingRooms) ? 'Retrying...' : 'Try Again' }}
       </button>
       <button class="btn btn-sm btn-link ms-2" @click="goToStep1AndClearIntent">Modify Search</button>
     </div>
 
     <!-- Danh sách phòng -->
     <div v-else-if="roomsToDisplay && roomsToDisplay.length > 0" class="room-list">
-      <div v-if="showIntentFailedMessage" class="alert alert-info text-center small py-2"> <!-- Đổi sang alert-info -->
+      <div v-if="showIntentFailedMessage" class="alert alert-info text-center small py-2">
         The room you initially selected ({{ bookingStore.preselectedIntent?.roomName || 'your previously eyed room' }}
         at {{ bookingStore.preselectedIntent?.hotelName || 'the hotel' }})
         is not available for the chosen dates. Please explore other options below or change your search.
@@ -76,36 +78,127 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, watch, defineEmits } from 'vue';
-import { format } from 'date-fns';
-import VueCard1 from '../../vueCard1.vue'; // Giả định đường dẫn đúng
+import { computed, ref, onMounted, watch, defineEmits, onBeforeUnmount } from 'vue';
+import { format, formatDistanceToNowStrict } from 'date-fns';
+import VueCard1 from '../../vueCard1.vue';
 import { useBookingStore } from '@/store/bookingStore';
 import { useRouter } from 'vue-router';
-// import axios from 'axios'; // Nếu cần gọi API release-hold trực tiếp
+
+const holdExpiryTimerInterval = ref(null); // Interval cho timer hiển thị
+const timeUntilExpiryDisplay = ref(''); // Chuỗi hiển thị thời gian còn lại
+
+const formatTimeUntilExpiry = (expiryTimestamp) => {
+  if (!expiryTimestamp) return '';
+  const timeLeft = expiryTimestamp - Date.now();
+  if (timeLeft <= 0) return 'Expired';
+  return formatDistanceToNowStrict(new Date(expiryTimestamp), { addSuffix: false }); // Ví dụ: "14 minutes", "2 hours"
+};
+
+const updateHoldExpiryDisplay = () => {
+    if (bookingStore.heldBookingExpiresAt && bookingStore.holdError && bookingStore.holdError.includes('Bạn đã có một đơn đặt phòng đang được giữ')) {
+        const timeLeftValue = bookingStore.heldBookingExpiresAt - Date.now();
+        if (timeLeftValue > 0) {
+            timeUntilExpiryDisplay.value = formatDistanceToNowStrict(new Date(bookingStore.heldBookingExpiresAt), { addSuffix: true });
+        } else {
+            timeUntilExpiryDisplay.value = 'Expired. You can try holding a room again.';
+            if (holdExpiryTimerInterval.value) clearInterval(holdExpiryTimerInterval.value);
+          
+        }
+    } else {  
+         timeUntilExpiryDisplay.value = '';
+         if (holdExpiryTimerInterval.value) clearInterval(holdExpiryTimerInterval.value);
+    }
+};
+
 
 const emit = defineEmits(['room-hold-requested']);
 
 const bookingStore = useBookingStore();
 const router = useRouter();
-const isRetrying = ref(false);
+const isProcessingAction = ref(false);
+const actionName = ref('');
 const initialLoad = ref(true);
 const showIntentFailedMessage = ref(false);
 
 const roomsToDisplay = computed(() => bookingStore.availableHotelsAndRooms);
 
-onMounted(() => { /* ... giữ nguyên ... */ });
-watch(() => bookingStore.preselectedIntent, (newIntent) => { /* ... giữ nguyên ... */ }, { immediate: true });
+onMounted(() => {
+    if (!bookingStore.isLoadingRooms) {
+        initialLoad.value = false;
+    }
+    if (bookingStore.currentStep === 2 && bookingStore.preselectedIntent && !bookingStore.isHoldingRoom) {
+        const intent = bookingStore.preselectedIntent;
+        const hotelData = bookingStore.availableHotelsAndRooms.find(h => h.MaKS === intent.hotelId);
+        if (hotelData) {
+            const roomTypeData = hotelData.roomTypes.find(rt => rt.MaLoaiPhong === intent.roomTypeId);
+            if (!roomTypeData || roomTypeData.SoPhongTrong <= 0) {
+                showIntentFailedMessage.value = true;
+            }
+        } else {
+             showIntentFailedMessage.value = true;
+        }
+    }
+    const unwatchLoading = watch(() => bookingStore.isLoadingRooms, (newValue) => {
+        if (!newValue) {
+            initialLoad.value = false;
+            if(unwatchLoading) unwatchLoading();
+        }
+    }, { immediate: bookingStore.isLoadingRooms });
+
+     watch(() => bookingStore.holdError, (newError) => {
+        if (newError && newError.includes('Bạn đã có một đơn đặt phòng đang được giữ')) {
+            updateHoldExpiryDisplay(); 
+            if (!holdExpiryTimerInterval.value) {
+                holdExpiryTimerInterval.value = setInterval(updateHoldExpiryDisplay, 2000); 
+            }
+        } else {
+            if (holdExpiryTimerInterval.value) clearInterval(holdExpiryTimerInterval.value);
+            holdExpiryTimerInterval.value = null;
+            timeUntilExpiryDisplay.value = '';
+        }
+    }, { immediate: true });
+
+});
+
+
+
+onBeforeUnmount(() => {
+    if (holdExpiryTimerInterval.value) clearInterval(holdExpiryTimerInterval.value);
+});
+
+watch(() => bookingStore.preselectedIntent, (newIntent) => {
+    if (bookingStore.currentStep === 2) {
+        if (newIntent) {
+            const hotelData = bookingStore.availableHotelsAndRooms.find(h => h.MaKS === newIntent.hotelId);
+            if (hotelData) {
+                const roomTypeData = hotelData.roomTypes.find(rt => rt.MaLoaiPhong === newIntent.roomTypeId);
+                if (!roomTypeData || roomTypeData.SoPhongTrong <= 0) {
+                    showIntentFailedMessage.value = true;
+                } else {
+                    showIntentFailedMessage.value = false;
+                }
+            } else {
+                showIntentFailedMessage.value = true;
+            }
+        } else {
+            showIntentFailedMessage.value = false;
+        }
+    } else {
+        showIntentFailedMessage.value = false;
+    }
+}, { deep: true, immediate: true });
 
 function extractEssentialHotelInfo(fullHotelInfo) {
   return {
     MaKS: fullHotelInfo.MaKS, TenKS: fullHotelInfo.TenKS, DiaChi: fullHotelInfo.DiaChi,
     HangSao: fullHotelInfo.HangSao, LoaiHinh: fullHotelInfo.LoaiHinh, MoTaChung: fullHotelInfo.MoTaChung,
-    SoDienThoaiKS: fullHotelInfo.SoDienThoaiKS, EmailKS: fullHotelInfo.EmailKS,
-    UrlBanDoKS: fullHotelInfo.UrlBanDoKS, HinhAnhKS: fullHotelInfo.HinhAnhKS,
+    SoDienThoaiKS: fullHotelInfo.SoDienThoaiKS || null, EmailKS: fullHotelInfo.EmailKS || null,
+    UrlBanDoKS: fullHotelInfo.UrlBanDoKS || null, HinhAnhKS: fullHotelInfo.HinhAnhKS || null,
   };
 }
 
 const handleRoomSelection = (fullHotelInfo, roomInfoFromCard) => {
+  if (bookingStore.isHoldingRoom || isProcessingAction.value) return;
   if (roomInfoFromCard.SoPhongTrong <= 0) {
     bookingStore.roomsError = "This room just became unavailable. Please try again or choose another.";
     return;
@@ -115,13 +208,28 @@ const handleRoomSelection = (fullHotelInfo, roomInfoFromCard) => {
 };
 
 async function handleAlternativeDateSelection(originalHotelData, payloadFromCard) {
+  if (bookingStore.isHoldingRoom || isProcessingAction.value) return;
   const { roomInfo: originalRoomInfo, suggestedDates } = payloadFromCard;
-  if (!bookingStore.searchCriteria) return;
+  if (!bookingStore.searchCriteria) {
+      console.error("Step2: Cannot handle alternative date without base searchCriteria.");
+      return;
+  }
 
-  isRetrying.value = true; initialLoad.value = false; showIntentFailedMessage.value = false;
-  const newSearchCriteria = { /* ... (như cũ) ... */ };
+  isProcessingAction.value = true; actionName.value = 'altDate';
+  initialLoad.value = false; showIntentFailedMessage.value = false;
+
+  const newSearchCriteria = {
+    startDate: format(new Date(suggestedDates.checkIn), 'yyyy-MM-dd'),
+    endDate: format(new Date(suggestedDates.checkOut), 'yyyy-MM-dd'),
+    numberOfGuests: bookingStore.searchCriteria.numberOfGuests
+  };
+
   await bookingStore.setSearchCriteriaAndFetchRooms(newSearchCriteria);
-  if (bookingStore.roomsError) { isRetrying.value = false; return; }
+
+  if (bookingStore.roomsError) {
+    isProcessingAction.value = false; actionName.value = '';
+    return;
+  }
 
   const updatedHotelData = bookingStore.availableHotelsAndRooms.find(h => h.MaKS === originalHotelData.MaKS);
   if (updatedHotelData) {
@@ -129,35 +237,70 @@ async function handleAlternativeDateSelection(originalHotelData, payloadFromCard
     if (targetRoomInNewSearch && targetRoomInNewSearch.SoPhongTrong > 0) {
       const essentialHotelInfo = extractEssentialHotelInfo(updatedHotelData);
       emit('room-hold-requested', { hotelInfo: essentialHotelInfo, roomInfo: targetRoomInNewSearch });
-    } else { /* ... (log như cũ) ... */ }
-  } else { /* ... (log như cũ) ... */ }
-  isRetrying.value = false;
+    } else {
+      console.warn("Step2: Alt date picked, but room still unavailable after re-search. User needs to select manually.");
+    }
+  } else {
+      console.warn("Step2: Alt date picked, but original hotel not found in new search results.");
+  }
+  isProcessingAction.value = false; actionName.value = '';
 }
 
-async function resumeHeldBooking() { /* ... như đã implement ở trên ... */ }
-function goToMyBookingsPage() { /* ... như đã implement ở trên ... */ }
-async function discardHoldAndSearchNew() { /* ... như đã implement ở trên ... */ }
+async function resumeHeldBooking() {
+  if (bookingStore.heldBookingMaDat && bookingStore.selectedHotelDetails && bookingStore.selectedRoomTypeDetails && bookingStore.searchCriteria) {
+    bookingStore.holdError = null;
+    bookingStore.currentStep = 3;
+    if (bookingStore.maxCompletedStep < 2) bookingStore.maxCompletedStep = 2;
+  } else {
+    alert("Error: Could not retrieve details for your current held booking. Please check 'My Bookings' or start a new search.");
+    goToMyBookingsPage(); // Hoặc điều hướng về trang quản lý booking nếu có
+  }
+}
 
-async function retryGeneralError() { // Đổi tên từ retryLastAction
+function goToMyBookingsPage() {
+    alert("Navigating to 'My Bookings' page (functionality to be implemented).");
+}
+
+function waitForHoldToExpire() {
+  isProcessingAction.value = true; // Chỉ để disable nút tạm thời
+  console.log("Step2: User chose to wait for the current hold to expire.");
+  // Không làm gì cả ở phía client để thay đổi state giữ phòng.
+  // Thông báo lỗi "Bạn đã có một đơn đặt phòng..." vẫn sẽ hiển thị.
+  // Người dùng sẽ cần tự làm mới hoặc thử lại sau.
+  // Có thể hiển thị một toast nhẹ nhàng:
+  // notificationToast.value.show("Okay, please try selecting a room again after your current hold expires (approx. X minutes).", "info");
+  alert("Okay, please try selecting a room again after your current hold expires (check the timer). If the timer is gone, the hold might have expired.");
+  // Sau đó, set isProcessingAction lại false để người dùng có thể click nút khác nếu muốn.
+  setTimeout(() => { isProcessingAction.value = false; }, 500);
+}
+
+async function retryGeneralError() {
   if (bookingStore.roomsError && bookingStore.searchCriteria) {
-    isRetrying.value = true; initialLoad.value = false;
+    isProcessingAction.value = true; actionName.value = 'retryGeneral';
+    initialLoad.value = false;
     await bookingStore.setSearchCriteriaAndFetchRooms(bookingStore.searchCriteria);
-    isRetrying.value = false;
-  } else { goToStep1AndClearIntent(); }
+    isProcessingAction.value = false; actionName.value = '';
+  } else {
+    goToStep1AndClearIntent();
+  }
 }
 
-function goToStep1AndClearIntent() { /* ... như đã implement ở trên ... */ }
+function goToStep1AndClearIntent() {
+  bookingStore.clearPreselectedBookingIntent();
+  bookingStore.navigateToStep(1);
+}
 </script>
 
 <style scoped>
 .room-list .col-12 {
   display: flex;
 }
-.room-list .col-12 > :deep(div) {
+.room-list .col-12 > :deep(div) { /* Đảm bảo VueCard1 chiếm đủ không gian */
   width: 100%;
 }
-/* Thêm CSS cho thông báo intent failed nếu muốn */
-.alert-warning {
-    /* styles */
+.alert-warning, .alert-info {
+    border-left: 5px solid;
 }
+.alert-warning { border-left-color: #ffc107; } /* Bootstrap warning color */
+.alert-info { border-left-color: #0dcaf0; } /* Bootstrap info color */
 </style>

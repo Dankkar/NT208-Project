@@ -641,7 +641,7 @@ exports.getHotelById = async (req, res) => {
             });
         }
 
-        const imageResult = await pool.request()
+        const imagesResult = await pool.request()
             .input('MaKS', sql.Int, MaKS)
             .query(`
                SELECT 
@@ -675,7 +675,7 @@ exports.getHotelById = async (req, res) => {
                 FROM LoaiPhong lp
                 LEFT JOIN Phong p ON lp.MaLoaiPhong = p.MaLoaiPhong
                 LEFT JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
-                WHERE lp.MaKS = @MaKS_RoomTypes AND lp.IsActive = 1
+                WHERE lp.MaKS = @MaKS_Param AND lp.IsActive = 1
                 GROUP BY lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo, lp.SoGiuong,
                          lp.DienTich, lp.MoTa, lp.TienNghi, lp.IsActive,
                          chg.TenCauHinh, chg.SoGiuongDoi, chg.SoGiuongDon
