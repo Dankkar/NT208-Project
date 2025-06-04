@@ -1017,7 +1017,7 @@ exports.suggestAlternativeDates = async (req, res) => {
 // Tim loai phong trong trang booking (tất cả khách sạn)
 exports.searchAvailableRooms = async (req, res) => {
     try {
-        const { startDate, endDate, numberOfGuests } = req.body;
+        const { startDate, endDate, numberOfGuests } = req.query;
 
         // Validate required parameters
         if (!startDate || !endDate || !numberOfGuests) {

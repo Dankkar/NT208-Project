@@ -929,7 +929,7 @@ exports.getHotelById = async (req, res) => {
                 FROM LoaiPhong lp
                 LEFT JOIN Phong p ON lp.MaLoaiPhong = p.MaLoaiPhong
                 LEFT JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
-                WHERE lp.MaKS = @MaKS
+                WHERE lp.MaKS = @MaKS AND lp.IsActive = 1
                 GROUP BY lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo, lp.SoGiuong,
                          lp.DienTich, lp.MoTa, lp.TienNghi, lp.DuongDanAnh,
                          chg.TenCauHinh, chg.SoGiuongDoi, chg.SoGiuongDon
