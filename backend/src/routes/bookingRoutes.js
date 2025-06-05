@@ -4,6 +4,7 @@ const {
     searchAvailableRooms,
     getAllBookings,
     getBookingByUser,
+    getMyBookings,
     holdBooking,
     createBooking,
     calculatePrice,
@@ -33,10 +34,17 @@ router.get('/admin', authenticateToken, isAdmin, getAllBookings);
 
 /**
  * @route   GET /api/bookings/user/:MaKH
- * @desc    Lấy danh sách đơn đặt phòng của một khách hàng
+ * @desc    Lấy danh sách đơn đặt phòng của một khách hàng (Admin/QuanLyKS only)
+ * @access  Private (Admin/QuanLyKS)
+ */
+router.get('/user/:MaKH', authenticateToken, isAdmin, getBookingByUser);
+
+/**
+ * @route   GET /api/bookings/my-bookings
+ * @desc    Lấy danh sách đơn đặt phòng của chính mình (sử dụng MaKH từ session)
  * @access  Private
  */
-router.get('/user/:MaKH', authenticateToken, getBookingByUser);
+router.get('/my-bookings', authenticateToken, getMyBookings);
 
 /**
  * @route   POST /api/bookings
