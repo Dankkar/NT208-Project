@@ -479,19 +479,17 @@ exports.cancelBooking = async (req, res) => {
     }
 };
 
-// Xem don dat phong theo MaKH
+// Xem don dat phong theo MaKH - cho Admin/QuanLyKS xem của user khác
 exports.getBookingByUser = async (req, res) => {
     try {
         const { MaKH } = req.params;
         const currentUser = req.user;
 
-        // Kiểm tra quyền truy cập
-        if (currentUser.LoaiUser !== 'Admin' && 
-            currentUser.LoaiUser !== 'QuanLyKS' && 
-            currentUser.MaKH !== parseInt(MaKH)) {
+        // Kiểm tra quyền truy cập - chỉ Admin và QuanLyKS được xem booking của user khác
+        if (currentUser.LoaiUser !== 'Admin' && currentUser.LoaiUser !== 'QuanLyKS') {
             return res.status(403).json({ 
                 success: false, 
-                message: 'Bạn không có quyền xem thông tin đặt phòng này' 
+                message: 'Bạn không có quyền xem thông tin đặt phòng của user khác' 
             });
         }
 
@@ -528,6 +526,46 @@ exports.getBookingByUser = async (req, res) => {
             .input('MaNguoiQuanLy', sql.Int, currentUser.MaKH)
             .query(query);
 
+        // Lấy thông tin dịch vụ cho từng booking
+        if (result.recordset.length > 0) {
+            const bookingIds = result.recordset.map(booking => booking.MaDat);
+            
+            const servicesResult = await pool.request()
+                .input('BookingIds', sql.NVarChar, bookingIds.join(','))
+                .query(`
+                    SELECT 
+                        sdv.MaDat,
+                        sdv.MaSuDungDV,
+                        sdv.SoLuong,
+                        sdv.ThoiGianSuDung,
+                        sdv.GiaTaiThoiDiemSuDung,
+                        sdv.ThanhTien,
+                        sdv.GhiChu,
+                        ldv.TenLoaiDV,
+                        ldv.MoTaDV,
+                        ldv.GiaDV as GiaHienTai
+                    FROM SuDungDichVu sdv
+                    JOIN LoaiDichVu ldv ON sdv.MaLoaiDV = ldv.MaLoaiDV
+                    WHERE sdv.MaDat IN (SELECT value FROM STRING_SPLIT(@BookingIds, ','))
+                    ORDER BY sdv.ThoiGianSuDung DESC
+                `);
+
+            // Gom nhóm dịch vụ theo booking
+            const servicesByBooking = {};
+            servicesResult.recordset.forEach(service => {
+                if (!servicesByBooking[service.MaDat]) {
+                    servicesByBooking[service.MaDat] = [];
+                }
+                servicesByBooking[service.MaDat].push(service);
+            });
+
+            // Thêm thông tin dịch vụ vào mỗi booking
+            result.recordset.forEach(booking => {
+                booking.DichVuSuDung = servicesByBooking[booking.MaDat] || [];
+                booking.TongTienDichVu = booking.DichVuSuDung.reduce((total, service) => total + (service.ThanhTien || 0), 0);
+            });
+        }
+
         res.json({
             success: true,
             data: result.recordset
@@ -537,6 +575,101 @@ exports.getBookingByUser = async (req, res) => {
         res.status(500).json({ 
             success: false, 
             message: 'Lỗi server khi lấy thông tin đặt phòng' 
+        });
+    }
+};
+
+// Xem booking của chính mình (sử dụng MaKH từ session)
+exports.getMyBookings = async (req, res) => {
+    try {
+        const currentUser = req.user;
+        
+        if (!currentUser || !currentUser.MaKH) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Không tìm thấy thông tin người dùng trong session' 
+            });
+        }
+
+        // Sử dụng MaKH từ session thay vì từ params
+        const MaKH = currentUser.MaKH;
+        const pool = await poolPromise;
+        
+        const query = `
+            SELECT 
+                b.*,
+                ks.TenKS,
+                ks.DiaChi,
+                p.SoPhong,
+                lp.TenLoaiPhong,
+                lp.GiaCoSo,
+                u.HoTen as TenKhachHang,
+                u.Email as EmailKhachHang,
+                u.SDT as SDTKhachHang
+            FROM Booking b
+            JOIN KhachSan ks ON b.MaKS = ks.MaKS
+            LEFT JOIN Phong p ON b.MaPhong = p.MaPhong
+            LEFT JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
+            JOIN NguoiDung u ON b.MaKH = u.MaKH
+            WHERE b.MaKH = @MaKH
+            ORDER BY b.NgayDat DESC
+        `;
+
+        const result = await pool.request()
+            .input('MaKH', sql.Int, MaKH)
+            .query(query);
+
+        // Lấy thông tin dịch vụ cho từng booking
+        if (result.recordset.length > 0) {
+            const bookingIds = result.recordset.map(booking => booking.MaDat);
+            
+            const servicesResult = await pool.request()
+                .input('BookingIds', sql.NVarChar, bookingIds.join(','))
+                .query(`
+                    SELECT 
+                        sdv.MaDat,
+                        sdv.MaSuDungDV,
+                        sdv.SoLuong,
+                        sdv.ThoiGianSuDung,
+                        sdv.GiaTaiThoiDiemSuDung,
+                        sdv.ThanhTien,
+                        sdv.GhiChu,
+                        ldv.TenLoaiDV,
+                        ldv.MoTaDV,
+                        ldv.GiaDV as GiaHienTai
+                    FROM SuDungDichVu sdv
+                    JOIN LoaiDichVu ldv ON sdv.MaLoaiDV = ldv.MaLoaiDV
+                    WHERE sdv.MaDat IN (SELECT value FROM STRING_SPLIT(@BookingIds, ','))
+                    ORDER BY sdv.ThoiGianSuDung DESC
+                `);
+
+            // Gom nhóm dịch vụ theo booking
+            const servicesByBooking = {};
+            servicesResult.recordset.forEach(service => {
+                if (!servicesByBooking[service.MaDat]) {
+                    servicesByBooking[service.MaDat] = [];
+                }
+                servicesByBooking[service.MaDat].push(service);
+            });
+
+            // Thêm thông tin dịch vụ vào mỗi booking
+            result.recordset.forEach(booking => {
+                booking.DichVuSuDung = servicesByBooking[booking.MaDat] || [];
+                booking.TongTienDichVu = booking.DichVuSuDung.reduce((total, service) => total + (service.ThanhTien || 0), 0);
+                booking.TongSoDichVu = booking.DichVuSuDung.length;
+            });
+        }
+
+        res.json({
+            success: true,
+            data: result.recordset,
+            message: `Tìm thấy ${result.recordset.length} đơn đặt phòng`
+        });
+    } catch (err) {
+        console.error('Lỗi getMyBookings:', err);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Lỗi server khi lấy thông tin đặt phòng của bạn' 
         });
     }
 };
