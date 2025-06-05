@@ -600,17 +600,29 @@ exports.getMyBookings = async (req, res) => {
                 b.*,
                 ks.TenKS,
                 ks.DiaChi,
+                ks.HangSao,
                 p.SoPhong,
                 lp.TenLoaiPhong,
                 lp.GiaCoSo,
+                lp.DuongDanAnh as AnhLoaiPhong,
                 u.HoTen as TenKhachHang,
                 u.Email as EmailKhachHang,
-                u.SDT as SDTKhachHang
+                u.SDT as SDTKhachHang,
+                ak.DuongDanAnh as AnhKhachSan
             FROM Booking b
             JOIN KhachSan ks ON b.MaKS = ks.MaKS
             LEFT JOIN Phong p ON b.MaPhong = p.MaPhong
             LEFT JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
             JOIN NguoiDung u ON b.MaKH = u.MaKH
+            LEFT JOIN AnhKhachSan ak ON ks.MaKS = ak.MaKS
+                AND ak.LoaiAnh = 'main'
+                AND ak.IsActive = 1
+                AND ak.MaAnh = (
+                    SELECT TOP 1 MaAnh 
+                    FROM AnhKhachSan 
+                    WHERE MaKS = ks.MaKS AND IsActive = 1 AND LoaiAnh = 'main'
+                    ORDER BY ThuTu ASC, NgayThem ASC
+                )
             WHERE b.MaKH = @MaKH
             ORDER BY b.NgayDat DESC
         `;
@@ -652,11 +664,38 @@ exports.getMyBookings = async (req, res) => {
                 servicesByBooking[service.MaDat].push(service);
             });
 
-            // Thêm thông tin dịch vụ vào mỗi booking
+            // Thêm thông tin dịch vụ và xử lý đường dẫn ảnh vào mỗi booking
             result.recordset.forEach(booking => {
                 booking.DichVuSuDung = servicesByBooking[booking.MaDat] || [];
                 booking.TongTienDichVu = booking.DichVuSuDung.reduce((total, service) => total + (service.ThanhTien || 0), 0);
                 booking.TongSoDichVu = booking.DichVuSuDung.length;
+                
+                // Tạo đường dẫn đầy đủ cho ảnh khách sạn
+                booking.AnhKhachSanUrl = booking.AnhKhachSan 
+                    ? `${req.protocol}://${req.get('host')}/${booking.AnhKhachSan}`
+                    : null;
+                    
+                // Tạo đường dẫn đầy đủ cho ảnh loại phòng
+                booking.AnhLoaiPhongUrl = booking.AnhLoaiPhong 
+                    ? `${req.protocol}://${req.get('host')}/${booking.AnhLoaiPhong}`
+                    : null;
+            });
+        } else {
+            // Xử lý đường dẫn ảnh cho trường hợp không có booking nào
+            result.recordset.forEach(booking => {
+                booking.DichVuSuDung = [];
+                booking.TongTienDichVu = 0;
+                booking.TongSoDichVu = 0;
+                
+                // Tạo đường dẫn đầy đủ cho ảnh khách sạn
+                booking.AnhKhachSanUrl = booking.AnhKhachSan 
+                    ? `${req.protocol}://${req.get('host')}/${booking.AnhKhachSan}`
+                    : null;
+                    
+                // Tạo đường dẫn đầy đủ cho ảnh loại phòng
+                booking.AnhLoaiPhongUrl = booking.AnhLoaiPhong 
+                    ? `${req.protocol}://${req.get('host')}/${booking.AnhLoaiPhong}`
+                    : null;
             });
         }
 
@@ -1187,7 +1226,7 @@ exports.searchAvailableRooms = async (req, res) => {
 
         const pool = await poolPromise;
 
-        // First, get all hotels and their room types
+        // First, get all hotels and their room types with images
         const hotelsResult = await pool.request()
             .input('numberOfGuests', sql.Int, guests)
             .query(`
@@ -1200,6 +1239,7 @@ exports.searchAvailableRooms = async (req, res) => {
                     ks.MoTaChung,
                     ks.Latitude,
                     ks.Longitude,
+                    ak.DuongDanAnh as MainImagePath,
                     lp.MaLoaiPhong,
                     lp.TenLoaiPhong,
                     lp.GiaCoSo,
@@ -1212,6 +1252,15 @@ exports.searchAvailableRooms = async (req, res) => {
                 JOIN LoaiPhong lp ON ks.MaKS = lp.MaKS
                 JOIN Phong p ON lp.MaLoaiPhong = p.MaLoaiPhong
                 JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
+                LEFT JOIN AnhKhachSan ak ON ks.MaKS = ak.MaKS
+                    AND ak.LoaiAnh = 'main'
+                    AND ak.IsActive = 1
+                    AND ak.MaAnh = (
+                        SELECT TOP 1 MaAnh 
+                        FROM AnhKhachSan 
+                        WHERE MaKS = ks.MaKS AND IsActive = 1 AND LoaiAnh = 'main'
+                        ORDER BY ThuTu ASC, NgayThem ASC
+                    )
                 WHERE (chg.SoGiuongDoi * 2 + chg.SoGiuongDon) >= @numberOfGuests
                 ORDER BY ks.HangSao DESC, lp.GiaCoSo ASC;
             `);
@@ -1268,6 +1317,9 @@ exports.searchAvailableRooms = async (req, res) => {
                     MoTaChung: record.MoTaChung,
                     Latitude: record.Latitude,
                     Longitude: record.Longitude,
+                    MainImagePath: record.MainImagePath
+                        ? `${req.protocol}://${req.get('host')}/${record.MainImagePath}`
+                        : null,
                     roomTypes: []
                 };
             }

@@ -1,118 +1,119 @@
 <template>
-  <div v-if="isActive && timeLeftFormatted" class="booking-timer-component alert alert-warning small py-2 px-3 mb-3 shadow-sm" role="alert">
+  <div v-if="bookingStore.isTimerActive && displayTimeIfActive" class="booking-timer-component alert alert-warning small py-2 px-3 mb-3 shadow-sm" role="alert">
     <div class="d-flex align-items-center">
       <i class="bi bi-alarm fs-5 me-2"></i>
       <div>
         <span class="fw-semibold">Time left to complete:</span>
-        <strong class="ms-1 timer-countdown">{{ timeLeftFormatted }}</strong>
+        <strong class="ms-1 timer-countdown">{{ displayTimeIfActive }}</strong>
       </div>
     </div>
   </div>
-  <!-- Không cần hiển thị thông báo hết hạn ở đây nữa, vì Step3_GuestInfo đã có rồi -->
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
-import { useBookingStore } from '@/store/bookingStore'; // Đảm bảo đường dẫn đúng
+import { useBookingStore } from '@/store/bookingStore';
 
 const bookingStore = useBookingStore();
+const timeLeftMsInternal = ref(0); // Chỉ dùng để tính toán hiển thị, không phải nguồn chân lý cho active
+let intervalId = null;
 
-const timeLeftMs = ref(0); // Lưu trữ thời gian còn lại bằng mili giây
-const intervalId = ref(null);
-const isActive = ref(false); // Timer có đang chạy và còn thời gian không
-
-const calculateTimeLeft = () => {
-  if (!bookingStore.heldBookingExpiresAt) {
-    isActive.value = false;
-    return 0;
+// Tính toán thời gian còn lại từ store state
+const calculateRemainingMsFromStore = () => {
+  if (bookingStore.heldBookingExpiresAt) {
+    return bookingStore.heldBookingExpiresAt - Date.now();
   }
-  const now = Date.now();
-  const remaining = bookingStore.heldBookingExpiresAt - now;
-  
-  if (remaining > 0) {
-    isActive.value = true;
-    return remaining;
-  } else {
-    isActive.value = false; // Hết giờ
-    // Store getter isTimerActive sẽ tự động thành false, Step3 sẽ phản ứng
-    return 0;
-  }
+  return 0;
 };
 
-const timeLeftFormatted = computed(() => {
-  if (!isActive.value || timeLeftMs.value <= 0) {
-    // Không hiển thị gì nếu không active hoặc hết giờ
-    // (Step3 sẽ hiển thị thông báo "expired")
-    return null;
+// Hiển thị thời gian nếu timer của store đang active và còn thời gian
+const displayTimeIfActive = computed(() => {
+  if (bookingStore.isTimerActive && timeLeftMsInternal.value > 100) { // timeLeftMsInternal > 100 để tránh 00:00
+    const totalSeconds = Math.floor(timeLeftMsInternal.value / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   }
-  const totalSeconds = Math.floor(timeLeftMs.value / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  return null; // Sẽ làm component này ẩn đi nếu không có gì để hiển thị
 });
 
-const stopTimer = () => {
-  if (intervalId.value) {
-    clearInterval(intervalId.value);
-    intervalId.value = null;
+const stopInternalTimer = () => {
+  if (intervalId) {
+    clearInterval(intervalId);
+    intervalId = null;
   }
-  isActive.value = false; // Dừng active khi timer bị stop thủ công
 };
 
-const startOrUpdateTimer = () => {
-  stopTimer(); // Dừng timer cũ (nếu có) trước khi bắt đầu timer mới hoặc cập nhật
+const tickInternal = () => {
+  const remaining = calculateRemainingMsFromStore();
+  timeLeftMsInternal.value = remaining;
 
-  // Chỉ khởi động timer nếu đang ở Step 3 VÀ có thời gian hết hạn hợp lệ
-  if (bookingStore.currentStep === 3 && bookingStore.heldBookingExpiresAt) {
-    timeLeftMs.value = calculateTimeLeft(); // Tính toán thời gian còn lại
+  if (remaining <= 0) {
+    stopInternalTimer(); // Dừng interval của component này
+    // Chỉ gọi action của store nếu isTimerActive của store VẪN còn true
+    // (để tránh gọi nhiều lần nếu state store đã được cập nhật từ nguồn khác)
+    if (bookingStore.isTimerActive) {
+      // console.log("BookingTimer.vue: Tick detected expiry. Calling store.handleTimerExpiration().");
+      bookingStore.handleTimerExpiration(); // Gọi action của store
+    }
+  }
+};
 
-    if (isActive.value) { // Nếu vẫn còn thời gian (isActive được set bởi calculateTimeLeft)
-      intervalId.value = setInterval(() => {
-        timeLeftMs.value = calculateTimeLeft();
-        if (!isActive.value) { // Nếu hết giờ trong lúc interval đang chạy
-          stopTimer();
-          console.warn("BookingTimer.vue: Hold timer expired from interval.");
-          // Store getter `isTimerActive` sẽ tự động cập nhật,
-          // Step3_GuestInfo sẽ dựa vào đó để disable nút và hiển thị thông báo
-        }
-      }, 1000);
+const startOrUpdateInternalTimer = () => {
+  stopInternalTimer(); // Luôn dừng timer cũ trước
+
+  // Nguồn chân lý là bookingStore.isTimerActive
+  if (bookingStore.isTimerActive) {
+    timeLeftMsInternal.value = calculateRemainingMsFromStore();
+    if (timeLeftMsInternal.value > 0) {
+      tickInternal(); // Cập nhật hiển thị ngay lần đầu
+      intervalId = setInterval(tickInternal, 1000);
+    } else {
+      // Nếu tính ra không còn thời gian, gọi tick để nó xử lý việc gọi store.handleTimerExpiration
+      tickInternal();
     }
   } else {
-    // Nếu không phải Step 3 hoặc không có thời gian hết hạn, đảm bảo timer không active
-    isActive.value = false;
+    timeLeftMsInternal.value = 0; // Đảm bảo là 0 nếu store nói timer không active
   }
 };
 
 onMounted(() => {
-  console.log("BookingTimer.vue mounted. HeldExpiresAt:", bookingStore.heldBookingExpiresAt, "CurrentStep:", bookingStore.currentStep);
-  startOrUpdateTimer();
+  startOrUpdateInternalTimer();
 });
 
 onBeforeUnmount(() => {
-  stopTimer();
+  stopInternalTimer();
 });
 
-// Theo dõi sự thay đổi của `heldBookingExpiresAt` (ví dụ khi có lượt giữ mới)
-// hoặc `currentStep` (để dừng/khởi động timer khi chuyển step)
+// Watch isTimerActive của store là chính
+// Nếu isTimerActive của store thay đổi (ví dụ, từ 1 lượt giữ mới, hoặc từ việc hết hạn đã được xử lý)
+// thì timer này phải phản ứng.
 watch(
-  () => [bookingStore.heldBookingExpiresAt, bookingStore.currentStep],
-  (newValues, oldValues) => {
-    console.log("BookingTimer.vue: Watched values changed. New heldBookingExpiresAt:", newValues[0], "New currentStep:", newValues[1]);
-    startOrUpdateTimer();
-  },
-  { immediate: false } // Không cần chạy ngay khi watch, onMounted đã xử lý lần đầu
+  () => bookingStore.isTimerActive,
+  (newStoreIsActive) => {
+    if (newStoreIsActive) {
+      startOrUpdateInternalTimer(); // Thử khởi động lại
+    } else {
+      stopInternalTimer();        // Dừng nếu store nói không active
+      timeLeftMsInternal.value = 0;
+    }
+  }
+  // không cần immediate vì onMounted đã chạy
+);
+
+watch(
+    () => bookingStore.heldBookingExpiresAt,
+    (newExpiry, oldExpiry) => {
+        if (newExpiry !== oldExpiry) {
+            startOrUpdateInternalTimer();
+        }
+    }
 );
 
 </script>
 
 <style scoped>
 .booking-timer-component {
-  /* Vị trí bạn muốn hiển thị timer, ví dụ: */
-  /* position: fixed;
-  top: 80px;
-  right: 20px; 
-  z-index: 1050; */
-  /* Hoặc để nó là block bình thường nếu đặt trong luồng của Step3 */
   border-radius: 0.375rem;
 }
 .timer-countdown {

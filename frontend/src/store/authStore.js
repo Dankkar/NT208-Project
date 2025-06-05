@@ -19,17 +19,21 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     // Clear authentication errors
     clearError() {
+      console.log("Clearing auth error");
+      this.isLoading = false;
       this.authError = null;
     },
 
     // Clear all auth data
     clearAuthData() {
+      console.log("Clearing auth data");
       this.user = null;
       this.authError = null;
       this.isLoading = false;
     },
 
     async login(credentials) {
+      console.log("Attempting to login with credentials:")
       this.isLoading = true;
       this.authError = null;
       try {
@@ -53,6 +57,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async loginWithGoogle(googleAuthResponse) {
+      console.log("Attempting to login with Google token:")
       this.isLoading = true;
       this.authError = null;
       try {
@@ -78,6 +83,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async fetchCurrentUser() {
+      console.log("Fetching current user data...");
       console.log("isAuthenticated:", this.isAuthenticated);
       this.isLoading = true;
       this.authError = null;
@@ -100,6 +106,7 @@ export const useAuthStore = defineStore('auth', {
 
     // Logout action
     async logout() {
+      console.log("Logging out...");
       this.isLoading = true;
       try {
         await axios.post('http://localhost:5000/api/auth/logout', {}, { withCredentials: true });
@@ -112,12 +119,18 @@ export const useAuthStore = defineStore('auth', {
     },
 
     initializeAuth() {
+      console.log("Initializing auth store...");
       if (this.user) { // user được khôi phục từ persist
         this.fetchCurrentUser();
+      }
+      else {
+        this.clearError();
+        this.clearAuthData();
       }
     },
 
     async signup(signupData) { // signupData: { HoTen, Email, MatKhau, SDT, NgaySinh, GioiTinh, CCCD }
+      console.log("Attempting to sign up with data:")
       this.isLoading = true;
       this.authError = null;
       try {

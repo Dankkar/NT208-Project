@@ -192,7 +192,7 @@ const formatDisplayPrice = (value) => {
 const printPage = () => { window.print(); };
 const startNewBooking = () => { 
    bookingStore.resetBookingProcess();
-   router.push('/');
+   router.push('/bookingprocess');
 };
 
 const countries = ref([
