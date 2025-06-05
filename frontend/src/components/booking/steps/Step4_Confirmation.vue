@@ -15,6 +15,20 @@
         <p class="lead">Thank you for booking with us. Your confirmation details are below.</p>
       </div>
 
+       <!-- Mã QR Code -->
+      <div class="text-center mb-4 qr-code-wrapper">
+        <h6 class="text-uppercase small text-muted mb-2">Scan QR Code for Quick Access</h6>
+        <qrcode-vue
+          :value="qrCodeValue"
+          :size="180"
+          level="H"
+          render-as="svg"
+          v-if="qrCodeValue"
+          class="d-inline-block border p-2 bg-white shadow-sm"
+        />
+        <p v-else class="text-muted small">QR Code will be generated shortly...</p>
+      </div>
+
       <div class="booking-reference-wrapper mb-4 p-3 border rounded bg-light-subtle text-center mx-auto shadow-sm" style="max-width: 400px;">
         <h6 class="text-uppercase small text-muted mb-1">Booking Reference</h6>
         <p class="h3 fw-bold mb-0 text-primary">{{ confirmationDetails.bookingReference }}</p>
@@ -161,8 +175,12 @@
 <script setup>
 import { computed, ref, watchEffect } from 'vue'; // Đã thêm watchEffect
 import { useBookingStore } from '@/store/bookingStore';
+import { useRouter } from 'vue-router';
+import { onBeforeUnmount } from 'vue';
+import QrcodeVue from 'qrcode.vue';
 
 const bookingStore = useBookingStore();
+const router = useRouter();
 const confirmationDetails = computed(() => bookingStore.dataForStep4Display);
 
 const formatDisplayPrice = (value) => {
@@ -172,7 +190,10 @@ const formatDisplayPrice = (value) => {
 };
 
 const printPage = () => { window.print(); };
-const startNewBooking = () => { bookingStore.resetBookingProcess(); };
+const startNewBooking = () => { 
+   bookingStore.resetBookingProcess();
+   router.push('/');
+};
 
 const countries = ref([
   { code: 'VN', name: 'Vietnam' }, { code: 'US', name: 'United States' },
@@ -184,12 +205,38 @@ const getCountryName = (code) => {
   return country ? country.name : code;
 };
 
+const qrCodeValue = computed(() => {
+  if (!confirmationDetails.value || !confirmationDetails.value.bookingReference) return '';
+  const details = confirmationDetails.value;
+  const qrTextParts = [
+    `Booking Ref: ${details.bookingReference || 'N/A'}`,
+    `Hotel: ${details.hotelInfo?.TenKS || 'N/A'}`,
+    `Address: ${details.hotelInfo?.DiaChi || 'N/A'}`,
+    `Room Type: ${details.roomInfo?.TenLoaiPhong || 'N/A'}`,
+    // Thêm mã phòng cụ thể nếu có trong finalBookingReference 
+    // `Room Number: ${details.finalBookingReference?.roomNumber || 'N/A'}`,
+    `Check-in: ${details.stayInfo?.checkInDateFormatted || 'N/A'}`,
+    `Check-out: ${details.stayInfo?.checkOutDateFormatted || 'N/A'}`,
+    `Total Pay: ${formatDisplayPrice(details.paymentSummary?.finalPrice)}`
+  ];
+  return qrTextParts.join('\n'); 
+});
+
 watchEffect(() => {
   if (confirmationDetails.value) {
     console.log('Step 4 Confirmation details from store:', JSON.parse(JSON.stringify(confirmationDetails.value)));
   } else {
     console.log('Step 4 Confirmation: No details yet from store.');
     console.log('Step 4 Confirmation:', confirmationDetails.value);
+  }
+});
+
+onBeforeUnmount(() => {
+  if (bookingStore.currentStep === 4 && bookingStore.finalBookingReference) {
+    // Chỉ reset nếu thực sự đã hoàn thành booking và đang rời khỏi trang xác nhận
+    // (không phải do F5 ngay trên trang Step 4)
+    console.log("Step4_Confirmation: Unmounting after successful booking, resetting store.");
+    bookingStore.resetBookingProcess();
   }
 });
 </script>
