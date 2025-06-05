@@ -96,7 +96,7 @@
         </a>
         <ul class="dropdown-menu" aria-labelledby="myAccountDesktopDropdown">
           <li><router-link class="dropdown-item" to="/profile">Profile</router-link></li>
-          <li><router-link class="dropdown-item" to="/bookinghistory">Booking History</router-link></li>
+          <li><router-link class="dropdown-item" to="/BookingHistory">Booking History</router-link></li>
           <!-- <li><hr class="dropdown-divider"></li>
           <li><a class="dropdown-item" href="#" @click.prevent="handleLogout">Logout</a></li> -->
         </ul>
