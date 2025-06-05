@@ -1756,7 +1756,7 @@ exports.deleteHotelImage = async (req, res) => {
             .input('MaAnh', sql.Int, parseInt(MaAnh))
             .query(`
                 UPDATE AnhKhachSan 
-                SET IsActive = 0, NgayCapNhat = GETDATE()
+                SET IsActive = 0, NgayThem = GETDATE()
                 WHERE MaAnh = @MaAnh
             `);
 
@@ -1835,7 +1835,7 @@ exports.updateHotelImage = async (req, res) => {
             });
         }
 
-        updateFields.push('NgayCapNhat = GETDATE()');
+        updateFields.push('NgayThem = GETDATE()');
 
         // Thực hiện update
         const request = pool.request();
@@ -1865,7 +1865,7 @@ exports.updateHotelImage = async (req, res) => {
                     ThuTu,
                     MoTa,
                     NgayThem,
-                    NgayCapNhat
+                    NgayThem
                 FROM AnhKhachSan
                 WHERE MaAnh = @MaAnh
             `);
