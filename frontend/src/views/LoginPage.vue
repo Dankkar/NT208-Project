@@ -166,9 +166,7 @@ async function handleGoogleSignIn(googleAuthResponse) {
   if (result && result.success) {
     showSuccessAlert('Successfully signed in with Google!');
     setTimeout(() => {
-      //
       // Kiểm tra xem người dùng có định đến trang nào trước đó không (query param 'redirect')
-      //
       const redirectPath = router.currentRoute.value.query.redirect || '/homepage';
       router.push(redirectPath);
     }, 1500);

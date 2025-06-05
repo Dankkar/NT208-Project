@@ -32,7 +32,7 @@ export const useBookingStore = defineStore('booking', {
     guestAndPaymentInput: null,   // Dữ liệu form đầy đủ từ Step 3 (sau khi API confirm)
                                   // Cấu trúc: { guestInfo: {...}, paymentInfo: {...}, services: [], promotionCode: '', agreedToTerms: true, billingAddress: {...} }
     isCreatingBooking: false,     // Loading khi đang gọi API createBooking
-    createBookingError: null,     // Lỗi khi gọi API createBooking
+    createBookingError: null,
 
     // --- Step 4 Data (Confirmation) ---
     finalBookingReference: null,  // Object chứa response từ API createBooking { MaDat, MaHD, priceDetails, guestInfo (optional), ... }
@@ -152,7 +152,7 @@ export const useBookingStore = defineStore('booking', {
     },
     isTimerActive: (state) => {
         return !!state.heldBookingExpiresAt && state.currentStep === 3 && (state.heldBookingExpiresAt > Date.now());
-    }
+    },
   },
 
   actions: {
@@ -184,7 +184,6 @@ export const useBookingStore = defineStore('booking', {
         // HOẶC đây là lần tìm kiếm đầu tiên.
         // Reset các thông tin liên quan đến lựa chọn và giữ phòng cũ.
         console.log("[Store setSearch] No active hold OR new search. Resetting hold/selection states.");
-        this.preselectedIntent = null;
         this.heldBookingMaDat = null;
         this.heldBookingExpiresAt = null;
         this.holdError = null;
@@ -219,7 +218,7 @@ export const useBookingStore = defineStore('booking', {
       }
     },
 
-    setPreselectedBookingIntent(intent) { this.preselectedIntent = intent; },
+    async setPreselectedBookingIntent(intent) { this.preselectedIntent = intent; },
     clearPreselectedBookingIntent() { this.preselectedIntent = null; },
 
     async holdRoomAndProceed(payload) {
@@ -268,11 +267,44 @@ export const useBookingStore = defineStore('booking', {
       }
     },
 
-    async finalizeBooking(formDataFromStep3) {
-      this.isCreatingBooking = true; this.createBookingError = null;
+     handleTimerExpiration() {
+      // Chỉ thực hiện nếu thực sự đang có lượt giữ và nó có thể đã hết hạn
+      // và this.heldBookingMaDat chưa bị clear (tức là chưa xử lý hết hạn trước đó)
+      if (this.heldBookingMaDat && this.heldBookingExpiresAt) {
+        // Kiểm tra thời gian hiện tại so với heldBookingExpiresAt
+        if (Date.now() >= this.heldBookingExpiresAt) {
+            console.log("[Store] Timer has explicitly expired via handleTimerExpiration. Clearing hold.");
+            // Set lỗi này để Step3_GuestInfo có thể hiển thị một thông báo cụ thể và chính xác
+            this.holdError = "Your booking hold has expired. Please go back to room selection and try again.";
+            this.heldBookingMaDat = null;
+            this.heldBookingExpiresAt = null; 
+            this.isHoldingRoom = false; 
+        } else {
+            console.log("[Store] handleTimerExpiration called, but time still remaining based on Date.now(). No action.");
+        }
+      } else {
+        console.log("[Store] handleTimerExpiration called, but no active hold (MaDat or ExpiresAt is null).");
+      }
+    },
 
-      if (!this.heldBookingMaDat) { /* ... như cũ ... */ return; }
-      if (this.heldBookingExpiresAt && Date.now() > this.heldBookingExpiresAt) { /* ... như cũ ... */ return; }
+    async finalizeBooking(formDataFromStep3) {
+      this.isCreatingBooking = true;
+      this.createBookingError = null;
+
+      if (!this.heldBookingMaDat) {
+        this.createBookingError = 'Cannot finalize booking: No held booking found. Please hold a room first.';
+        this.isCreatingBooking = false;
+        this.startBookingFromScratch(); // Reset booking state
+        return;
+         }
+      if (this.heldBookingExpiresAt && Date.now() > this.heldBookingExpiresAt) { 
+        this.isTimerActive = false; // Dừng timer nếu booking đã hết hạn
+        this.heldBookingMaDat = null; 
+        this.heldBookingExpiresAt = null; 
+        this.holdError = null;
+        this.isCreatingBooking = false;
+        this.createBookingError = 'Cannot finalize booking: Held booking has expired. Please hold a room again.';        
+        return; }
 
       const payloadForCreateBooking = {
         guestInfo: {
@@ -295,10 +327,12 @@ export const useBookingStore = defineStore('booking', {
 
         if (response.data && response.data.success) {
           this.finalBookingReference = response.data.data; // { MaDat, MaHD, priceDetails, etc. }
-          this.guestAndPaymentInput = { ...formDataFromStep3 }; // Lưu bản sao
+          this.guestAndPaymentInput = { ...formDataFromStep3 }; 
           this.currentStep = 4;
           this.maxCompletedStep = Math.max(this.maxCompletedStep, 3);
-          this.heldBookingMaDat = null; this.heldBookingExpiresAt = null; this.holdError = null;
+          this.heldBookingMaDat = null;
+          this.heldBookingExpiresAt = null;
+          this.holdError = null;
         } else {
           throw new Error(response.data.message || response.data.error || 'Failed to create booking.');
         }
@@ -309,8 +343,32 @@ export const useBookingStore = defineStore('booking', {
         this.isCreatingBooking = false;
       }
     },
+    async startBookingFromScratch() {
+      this.$reset();
+      this.currentStep = 1; 
+      this.maxCompletedStep = 0; 
+      this.preselectedIntent = null
+      this.roomsError = null; 
+      this.isLoadingRooms = false; 
+      this.holdError = null;
+      this.isHoldingRoom = false; 
+      this.createBookingError = null; 
+      this.isCreatingBooking = false;
+      this.heldBookingMaDat = null; 
+      this.heldBookingExpiresAt = null;
 
-    startBookingFromScratch() {
+    },
+
+
+
+    RefreshState() { 
+      this.preselectedIntent = null;
+      this.roomsError = null; 
+      this.isLoadingRooms = false; 
+      this.holdError = null;
+    },
+
+    async startBookingFromScratchForHotelDetails() {
       // const intent = this.preselectedIntent;
       this.$reset();
       this.currentStep = 1; 

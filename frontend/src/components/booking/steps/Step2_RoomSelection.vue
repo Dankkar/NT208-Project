@@ -18,6 +18,7 @@
         Your current hold will expire in approximately: {{ formatTimeUntilExpiry(bookingStore.heldBookingExpiresAt) }}
       </p>
       <hr>
+      <div v-if="resumeError" class="alert alert-danger small py-2">{{ resumeError }}</div>
       <button class="btn btn-primary me-2" @click="resumeHeldBooking" :disabled="isProcessingAction">
         <i class="bi bi-arrow-right-circle-fill me-1"></i> Continue with Held Booking
       </button>
@@ -118,25 +119,24 @@ const router = useRouter();
 const isProcessingAction = ref(false);
 const actionName = ref('');
 const initialLoad = ref(true);
-const showIntentFailedMessage = ref(false);
+const showIntentFailedMessage = computed(() => {
+    if (bookingStore.currentStep !== 2 || bookingStore.isHoldingRoom) return false;
+    const intent = bookingStore.preselectedIntent;
+    if (!intent) return false;
+    if(bookingStore.isLoadingRooms) return false;
+    if( !bookingStore.availableHotelsAndRooms || bookingStore.availableHotelsAndRooms.length === 0) return false;
+    const hotelData = bookingStore.availableHotelsAndRooms.find(h => h.MaKS === intent.hotelId);
+    if (!hotelData) return true;
+    const roomTypeData = hotelData.roomTypes.find(rt => rt.MaLoaiPhong === intent.roomTypeId);
+    if (!roomTypeData || roomTypeData.SoPhongTrong <= 0) return true;
+    return false;
+  });
 
 const roomsToDisplay = computed(() => bookingStore.availableHotelsAndRooms);
 
 onMounted(() => {
     if (!bookingStore.isLoadingRooms) {
         initialLoad.value = false;
-    }
-    if (bookingStore.currentStep === 2 && bookingStore.preselectedIntent && !bookingStore.isHoldingRoom) {
-        const intent = bookingStore.preselectedIntent;
-        const hotelData = bookingStore.availableHotelsAndRooms.find(h => h.MaKS === intent.hotelId);
-        if (hotelData) {
-            const roomTypeData = hotelData.roomTypes.find(rt => rt.MaLoaiPhong === intent.roomTypeId);
-            if (!roomTypeData || roomTypeData.SoPhongTrong <= 0) {
-                showIntentFailedMessage.value = true;
-            }
-        } else {
-             showIntentFailedMessage.value = true;
-        }
     }
     const unwatchLoading = watch(() => bookingStore.isLoadingRooms, (newValue) => {
         if (!newValue) {
@@ -166,27 +166,6 @@ onBeforeUnmount(() => {
     if (holdExpiryTimerInterval.value) clearInterval(holdExpiryTimerInterval.value);
 });
 
-watch(() => bookingStore.preselectedIntent, (newIntent) => {
-    if (bookingStore.currentStep === 2) {
-        if (newIntent) {
-            const hotelData = bookingStore.availableHotelsAndRooms.find(h => h.MaKS === newIntent.hotelId);
-            if (hotelData) {
-                const roomTypeData = hotelData.roomTypes.find(rt => rt.MaLoaiPhong === newIntent.roomTypeId);
-                if (!roomTypeData || roomTypeData.SoPhongTrong <= 0) {
-                    showIntentFailedMessage.value = true;
-                } else {
-                    showIntentFailedMessage.value = false;
-                }
-            } else {
-                showIntentFailedMessage.value = true;
-            }
-        } else {
-            showIntentFailedMessage.value = false;
-        }
-    } else {
-        showIntentFailedMessage.value = false;
-    }
-}, { deep: true, immediate: true });
 
 function extractEssentialHotelInfo(fullHotelInfo) {
   return {
@@ -216,7 +195,7 @@ async function handleAlternativeDateSelection(originalHotelData, payloadFromCard
   }
 
   isProcessingAction.value = true; actionName.value = 'altDate';
-  initialLoad.value = false; showIntentFailedMessage.value = false;
+  initialLoad.value = false; 
 
   const newSearchCriteria = {
     startDate: format(new Date(suggestedDates.checkIn), 'yyyy-MM-dd'),
@@ -245,15 +224,29 @@ async function handleAlternativeDateSelection(originalHotelData, payloadFromCard
   }
   isProcessingAction.value = false; actionName.value = '';
 }
-
+const resumeError = ref('');
 async function resumeHeldBooking() {
+  resumeError.value = '';
   if (bookingStore.heldBookingMaDat && bookingStore.selectedHotelDetails && bookingStore.selectedRoomTypeDetails && bookingStore.searchCriteria) {
+    
+    // Kiểm tra lượt giữ còn hạn không
+    if (bookingStore.heldBookingExpiresAt && Date.now() > bookingStore.heldBookingExpiresAt) {
+      resumeError.value = "Your previous room hold has expired. Please select a room again or start a new search.";
+      // Cập nhật store để phản ánh đúng trạng thái hết hạn
+      bookingStore.holdError = "Your previous room hold has expired. Please find a new room."; // Lỗi này sẽ làm ẩn block "Action Required"
+      bookingStore.heldBookingMaDat = null;
+      bookingStore.heldBookingExpiresAt = null;
+      // bookingStore.selectedHotelDetails = null; // Tuỳ chọn: có thể xóa hoặc giữ lại
+      // bookingStore.selectedRoomTypeDetails = null; // Tuỳ chọn
+      return; // Dừng, người dùng sẽ thấy lỗi mới trên block lỗi chung
+    }
+    
     bookingStore.holdError = null;
-    bookingStore.currentStep = 3;
-    if (bookingStore.maxCompletedStep < 2) bookingStore.maxCompletedStep = 2;
+    bookingStore.navigateToStep(3); // Chuyển sang bước 3 để xác nhận giữ phòng
   } else {
+    resumeError.value = "Could not retrieve details for your current held booking. Please check 'My Bookings' or start a new search.";
     alert("Error: Could not retrieve details for your current held booking. Please check 'My Bookings' or start a new search.");
-    goToMyBookingsPage(); // Hoặc điều hướng về trang quản lý booking nếu có
+    
   }
 }
 

@@ -96,14 +96,14 @@
         </a>
         <ul class="dropdown-menu" aria-labelledby="myAccountDesktopDropdown">
           <li><router-link class="dropdown-item" to="/profile">Profile</router-link></li>
-          <li><router-link class="dropdown-item" to="/bookinghistory">Booking History</router-link></li>
+          <li><router-link class="dropdown-item" to="/BookingHistory">Booking History</router-link></li>
           <!-- <li><hr class="dropdown-divider"></li>
           <li><a class="dropdown-item" href="#" @click.prevent="handleLogout">Logout</a></li> -->
         </ul>
       </li>
       <!-- RESERVE -->
       <li class="nav-item">
-        <router-link class="nav-link" to="/bookingprocess">
+        <router-link class="nav-link" to="/bookingprocess" @click="bookingStore.refreshState">
           <Button
             content="RESERVE"
             :textColor="computedDesktopButtonTextColor"
@@ -127,11 +127,13 @@ import Logo from './Logo.vue'
 import logouitwhite from '../assets/Logo_UIT_white.jpg'
 import logouitblue from '../assets/Logo_UIT_blue.jpg'
 import { useAuthStore } from '../store/authStore' // Using Pinia Auth Store
+import { useBookingStore } from '../store/bookingStore' // Using Pinia Booking Store
 
 const route = useRoute();
 const router = useRouter(); // For logout navigation
 const navbarRef = ref(null);
 const authStore = useAuthStore();
+const bookingStore = useBookingStore(); // For booking-related actions
 
 const props = defineProps({
   bgFixed: { type: Boolean, default: false } // Override for specific fixed background cases
