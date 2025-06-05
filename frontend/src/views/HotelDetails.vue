@@ -226,7 +226,9 @@ const initiateBookingForRoom = (currentHotel, selectedRoomType) => {
   }  else {
     // TRƯỜNG HỢP 2: KHÔNG CÓ LƯỢT GIỮ NÀO
     console.log(`HotelDetails: No active hold found. Starting new booking process.`);
-    bookingStore.startBookingFromScratch();
+    bookingStore.startBookingFromScratchForHotelDetails();
+    console.log(`HotelDetails: Setting preselected booking intent for Hotel ID: ${currentHotel.MaKS}, Room Type ID: ${selectedRoomType.MaLoaiPhong}`);
+    // Thiết lập intent booking với thông tin đã chọn-
     bookingStore.setPreselectedBookingIntent({
     hotelId: currentHotel.MaKS,
     hotelName: currentHotel.TenKS,

@@ -81,7 +81,7 @@ const uploadHotelImagesCreate = multer({
     storage: hotelCreateStorage,
     fileFilter: fileFilter,
     limits: {
-        fileSize: 1024 * 1024 * 5, // 5MB
+        fileSize: 1024 * 1024 * 25, // 5MB
         files: 10
     }
 });
@@ -90,7 +90,7 @@ const uploadHotelImages = multer({
     storage: hotelStorage,
     fileFilter: fileFilter,
     limits: {
-        fileSize: 1024 * 1024 * 5, // 5MB
+        fileSize: 1024 * 1024 * 25, // 5MB
         files: 10
     }
 });
@@ -99,7 +99,7 @@ const uploadRoomTypeImage = multer({
     storage: roomTypeStorage,
     fileFilter: fileFilter,
     limits: {
-        fileSize: 1024 * 1024 * 3, // 3MB
+        fileSize: 1024 * 1024 * 25, // 3MB
         files: 1
     }
 });

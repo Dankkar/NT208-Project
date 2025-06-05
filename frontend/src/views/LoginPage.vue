@@ -86,9 +86,7 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/store/authStore'; // Đảm bảo đường dẫn đúng
 import Logo from '../components/Logo.vue';
 import uit_logo from '../assets/Logo_UIT_blue.jpg';
-
-// GoogleLogin component cần được import nếu nó là một component bạn đã tạo hoặc cài đặt
-// import { GoogleLogin } from 'vue3-google-login'; // Ví dụ nếu bạn dùng thư viện này
+import { GoogleLogin } from 'vue3-google-login';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -168,9 +166,7 @@ async function handleGoogleSignIn(googleAuthResponse) {
   if (result && result.success) {
     showSuccessAlert('Successfully signed in with Google!');
     setTimeout(() => {
-      //
       // Kiểm tra xem người dùng có định đến trang nào trước đó không (query param 'redirect')
-      //
       const redirectPath = router.currentRoute.value.query.redirect || '/homepage';
       router.push(redirectPath);
     }, 1500);
@@ -228,9 +224,29 @@ async function handleEmailLogin() {
 .divider { display: flex; align-items: center; margin: 1.5rem 0; }
 .divider .line { flex: 1; height: 1px; background: #ccc; }
 .divider small { padding: 0 0.75rem; color: #666; font-size: 0.9rem; }
-.underline-input { border: none; border-bottom: 1px solid #ccc; border-radius: 0; background: transparent; padding: 0.5rem 0; }
-.underline-input:focus { outline: none; box-shadow: none; border-color: tránsparent; border-bottom: 1px solid #888; }
-.underline-input.is-invalid { border-bottom-color: #dc3545; }
+.underline-input { 
+  border: none; 
+  border-bottom: 1px solid #ccc; 
+  border-radius: 0; 
+  background: transparent; 
+  padding: 0.5rem 0; 
+}
+.underline-input:focus { 
+  outline: none; 
+  box-shadow: none !important; 
+  border-color: transparent; 
+  border-bottom: 1px solid #888; 
+}
+.underline-input.is-invalid { 
+  border: none !important;
+  border-bottom: 1px solid #dc3545 !important; 
+  box-shadow: none !important;
+}
+.underline-input.is-invalid:focus {
+  border: none !important;
+  border-bottom: 1px solid #dc3545 !important;
+  box-shadow: none !important;
+}
 .btn-login { width: 100%; padding: 0.75rem 0; background: #000; color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
 .btn-login:hover:not(:disabled) { opacity: 0.9; }
 .btn-login:disabled { opacity: 0.7; cursor: not-allowed; }

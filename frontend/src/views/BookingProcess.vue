@@ -77,8 +77,8 @@ async function handleFinalizeBookingRequestFromStep3(formData) { // formData t�
   console.log('BP: Finalize booking request received from Step3', formData);
   await bookingStore.finalizeBooking(formData);
   // Store sẽ tự động chuyển currentStep sang 4 nếu thành công
-  // Nếu có lỗi (finalizeError trong store), Step3_GuestInfo sẽ hiển thị
-  if (!bookingStore.finalizeError) { // Chỉ cuộn nếu không có lỗi finalize
+  // Nếu có lỗi (createBookingError trong store), Step3_GuestInfo sẽ hiển thị
+  if (!bookingStore.createBookingError) { // Chỉ cuộn nếu không có lỗi finalize
     scrollToTopOfSteps();
   }
 }
