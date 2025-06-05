@@ -103,7 +103,7 @@
       </li>
       <!-- RESERVE -->
       <li class="nav-item">
-        <router-link class="nav-link" to="/bookingprocess">
+        <router-link class="nav-link" to="/bookingprocess" @click="bookingStore.refreshState">
           <Button
             content="RESERVE"
             :textColor="computedDesktopButtonTextColor"
@@ -127,11 +127,13 @@ import Logo from './Logo.vue'
 import logouitwhite from '../assets/Logo_UIT_white.jpg'
 import logouitblue from '../assets/Logo_UIT_blue.jpg'
 import { useAuthStore } from '../store/authStore' // Using Pinia Auth Store
+import { useBookingStore } from '../store/bookingStore' // Using Pinia Booking Store
 
 const route = useRoute();
 const router = useRouter(); // For logout navigation
 const navbarRef = ref(null);
 const authStore = useAuthStore();
+const bookingStore = useBookingStore(); // For booking-related actions
 
 const props = defineProps({
   bgFixed: { type: Boolean, default: false } // Override for specific fixed background cases

@@ -30,7 +30,7 @@
                       inline
                       auto-apply
                       :min-date="new Date()"
-                      :range="{ minRange: 2 }" 
+                      :range="{ minRange: 1 }" 
                       :multi-calendars="isDesktop ? 2 : 1"
                       :clearable="false"
                       :enable-time-picker="false"

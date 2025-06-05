@@ -1,19 +1,19 @@
 <!-- src/components/booking/steps/Step3_GuestInfo.vue -->
-<template>
+<template> 
   <div class="step3-guest-info py-4">
     <BookingTimer v-if="bookingStore.isTimerActive && bookingStore.heldBookingMaDat" />
     <!-- Loading khi store đang finalize booking hoặc không có details cho tóm tắt -->
-    <div v-if="bookingStore.isFinalizingBooking || isLoadingServices" class="text-center py-5">
+    <div v-if="bookingStore.isCreatingBooking || isLoadingServices" class="text-center py-5">
         <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
             <span class="visually-hidden">
-                {{ bookingStore.isFinalizingBooking ? 'Finalizing...' : 'Loading data...' }}
+                {{ bookingStore.isCreatingBooking ? 'Finalizing...' : 'Loading data...' }}
             </span>
         </div>
         <p class="mt-3 text-muted h5">
-            {{ bookingStore.isFinalizingBooking ? 'Finalizing your booking, please wait...' : 'Loading information...' }}
+            {{ bookingStore.isCreatingBooking ? 'Finalizing your booking, please wait...' : 'Loading information...' }}
         </p>
     </div>
-    <div v-else-if="!details && !bookingStore.isFinalizingBooking" class="text-center">
+    <div v-else-if="!details && !bookingStore.isCreatingBooking" class="text-center">
       <p class="text-muted">Loading booking details or previous steps are incomplete.</p>
       <button class="btn btn-sm btn-outline-secondary" @click="goToPreviousStep">
         <i class="bi bi-arrow-left"></i> Go to Room Selection
@@ -23,19 +23,21 @@
     <div v-else class="row g-4 g-lg-5">
       <div class="col-lg-7">
         <form @submit.prevent="handleSubmit" class="guest-form-section">
-          <h4 class="mb-4 fw-semibold">Guest, Payment & Services</h4>
+          <h4 class="mb-4 fw-semibold">{{ authStore.isAuthenticated ? 'Payment and Services' : 'Guest, Payment and Services' }}</h4>
 
-          <div v-if="bookingStore.finalizeError" class="alert alert-danger alert-dismissible fade show" role="alert">
-            <strong>Error:</strong> {{ bookingStore.finalizeError }}
-            <button type="button" class="btn-close" @click="clearFinalizeError" aria-label="Close"></button>
+          <div v-if="bookingStore.createBookingError" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Error:</strong> {{ bookingStore.createBookingError }}
+            <button type="button" class="btn-close" @click="clearcreateBookingError" aria-label="Close"></button>
           </div>
 
           <section class="mb-4">
-            <h5 class="mb-3 fw-medium pb-2 border-bottom">Guest Information</h5>
+            <h5 class="mb-3 fw-medium pb-2 border-bottom">
+             {{ authStore.isAuthenticated ? 'Your Information' : 'Guest Information' }}
+            </h5>
             <div class="row g-3">
               <div class="col-md-3 col-sm-4">
                 <label for="guestTitle" class="form-label small">Title <span class="text-danger">*</span></label>
-                <select id="guestTitle" class="form-select form-select-sm" v-model="formData.guestInfo.title" required :disabled="bookingStore.isFinalizingBooking">
+                <select id="guestTitle" class="form-select form-select-sm" v-model="formData.guestInfo.title" required :disabled="bookingStore.isCreatingBooking">
                   <option value="Mr.">Mr.</option>
                   <option value="Ms.">Ms.</option>
                   <option value="Mrs.">Mrs.</option>
@@ -45,37 +47,37 @@
               </div>
               <div class="col-md-4 col-sm-8">
                 <label for="guestFirstName" class="form-label small">First Name <span class="text-danger">*</span></label>
-                <input type="text" class="form-control form-control-sm" id="guestFirstName" v-model.trim="formData.guestInfo.firstName" required placeholder="Enter first name" :disabled="bookingStore.isFinalizingBooking">
+                <input type="text" class="form-control form-control-sm" id="guestFirstName" v-model.trim="formData.guestInfo.firstName" required placeholder="Enter first name" :disabled="bookingStore.isCreatingBooking">
                 <div v-if="formSubmitted && errors.guestInfo.firstName" class="text-danger small mt-1">{{ errors.guestInfo.firstName }}</div>
               </div>
               <div class="col-md-5">
                 <label for="guestLastName" class="form-label small">Last Name <span class="text-danger">*</span></label>
-                <input type="text" class="form-control form-control-sm" id="guestLastName" v-model.trim="formData.guestInfo.lastName" required placeholder="Enter last name" :disabled="bookingStore.isFinalizingBooking">
+                <input type="text" class="form-control form-control-sm" id="guestLastName" v-model.trim="formData.guestInfo.lastName" required placeholder="Enter last name" :disabled="bookingStore.isCreatingBooking">
                 <div v-if="formSubmitted && errors.guestInfo.lastName" class="text-danger small mt-1">{{ errors.guestInfo.lastName }}</div>
               </div>
               <div class="col-md-6">
                 <label for="guestEmail" class="form-label small">Email Address <span class="text-danger">*</span></label>
-                <input type="email" class="form-control form-control-sm" id="guestEmail" v-model.trim="formData.guestInfo.email" required placeholder="e.g., name@example.com" :disabled="bookingStore.isFinalizingBooking">
+                <input type="email" class="form-control form-control-sm" id="guestEmail" v-model.trim="formData.guestInfo.email" required placeholder="e.g., name@example.com" :disabled="bookingStore.isCreatingBooking">
                 <div v-if="formSubmitted && errors.guestInfo.email" class="text-danger small mt-1">{{ errors.guestInfo.email }}</div>
               </div>
               <div class="col-md-6">
                 <label for="guestPhone" class="form-label small">Phone Number <span class="text-danger">*</span></label>
-                <input type="tel" class="form-control form-control-sm" id="guestPhone" v-model.trim="formData.guestInfo.phone" required placeholder="Enter phone number" :disabled="bookingStore.isFinalizingBooking">
+                <input type="tel" class="form-control form-control-sm" id="guestPhone" v-model.trim="formData.guestInfo.phone" required placeholder="Enter phone number" :disabled="bookingStore.isCreatingBooking">
                 <div v-if="formSubmitted && errors.guestInfo.phone" class="text-danger small mt-1">{{ errors.guestInfo.phone }}</div>
               </div>
               <div class="col-md-6">
                 <label for="guestNationalId" class="form-label small">National ID / Passport <span class="text-danger">*</span></label>
-                <input type="text" class="form-control form-control-sm" id="guestNationalId" v-model.trim="formData.guestInfo.nationalId" required placeholder="Enter National ID or Passport" :disabled="bookingStore.isFinalizingBooking">
+                <input type="text" class="form-control form-control-sm" id="guestNationalId" v-model.trim="formData.guestInfo.nationalId" required placeholder="Enter National ID or Passport" :disabled="bookingStore.isCreatingBooking">
                 <div v-if="formSubmitted && errors.guestInfo.nationalId" class="text-danger small mt-1">{{ errors.guestInfo.nationalId }}</div>
               </div>
               <div class="col-md-3 col-6">
                 <label for="guestBirthDate" class="form-label small">Date of Birth</label>
-                <input type="date" class="form-control form-control-sm" id="guestBirthDate" v-model="formData.guestInfo.birthDate" :disabled="bookingStore.isFinalizingBooking">
+                <input type="date" class="form-control form-control-sm" id="guestBirthDate" v-model="formData.guestInfo.birthDate" :disabled="bookingStore.isCreatingBooking">
                 <div v-if="formSubmitted && errors.guestInfo.birthDate" class="text-danger small mt-1">{{ errors.guestInfo.birthDate }}</div>
               </div>
               <div class="col-md-3 col-6">
                 <label for="guestGender" class="form-label small">Gender</label>
-                <select id="guestGender" class="form-select form-select-sm" v-model="formData.guestInfo.gender" :disabled="bookingStore.isFinalizingBooking">
+                <select id="guestGender" class="form-select form-select-sm" v-model="formData.guestInfo.gender" :disabled="bookingStore.isCreatingBooking">
                   <option value="">Select...</option>
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
@@ -91,22 +93,22 @@
              <div class="row g-3">
                 <div class="col-12">
                     <label for="billingStreet" class="form-label small">Street Address <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control form-control-sm" id="billingStreet" v-model.trim="formData.billingAddress.street" required placeholder="123 Main St" :disabled="bookingStore.isFinalizingBooking">
+                    <input type="text" class="form-control form-control-sm" id="billingStreet" v-model.trim="formData.billingAddress.street" required placeholder="123 Main St" :disabled="bookingStore.isCreatingBooking">
                     <div v-if="formSubmitted && errors.billingAddress.street" class="text-danger small mt-1">{{ errors.billingAddress.street }}</div>
                 </div>
                 <div class="col-md-6">
                     <label for="billingCity" class="form-label small">City <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control form-control-sm" id="billingCity" v-model.trim="formData.billingAddress.city" required placeholder="City name" :disabled="bookingStore.isFinalizingBooking">
+                    <input type="text" class="form-control form-control-sm" id="billingCity" v-model.trim="formData.billingAddress.city" required placeholder="City name" :disabled="bookingStore.isCreatingBooking">
                     <div v-if="formSubmitted && errors.billingAddress.city" class="text-danger small mt-1">{{ errors.billingAddress.city }}</div>
                 </div>
                 <div class="col-md-6">
                     <label for="billingPostalCode" class="form-label small">Postal Code <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control form-control-sm" id="billingPostalCode" v-model.trim="formData.billingAddress.postalCode" required placeholder="Postal or ZIP code" :disabled="bookingStore.isFinalizingBooking">
+                    <input type="text" class="form-control form-control-sm" id="billingPostalCode" v-model.trim="formData.billingAddress.postalCode" required placeholder="Postal or ZIP code" :disabled="bookingStore.isCreatingBooking">
                     <div v-if="formSubmitted && errors.billingAddress.postalCode" class="text-danger small mt-1">{{ errors.billingAddress.postalCode }}</div>
                 </div>
                 <div class="col-12">
                     <label for="billingCountry" class="form-label small">Country <span class="text-danger">*</span></label>
-                    <select id="billingCountry" class="form-select form-select-sm" v-model="formData.billingAddress.country" required :disabled="bookingStore.isFinalizingBooking">
+                    <select id="billingCountry" class="form-select form-select-sm" v-model="formData.billingAddress.country" required :disabled="bookingStore.isCreatingBooking">
                         <option disabled value="">Please select a country</option>
                         <option v-for="country in countries" :key="country.code" :value="country.code">{{ country.name }}</option>
                     </select>
@@ -142,7 +144,7 @@
                         @change="toggleService(service, $event.target.checked)"
                         :checked="isServiceSelected(service.MaLoaiDV)"
                         class="form-check-input me-2"
-                        :disabled="bookingStore.isFinalizingBooking"
+                        :disabled="bookingStore.isCreatingBooking"
                       />
                       <label :for="`service-${service.MaLoaiDV}`" class="form-check-label small">Add</label>
                       <input
@@ -153,7 +155,7 @@
                         @input="updateServiceQuantity(service.MaLoaiDV, parseInt($event.target.value))"
                         class="form-control form-control-sm ms-auto"
                         style="width: 70px;"
-                        :disabled="bookingStore.isFinalizingBooking"
+                        :disabled="bookingStore.isCreatingBooking"
                       />
                     </div>
                   </div>
@@ -171,29 +173,29 @@
             <div class="row g-3">
               <div class="col-12">
                 <label for="paymentCardName" class="form-label small">Name on Card <span class="text-danger">*</span></label>
-                <input type="text" class="form-control form-control-sm" id="paymentCardName" v-model.trim="formData.paymentInfo.nameOnCard" required placeholder="Full name as displayed on card" :disabled="bookingStore.isFinalizingBooking">
+                <input type="text" class="form-control form-control-sm" id="paymentCardName" v-model.trim="formData.paymentInfo.nameOnCard" required placeholder="Full name as displayed on card" :disabled="bookingStore.isCreatingBooking">
                 <div v-if="formSubmitted && errors.paymentInfo.nameOnCard" class="text-danger small mt-1">{{ errors.paymentInfo.nameOnCard }}</div>
               </div>
               <div class="col-12">
                 <label for="paymentCardNumber" class="form-label small">Card Number <span class="text-danger">*</span></label>
-                <input type="text" class="form-control form-control-sm" id="paymentCardNumber" v-model.trim="formData.paymentInfo.cardNumber" required placeholder="---- ---- ---- ----" :disabled="bookingStore.isFinalizingBooking">
+                <input type="text" class="form-control form-control-sm" id="paymentCardNumber" v-model.trim="formData.paymentInfo.cardNumber" required placeholder="---- ---- ---- ----" :disabled="bookingStore.isCreatingBooking">
                 <div v-if="formSubmitted && errors.paymentInfo.cardNumber" class="text-danger small mt-1">{{ errors.paymentInfo.cardNumber }}</div>
               </div>
               <div class="col-md-6">
                 <label for="paymentExpiryDate" class="form-label small">Expiry Date (MM/YY) <span class="text-danger">*</span></label>
-                <input type="text" class="form-control form-control-sm" id="paymentExpiryDate" v-model.trim="formData.paymentInfo.expiryDate" required placeholder="MM/YY" :disabled="bookingStore.isFinalizingBooking">
+                <input type="text" class="form-control form-control-sm" id="paymentExpiryDate" v-model.trim="formData.paymentInfo.expiryDate" required placeholder="MM/YY" :disabled="bookingStore.isCreatingBooking">
                 <div v-if="formSubmitted && errors.paymentInfo.expiryDate" class="text-danger small mt-1">{{ errors.paymentInfo.expiryDate }}</div>
               </div>
               <div class="col-md-6">
                 <label for="paymentCvv" class="form-label small">CVV/CVC <span class="text-danger">*</span></label>
-                <input type="text" class="form-control form-control-sm" id="paymentCvv" v-model.trim="formData.paymentInfo.cvv" required placeholder="---" maxlength="4" :disabled="bookingStore.isFinalizingBooking">
+                <input type="text" class="form-control form-control-sm" id="paymentCvv" v-model.trim="formData.paymentInfo.cvv" required placeholder="---" maxlength="4" :disabled="bookingStore.isCreatingBooking">
                 <div v-if="formSubmitted && errors.paymentInfo.cvv" class="text-danger small mt-1">{{ errors.paymentInfo.cvv }}</div>
               </div>
             </div>
           </section>
 
           <div class="form-check mb-4">
-            <input class="form-check-input" type="checkbox" id="termsAndConditions" v-model="formData.agreedToTerms" :disabled="bookingStore.isFinalizingBooking">
+            <input class="form-check-input" type="checkbox" id="termsAndConditions" v-model="formData.agreedToTerms" :disabled="bookingStore.isCreatingBooking">
             <label class="form-check-label small" for="termsAndConditions">
               I have read and agree to the <a href="#" @click.prevent class="text-decoration-none">terms and conditions</a> and <a href="#" @click.prevent class="text-decoration-none">privacy policy</a>.
             </label>
@@ -204,14 +206,14 @@
             <Button
                 content="Confirm & Finalize Booking"
                 type="submit"
-                :is-loading="bookingStore.isFinalizingBooking"
-                :disabled="bookingStore.isFinalizingBooking || !bookingStore.isTimerActive"
+                :is-loading="bookingStore.isCreatingBooking"
+                :disabled="bookingStore.isCreatingBooking || !bookingStore.isTimerActive"
                 textColor="#fff" fontSize="18px" backgroundColor="black"
                 colorHover="white" bgHover="#198754" borderRadius="6px"
                 class="w-100 text-uppercase fw-bold py-2"
                 />
           </div>
-          <div v-if="!bookingStore.isTimerActive && bookingStore.heldBookingMaDat" class="alert alert-danger small text-center">
+          <div v-if="!bookingStore.isTimerActive" class="alert alert-danger small text-center">
             Your booking hold has expired. Please <a href="#" @click.prevent="goToPreviousStep">go back to room selection</a> and try again.
           </div>
         </form>
@@ -272,9 +274,11 @@ import Button from "../../Button.vue";
 import { useBookingStore } from '@/store/bookingStore';
 import axios from 'axios';
 import BookingTimer from '../../booking/BookingTimer.vue';
+import { useAuthStore } from '../../../store/authStore';
 
 const emit = defineEmits(['booking-finalization-requested']);
 const bookingStore = useBookingStore();
+const authStore = useAuthStore();
 
 const defaultFormData = () => ({
   guestInfo: { title: 'Mr.', firstName: '', lastName: '', nationalId: '', phone: '', email: '', birthDate: '', gender: '' },
@@ -397,20 +401,89 @@ function resetFormToDefaults() {
 }
 
 function initializeFormDataFromStore() {
-  if (bookingStore.guestAndPaymentInput && typeof bookingStore.guestAndPaymentInput === 'object') {
-    const stored = JSON.parse(JSON.stringify(bookingStore.guestAndPaymentInput));
-    const defaults = defaultFormData();
 
+  formSubmitted.value = false;
+  const defaults = defaultFormData();
+    console.log("STEP 3 INIT - START");
+  console.log("STEP 3 INIT - bookingStore.guestAndPaymentInput:", JSON.parse(JSON.stringify(bookingStore.guestAndPaymentInput)));
+  console.log("STEP 3 INIT - authStore.isAuthenticated:", authStore.isAuthenticated);
+  console.log("STEP 3 INIT - authStore.currentUser:", JSON.parse(JSON.stringify(authStore.currentUser)));
+
+
+  if (bookingStore.guestAndPaymentInput && typeof bookingStore.guestAndPaymentInput === 'object') {
+        console.log("STEP 3 INIT: Branch 1 - Using guestAndPaymentInput from bookingStore.");
+    const stored = JSON.parse(JSON.stringify(bookingStore.guestAndPaymentInput));
     formData.guestInfo = { ...defaults.guestInfo, ...(stored.guestInfo || {}) };
     formData.paymentInfo = { ...defaults.paymentInfo, ...(stored.paymentInfo || {}) };
     formData.services = Array.isArray(stored.services) ? [...stored.services] : [...defaults.services];
     formData.promotionCode = typeof stored.promotionCode === 'string' ? stored.promotionCode : defaults.promotionCode;
     formData.agreedToTerms = typeof stored.agreedToTerms === 'boolean' ? stored.agreedToTerms : defaults.agreedToTerms;
     formData.billingAddress = { ...defaults.billingAddress, ...(stored.billingAddress || {}) };
-  } else {
-    resetFormToDefaults();
+  } else if(authStore.isAuthenticated && authStore.currentUser) {
+        console.log("STEP 3 INIT: Branch 2 - User logged in, pre-filling GUEST INFO from profile.");
+      const userProfile = authStore.currentUser;
+      let firstName = '';
+      let lastName = '';
+      if (userProfile.HoTen) {
+        const nameParts = userProfile.HoTen.trim().split(' ');
+        if(nameParts.length > 1 ) {
+        firstName = nameParts.pop();
+        lastName = nameParts.join(' ');
+      } 
+      else {
+        lastName = userProfile.HoTen;
+      }
+
+      let title = defaults.guestInfo.title;
+    if (userProfile.GioiTinh) {
+        if (userProfile.GioiTinh.toLowerCase() === 'nam') title = 'Mr.';
+        else if (userProfile.GioiTinh.toLowerCase() === 'nữ') title = 'Ms.';
+        
+    }
+
+    formData.guestInfo.title = title;
+    formData.guestInfo.firstName = firstName;
+    formData.guestInfo.lastName = lastName;
+    formData.guestInfo.email = userProfile.Email || '';
+    formData.guestInfo.phone = userProfile.SDT || '';
+    formData.guestInfo.nationalId = userProfile.CCCD || '';
+    formData.guestInfo.birthDate = userProfile.NgaySinh ? userProfile.NgaySinh.substring(0, 10) : ''; // Format YYYY-MM-DD
+    formData.guestInfo.gender = userProfile.GioiTinh || '';
+
+    console.log("STEP 3 INIT: Branch 2 - formData.guestInfo after prefill from profile:", JSON.parse(JSON.stringify(formData.guestInfo)))
+
+    // Khi guestInfo được điền từ profile, các phần khác sẽ lấy từ giá trị mặc định
+    Object.assign(formData.billingAddress, defaults.billingAddress); // ĐÚNG: Reset billingAddress về mặc định
+    formData.paymentInfo = { ...defaults.paymentInfo };
+    formData.services = [...defaults.services];
+    formData.promotionCode = defaults.promotionCode;
+    formData.agreedToTerms = defaults.agreedToTerms;
+
   }
+
+  let genderForForm = '';
+if (userProfile.GioiTinh) {
+  const apiGender = userProfile.GioiTinh.toLowerCase();
+  if (apiGender === 'nam') {
+    genderForForm = 'Male';
+  } else if (apiGender === 'nữ' || apiGender === 'nu') { // Bao gồm cả 'nu' nếu có thể
+    genderForForm = 'Female';
+  } else if (apiGender === 'khác' || apiGender === 'khac' || apiGender === 'other') {
+    genderForForm = 'Other';
+  }
+  // Nếu không khớp, genderForForm sẽ vẫn là '', và "Select..." sẽ được chọn
 }
+formData.guestInfo.gender = genderForForm;
+
+}
+    
+  else {
+    console.log("STEP 3 INIT: Branch 3 - Resetting to defaults.");
+  resetFormToDefaults();;
+}
+console.log("STEP 3 INIT - END - Final formData.guestInfo:", JSON.parse(JSON.stringify(formData.guestInfo)));
+}
+
 
 onMounted(() => {
   initializeFormDataFromStore();
@@ -426,15 +499,36 @@ watch(() => bookingStore.selectedHotelDetails?.MaKS, (newMaKS, oldMaKS) => {
   }
 });
 
-watch(() => bookingStore.guestAndPaymentInput, (newVal, oldVal) => {
-    // Chỉ initialize lại nếu guestAndPaymentInput thực sự thay đổi và khác với formData hiện tại
-    // để tránh ghi đè khi người dùng đang nhập liệu.
-    if (newVal === null && oldVal !== null) { // Trường hợp store reset guestAndPaymentInput
-        initializeFormDataFromStore();
-    } else if (newVal && JSON.stringify(newVal) !== JSON.stringify(formData)) {
+watch(
+  // Lắng nghe guestAndPaymentInput VÀ trạng thái đăng nhập/thông tin user
+  () => [
+    bookingStore.guestAndPaymentInput,
+    authStore.isAuthenticated,
+    authStore.currentUser?.MaKH // Dùng ID để biết user có thay đổi thực sự không
+  ],
+  ([newGuestInput, newIsAuth, newUserId], [oldGuestInput, oldIsAuth, oldUserId]) => {
+    const formDataString = JSON.stringify(formData);
+
+    // Kịch bản 1: guestAndPaymentInput được store set (hoặc reset)
+    if (newGuestInput !== oldGuestInput || (newGuestInput && JSON.stringify(newGuestInput) !== formDataString)) {
+      console.log("Step3 Watch: guestAndPaymentInput changed or differs from formData. Re-initializing.");
+      initializeFormDataFromStore();
+    }
+    // Kịch bản 2: Người dùng vừa đăng nhập VÀ chưa có dữ liệu form cụ thể cho lượt booking này
+    else if (!newGuestInput && newIsAuth && !oldIsAuth) {
+      console.log("Step3 Watch: User just logged in and no current form data. Re-initializing to prefill.");
+      initializeFormDataFromStore();
+    }
+    // Kịch bản 3: Người dùng vừa đăng xuất, và form đang chứa thông tin của họ -> reset
+    else if (oldIsAuth && !newIsAuth && oldUserId && formData.guestInfo.email === authStore.currentUser /*Lúc này currentUser là null sau logout, cần lưu email cũ để so sánh*/) {
+        // Logic này phức tạp hơn, có thể chỉ cần reset nếu oldUserId khớp với một ID đã lưu trước đó.
+        // Đơn giản nhất là initializeFormDataFromStore() cũng sẽ tự reset về default nếu !isAuthenticated.
+        console.log("Step3 Watch: User just logged out. Re-initializing form.");
         initializeFormDataFromStore();
     }
-}, { deep: true });
+  },
+  { deep: true }
+);
 
 function validateFormFields() {
   let isValid = true;
@@ -487,12 +581,12 @@ const handleSubmit = () => {
       alert("Your booking hold has expired. Please go back to room selection and try again.");
       return;
   }
-  if (bookingStore.finalizeError) bookingStore.finalizeError = null;
+  if (bookingStore.createBookingError) bookingStore.createBookingError = null;
   emit('booking-finalization-requested', JSON.parse(JSON.stringify(formData)));
 };
 
 function goToPreviousStep() { bookingStore.navigateToStep(2); }
-function clearFinalizeError() { bookingStore.finalizeError = null; }
+function clearcreateBookingError() { bookingStore.createBookingError = null; }
 
 const formatPriceBase = (value) => {
   if (value == null || isNaN(parseFloat(value))) return 'N/A';
