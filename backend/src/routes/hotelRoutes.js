@@ -21,7 +21,7 @@ const {
 } = require('../controllers/hotelController');
 const { authenticateToken, isAdmin } = require('../middlewares/auth');
 const { LocationSuggestLimiter } = require('../middlewares/rateLimiter');
-const { uploadHotelImages } = require('../middlewares/upload');
+const { uploadHotelImages, uploadHotelImagesCreate } = require('../middlewares/upload');
 const router = express.Router();
 
 // ----------- PUBLIC ROUTES (NO AUTH) -----------
@@ -56,7 +56,7 @@ router.post(
   '/',
   authenticateToken,
   isAdmin,
-  uploadHotelImages.array('images', 10), // Upload ảnh optional
+  uploadHotelImagesCreate.array('images', 10), // Upload ảnh optional
   [
     check('TenKS', 'Tên khách sạn không được để trống').notEmpty(),
     check('DiaChi', 'Địa chỉ không được để trống').notEmpty(),

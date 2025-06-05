@@ -51,7 +51,58 @@
             <small class="form-text text-muted">If left blank, the current admin will be assigned if their role allows.</small>
         </div>
 
+        <!-- Phần upload hình ảnh -->
+        <div class="col-12">
+            <label for="hotelImages" class="form-label">Upload Hotel Images (HotelImages) (Optional)</label>
+            <input
+              id="hotelImages"
+              ref="fileInput"
+              type="file"
+              class="form-control"
+              multiple
+              accept="image/*"
+              @change="handleImageChange"
+            />
+            <small class="form-text text-muted">
+              Chọn tối đa 10 ảnh. Ảnh đầu tiên sẽ được đặt làm ảnh chính. Định dạng: JPG, PNG, JPEG (Tối đa 5MB mỗi ảnh)
+            </small>
+        </div>
+
+        <!-- Preview ảnh đã chọn -->
+        <div v-if="selectedFiles.length > 0" class="col-12">
+          <label class="form-label">Preview Images:</label>
+          <div class="row g-2">
+            <div v-for="(file, index) in selectedFiles" :key="index" class="col-md-3 col-sm-6">
+              <div class="card position-relative">
+                <img :src="file.preview" :alt="file.name" class="card-img-top" style="height: 150px; object-fit: cover;">
+                <div class="card-body p-2">
+                  <small class="text-muted">{{ file.name }}</small>
+                  <div v-if="index === 0" class="badge bg-primary mt-1">Ảnh chính</div>
+                </div>
+                <button 
+                  type="button" 
+                  class="btn btn-danger btn-sm position-absolute top-0 end-0 m-1"
+                  @click="removeFile(index)"
+                  :disabled="isSubmitting"
+                >
+                  <i class="bi bi-x"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Chọn ảnh chính -->
+        <div v-if="selectedFiles.length > 1" class="col-12">
+          <label for="mainImageIndex" class="form-label">Chọn ảnh chính:</label>
+          <select id="mainImageIndex" v-model.number="mainImageIndex" class="form-select">
+            <option v-for="(file, index) in selectedFiles" :key="index" :value="index">
+              {{ index + 1 }}. {{ file.name }}
+            </option>
+          </select>
+        </div>
       </div>
+    
 
       <div class="mt-4 d-flex justify-content-end">
         <button type="button" @click="goBackToManageHotels" class="btn btn-secondary me-2" :disabled="isSubmitting">
@@ -90,6 +141,74 @@ const isSubmitting = ref(false);
 const formError = ref('');
 const successMessage = ref('');
 
+// Biến quản lý ảnh
+const selectedFiles = ref([]);
+const mainImageIndex = ref(0);
+const fileInput = ref(null);
+
+// Xử lý khi người dùng chọn files
+function handleImageChange(event) {
+  const files = Array.from(event.target.files);
+  
+  // Validate số lượng file
+  if (files.length > 10) {
+    formError.value = "Chỉ được chọn tối đa 10 ảnh.";
+    return;
+  }
+
+  // Clear previous selection
+  selectedFiles.value = [];
+  
+  files.forEach((file, index) => {
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      formError.value = `File "${file.name}" vượt quá 5MB. Vui lòng chọn file nhỏ hơn.`;
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      formError.value = `File "${file.name}" không phải là ảnh. Vui lòng chọn file ảnh.`;
+      return;
+    }
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      selectedFiles.value.push({
+        file: file,
+        name: file.name,
+        preview: e.target.result,
+        index: index
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Reset main image index
+  mainImageIndex.value = 0;
+  
+  // Clear any previous error if files are valid
+  if (files.every(f => f.size <= 5 * 1024 * 1024 && f.type.startsWith('image/'))) {
+    formError.value = '';
+  }
+}
+
+// Xóa một file khỏi danh sách
+function removeFile(index) {
+  selectedFiles.value.splice(index, 1);
+  
+  // Adjust main image index if necessary
+  if (mainImageIndex.value >= selectedFiles.value.length) {
+    mainImageIndex.value = Math.max(0, selectedFiles.value.length - 1);
+  }
+  
+  // Clear file input if no files left
+  if (selectedFiles.value.length === 0) {
+    fileInput.value.value = '';
+  }
+}
+
 async function submitAddHotel() {
   // Basic client-side validation (có thể thêm nhiều hơn)
   if (!hotelData.TenKS || !hotelData.DiaChi || !hotelData.HangSao || !hotelData.LoaiHinh || !hotelData.MoTaCoSoVatChat || !hotelData.QuyDinh) {
@@ -101,24 +220,54 @@ async function submitAddHotel() {
   formError.value = '';
   successMessage.value = '';
 
-  // Tạo payload, chỉ gửi MaNguoiQuanLy nếu nó có giá trị (khác null và không rỗng)
-  const payload = { ...hotelData };
-  if (payload.MaNguoiQuanLy === null || payload.MaNguoiQuanLy === '') {
-    delete payload.MaNguoiQuanLy; // Không gửi nếu admin không nhập
-  } else {
-    payload.MaNguoiQuanLy = parseInt(payload.MaNguoiQuanLy, 10);
-    if(isNaN(payload.MaNguoiQuanLy)) { // Validate nếu nhập chữ
-        formError.value = "Manager ID must be a valid number.";
-        isSubmitting.value = false;
-        return;
+  // Tạo FormData để gửi cả data và files
+  const formData = new FormData();
+
+   // Append hotel data
+   Object.keys(hotelData).forEach(key => {
+    if (hotelData[key] !== null && hotelData[key] !== '') {
+      if (key === 'MaNguoiQuanLy') {
+        const managerVal = parseInt(hotelData[key], 10);
+        if (!isNaN(managerVal)) {
+          formData.append(key, managerVal);
+        }
+      } else {
+        formData.append(key, hotelData[key]);
+      }
     }
+  });
+
+  // Append images
+  selectedFiles.value.forEach((fileObj, index) => {
+    formData.append('images', fileObj.file);
+  });
+
+  // Append main image index
+  if (selectedFiles.value.length > 0) {
+    formData.append('mainImageIndex', mainImageIndex.value);
   }
+
+  // // Tạo payload, chỉ gửi MaNguoiQuanLy nếu nó có giá trị (khác null và không rỗng)
+  // const payload = { ...hotelData };
+  // if (payload.MaNguoiQuanLy === null || payload.MaNguoiQuanLy === '') {
+  //   delete payload.MaNguoiQuanLy; // Không gửi nếu admin không nhập
+  // } else {
+  //   payload.MaNguoiQuanLy = parseInt(payload.MaNguoiQuanLy, 10);
+  //   if(isNaN(payload.MaNguoiQuanLy)) { // Validate nếu nhập chữ
+  //       formError.value = "Manager ID must be a valid number.";
+  //       isSubmitting.value = false;
+  //       return;
+  //   }
+  // }
 
 
   try {
     // API createHotel là POST /api/hotels (không có params trên URL)
-    const response = await axios.post('http://localhost:5000/api/hotels', payload, {
-      withCredentials: true
+    const response = await axios.post('http://localhost:5000/api/hotels', formData, {
+      withCredentials: true,
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
     });
 
     // API createHotel của bạn trả về { message: '...' } khi status 201
@@ -147,3 +296,21 @@ function goBackToManageHotels() {
   router.push({ name: 'AdminFindHotel' }); // Cần định nghĩa route này
 }
 </script>
+
+<style scoped>
+.card img {
+  transition: transform 0.2s;
+}
+
+.card:hover img {
+  transform: scale(1.05);
+}
+
+.position-relative .btn {
+  opacity: 0.8;
+}
+
+.position-relative .btn:hover {
+  opacity: 1;
+}
+</style>
