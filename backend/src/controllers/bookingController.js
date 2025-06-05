@@ -385,9 +385,9 @@ exports.getBookingById = async (req, res) => {
 
         // Kiểm tra quyền xem đơn đặt phòng
         const canView = 
-            currentUser.LoaiUser === 'Admin' || // Admin có thể xem mọi đơn
+            currentUser.role === 'Admin' || // Admin có thể xem mọi đơn
             currentUser.MaKH === booking.MaKH || // Khách hàng xem đơn của mình
-            (currentUser.LoaiUser === 'QuanLyKS' && currentUser.MaKH === booking.MaNguoiQuanLy); // Quản lý KS xem đơn của KS mình
+            (currentUser.role === 'QuanLyKS' && currentUser.MaKH === booking.MaNguoiQuanLy); // Quản lý KS xem đơn của KS mình
 
         if (!canView) {
             return res.status(403).json({ error: 'Bạn không có quyền xem đơn đặt phòng này' });
@@ -429,8 +429,8 @@ exports.cancelBooking = async (req, res) => {
         // Kiểm tra quyền hủy đặt phòng
         const canCancel = 
             currentUser.MaKH === booking.MaKH || // Khách hàng hủy đơn của mình
-            currentUser.LoaiUser === 'Admin' || // Admin có thể hủy mọi đơn
-            (currentUser.LoaiUser === 'QuanLyKS' && currentUser.MaKH === booking.MaNguoiQuanLy); // Quản lý KS chỉ hủy đơn của KS mình
+            currentUser.role === 'Admin' || // Admin có thể hủy mọi đơn
+            (currentUser.role === 'QuanLyKS' && currentUser.MaKH === booking.MaNguoiQuanLy); // Quản lý KS chỉ hủy đơn của KS mình
 
         if (!canCancel) {
             return res.status(403).json({ error: 'Bạn không có quyền hủy đơn đặt phòng này' });
@@ -486,8 +486,8 @@ exports.getBookingByUser = async (req, res) => {
         const currentUser = req.user;
 
         // Kiểm tra quyền truy cập
-        if (currentUser.LoaiUser !== 'Admin' && 
-            currentUser.LoaiUser !== 'QuanLyKS' && 
+        if (currentUser.role !== 'Admin' && 
+            currentUser.role !== 'QuanLyKS' && 
             currentUser.MaKH !== parseInt(MaKH)) {
             return res.status(403).json({ 
                 success: false, 
@@ -517,7 +517,7 @@ exports.getBookingByUser = async (req, res) => {
         `;
 
         // Nếu là QuanLyKS, chỉ xem được booking của khách sạn mình quản lý
-        if (currentUser.LoaiUser === 'QuanLyKS') {
+        if (currentUser.role === 'QuanLyKS') {
             query += ' AND ks.MaNguoiQuanLy = @MaNguoiQuanLy';
         }
 
@@ -1233,8 +1233,8 @@ exports.checkIn = async (req, res) => {
         
         // Kiểm tra quyền check-in
         const canCheckIn = 
-            currentUser.LoaiUser === 'Admin' || // Admin có thể check-in mọi đơn
-            (currentUser.LoaiUser === 'QuanLyKS' && currentUser.MaKH === booking.MaNguoiQuanLy); // Quản lý KS chỉ check-in đơn của KS mình
+            currentUser.role === 'Admin' || // Admin có thể check-in mọi đơn
+            (currentUser.role === 'QuanLyKS' && currentUser.MaKH === booking.MaNguoiQuanLy); // Quản lý KS chỉ check-in đơn của KS mình
 
         if (!canCheckIn) {
             return res.status(403).json({ error: "Bạn không có quyền thực hiện check-in" });
@@ -1270,11 +1270,11 @@ exports.checkIn = async (req, res) => {
             await transaction.request()
                 .input('MaDat', sql.Int, MaDat)
                 .input('TrangThaiBooking', sql.NVarChar, 'Đã nhận phòng')
-                .input('ThoiGianCheckIn', sql.DateTime, new Date())
+                .input('NgayNhanPhong', sql.DateTime, new Date())
                 .query(`
                     UPDATE Booking
                     SET TrangThaiBooking = @TrangThaiBooking,
-                        ThoiGianCheckIn = @ThoiGianCheckIn
+                        NgayNhanPhong = @NgayNhanPhong
                     WHERE MaDat = @MaDat
                 `);
 
@@ -1318,8 +1318,8 @@ exports.checkOut = async (req, res) => {
         
         // Kiểm tra quyền check-out
         const canCheckOut = 
-            currentUser.LoaiUser === 'Admin' || // Admin có thể check-out mọi đơn
-            (currentUser.LoaiUser === 'QuanLyKS' && currentUser.MaKH === booking.MaNguoiQuanLy); // Quản lý KS chỉ check-out đơn của KS mình
+            currentUser.role === 'Admin' || // Admin có thể check-out mọi đơn
+            (currentUser.role === 'QuanLyKS' && currentUser.MaKH === booking.MaNguoiQuanLy); // Quản lý KS chỉ check-out đơn của KS mình
 
         if (!canCheckOut) {
             return res.status(403).json({ error: "Bạn không có quyền thực hiện check-out" });
@@ -1349,11 +1349,11 @@ exports.checkOut = async (req, res) => {
             await transaction.request()
                 .input('MaDat', sql.Int, MaDat)
                 .input('TrangThaiBooking', sql.NVarChar, 'Đã trả phòng')
-                .input('ThoiGianCheckOut', sql.DateTime, new Date())
+                .input('NgayTraPhong', sql.DateTime, new Date())
                 .query(`
                     UPDATE Booking
                     SET TrangThaiBooking = @TrangThaiBooking,
-                        ThoiGianCheckOut = @ThoiGianCheckOut
+                        NgayTraPhong = @NgayTraPhong
                     WHERE MaDat = @MaDat
                 `);
 
