@@ -300,6 +300,14 @@ onBeforeUnmount(() => {
   border: 1px solid #ced4da; /* Thêm lại border mặc định hoặc một border nhẹ nếu muốn */
   /* box-shadow: 0 2px 5px rgba(0,0,0,0.05); -- Đã xóa, có thể thêm lại nếu muốn input có shadow riêng */
 }
+
+/* Override Bootstrap focus styles để loại bỏ viền xanh */
+.search-bar-custom .form-control:focus,
+.search-bar-custom .form-select:focus {
+  border-color: #ced4da;
+  outline: 0;
+  box-shadow: none;
+}
 .search-bar-custom .input-group .form-control {
    border-left: none;
    border-radius: 0 0.375rem 0.375rem 0;

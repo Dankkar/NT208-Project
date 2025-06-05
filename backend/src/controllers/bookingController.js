@@ -591,9 +591,24 @@ exports.getMyBookings = async (req, res) => {
             });
         }
 
+        // Lấy thông tin phân trang từ query parameters
+        const { page = 1, limit = 10 } = req.query;
+        const offset = (page - 1) * limit;
+
         // Sử dụng MaKH từ session thay vì từ params
         const MaKH = currentUser.MaKH;
         const pool = await poolPromise;
+
+        // Đếm tổng số đơn đặt phòng của user
+        const countQuery = `
+            SELECT COUNT(*) as total
+            FROM Booking b
+            WHERE b.MaKH = @MaKH
+        `;
+        
+        const countResult = await pool.request()
+            .input('MaKH', sql.Int, MaKH)
+            .query(countQuery);
         
         const query = `
             SELECT 
@@ -625,10 +640,14 @@ exports.getMyBookings = async (req, res) => {
                 )
             WHERE b.MaKH = @MaKH
             ORDER BY b.NgayDat DESC
+            OFFSET @offset ROWS
+            FETCH NEXT @limit ROWS ONLY
         `;
 
         const result = await pool.request()
             .input('MaKH', sql.Int, MaKH)
+            .input('offset', sql.Int, offset)
+            .input('limit', sql.Int, parseInt(limit))
             .query(query);
 
         // Lấy thông tin dịch vụ cho từng booking
@@ -702,7 +721,15 @@ exports.getMyBookings = async (req, res) => {
         res.json({
             success: true,
             data: result.recordset,
-            message: `Tìm thấy ${result.recordset.length} đơn đặt phòng`
+            pagination: {
+                total: countResult.recordset[0].total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(countResult.recordset[0].total / parseInt(limit)),
+                hasNextPage: parseInt(page) < Math.ceil(countResult.recordset[0].total / parseInt(limit)),
+                hasPrevPage: parseInt(page) > 1
+            },
+            message: `Tìm thấy ${result.recordset.length} đơn đặt phòng trên trang ${page}`
         });
     } catch (err) {
         console.error('Lỗi getMyBookings:', err);
@@ -1433,15 +1460,15 @@ exports.checkIn = async (req, res) => {
                     WHERE MaPhong = @MaPhong
                 `);
 
-            // Cập nhật trạng thái booking
+            // Cập nhật trạng thái booking và ngày nhận phòng thực tế
             await transaction.request()
                 .input('MaDat', sql.Int, MaDat)
                 .input('TrangThaiBooking', sql.NVarChar, 'Đã nhận phòng')
-                .input('ThoiGianCheckIn', sql.DateTime, new Date())
+                .input('NgayNhanPhong', sql.DateTime, new Date())
                 .query(`
                     UPDATE Booking
                     SET TrangThaiBooking = @TrangThaiBooking,
-                        ThoiGianCheckIn = @ThoiGianCheckIn
+                        NgayNhanPhong = @NgayNhanPhong
                     WHERE MaDat = @MaDat
                 `);
 
@@ -1512,15 +1539,15 @@ exports.checkOut = async (req, res) => {
                     WHERE MaPhong = @MaPhong
                 `);
 
-            // Cập nhật trạng thái booking
+            // Cập nhật trạng thái booking và ngày trả phòng thực tế
             await transaction.request()
                 .input('MaDat', sql.Int, MaDat)
                 .input('TrangThaiBooking', sql.NVarChar, 'Đã trả phòng')
-                .input('ThoiGianCheckOut', sql.DateTime, new Date())
+                .input('NgayTraPhong', sql.DateTime, new Date())
                 .query(`
                     UPDATE Booking
                     SET TrangThaiBooking = @TrangThaiBooking,
-                        ThoiGianCheckOut = @ThoiGianCheckOut
+                        NgayTraPhong = @NgayTraPhong
                     WHERE MaDat = @MaDat
                 `);
 
