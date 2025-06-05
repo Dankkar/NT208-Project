@@ -417,7 +417,7 @@ VALUES
 (3, 'test3.jpg', 'uploads/hotels/test3.jpg', 'gallery', 3, 'Ảnh gallery 2');
 
 update booking
-set NgayNhanPhong = '2025-06-02 17:00'
+set TrangThaiBooking = N'Đã xác nhận'
 where MaDat = 7
 
 select * from booking

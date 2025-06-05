@@ -1,5 +1,4 @@
 // backend/src/controllers/bookingController.js
-
 const { poolPromise, sql } = require('../database/db');
 const { sendReviewRequestEmail, sendBookingConfirmation, sendBookingNotificationToManager } = require('../utils/emailService');
 const PriceCalculationService = require('../services/priceCalculationService');

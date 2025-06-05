@@ -363,9 +363,9 @@ exports.updateHotel = async (req, res) => {
                 if (key === 'MaKS' || key === 'MaNguoiQuanLy') {
                     request.input(key, sql.Int, queryParams[key]);
                 } else if (key === 'MoTaCoSoVatChat' || key === 'QuyDinh' || key === 'MotaChung') {
-                    request.input(key, sql.Text, queryParams[key]);
+                    request.input(key, sql.NVarChar(sql.MAX), queryParams[key]);
                 } else {
-                    request.input(key, sql.VarChar, queryParams[key]);
+                    request.input(key, sql.NVarChar, queryParams[key]);
                 }
             });
             
@@ -593,9 +593,9 @@ exports.uploadHotelWithImages = async (req, res) => {
                 if (key === 'MaKS' || key === 'MaNguoiQuanLy') {
                     request.input(key, sql.Int, queryParams[key]);
                 } else if (key === 'MoTaCoSoVatChat' || key === 'QuyDinh' || key === 'MotaChung') {
-                    request.input(key, sql.Text, queryParams[key]);
+                    request.input(key, sql.NVarChar(sql.MAX), queryParams[key]);
                 } else {
-                    request.input(key, sql.VarChar, queryParams[key]);
+                    request.input(key, sql.NVarChar, queryParams[key]);
                 }
             });
 
@@ -1078,7 +1078,7 @@ exports.suggestLocations = async (req, res) => {
         const keyword = req.query.keyword; //từ khóa tìm kiếm
         const pool = await poolPromise;
         const result = await pool.request()
-            .input('keyword', sql.VarChar, keyword)
+            .input('keyword', sql.NVarChar, keyword)
             .query(`
                 SELECT DISTINCT DiaChi
                 FROM KhachSan

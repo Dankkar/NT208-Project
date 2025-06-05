@@ -8,7 +8,6 @@ import MenuButton from '../components/MenuButton.vue'
 import Profile from '../views/Profile.vue'
 import Hotels from '../views/Hotels.vue'
 import Dashboard from '../views/Dashboard.vue'
-import RatingDetails from '../views/RatingDetails.vue'
 import HotelDetails from '../views/HotelDetails.vue'
 import Reserve from '../views/Reserve.vue'
 import BookingProcess from '../views/BookingProcess.vue'
@@ -44,7 +43,6 @@ const routes = [
   { path: '/Menu', name: "Menu", component: MenuButton},
   { path: '/profile', name: "Profile", component:Profile, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
   { path: '/hotels', name: "Hotels", component:Hotels, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
-  { path: '/hotels/ratings', name: "RatingDetails", component:RatingDetails, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
   { path: '/reserve', name: 'Reserve', component: Reserve, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
   { path: '/BookingProcess', name: 'BookingProcess', component: BookingProcess, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
   { path: '/BookingHistory', name: 'BookingHistory', component: BookingHistory, meta: {navbarBehavior: 'stickyWithHideOnScroll'}}, 

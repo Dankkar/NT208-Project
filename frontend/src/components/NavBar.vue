@@ -41,17 +41,6 @@
           />
         </router-link>
       </li>
-      <!-- RATINGS Link -->
-      <li class="nav-item">
-        <router-link class="nav-link" to="/ratings">
-          <Button
-            content="RATINGS"
-            :textColor="computedDesktopButtonTextColor"
-            :colorHover="computedDesktopButtonColorHover"
-            :bgColorOnHover="computedDesktopButtonBgColorHover"
-          />
-        </router-link>
-      </li>
       <!-- LOGIN (if not authenticated) -->
       <li class="nav-item" v-if="!authStore.isAuthenticated">
         <router-link class="nav-link" to="/login">
@@ -186,7 +175,6 @@ const menuButtonNavigationItems = computed(() => {
   const baseItems = [
     { label: 'Home', path: '/homepage', icon: 'bi-house' },
     { label: 'Hotels', path: '/hotel', icon: 'bi-building' },
-    { label: 'Ratings', path: '/ratings', icon: 'bi-star' },
     { label: 'Reserve', path: '/bookingprocess', icon: 'bi-bookmark-plus' },
   ];
   return baseItems;
