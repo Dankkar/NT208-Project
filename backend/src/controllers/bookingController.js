@@ -591,32 +591,63 @@ exports.getMyBookings = async (req, res) => {
             });
         }
 
+        // Lấy thông tin phân trang từ query parameters
+        const { page = 1, limit = 10 } = req.query;
+        const offset = (page - 1) * limit;
+
         // Sử dụng MaKH từ session thay vì từ params
         const MaKH = currentUser.MaKH;
         const pool = await poolPromise;
+
+        // Đếm tổng số đơn đặt phòng của user
+        const countQuery = `
+            SELECT COUNT(*) as total
+            FROM Booking b
+            WHERE b.MaKH = @MaKH
+        `;
+        
+        const countResult = await pool.request()
+            .input('MaKH', sql.Int, MaKH)
+            .query(countQuery);
         
         const query = `
             SELECT 
                 b.*,
                 ks.TenKS,
                 ks.DiaChi,
+                ks.HangSao,
                 p.SoPhong,
                 lp.TenLoaiPhong,
                 lp.GiaCoSo,
+                lp.DuongDanAnh as AnhLoaiPhong,
                 u.HoTen as TenKhachHang,
                 u.Email as EmailKhachHang,
-                u.SDT as SDTKhachHang
+                u.SDT as SDTKhachHang,
+                ak.DuongDanAnh as AnhKhachSan
             FROM Booking b
             JOIN KhachSan ks ON b.MaKS = ks.MaKS
             LEFT JOIN Phong p ON b.MaPhong = p.MaPhong
             LEFT JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
             JOIN NguoiDung u ON b.MaKH = u.MaKH
+            LEFT JOIN AnhKhachSan ak ON ks.MaKS = ak.MaKS
+                AND ak.LoaiAnh = 'main'
+                AND ak.IsActive = 1
+                AND ak.MaAnh = (
+                    SELECT TOP 1 MaAnh 
+                    FROM AnhKhachSan 
+                    WHERE MaKS = ks.MaKS AND IsActive = 1 AND LoaiAnh = 'main'
+                    ORDER BY ThuTu ASC, NgayThem ASC
+                )
             WHERE b.MaKH = @MaKH
             ORDER BY b.NgayDat DESC
+            OFFSET @offset ROWS
+            FETCH NEXT @limit ROWS ONLY
         `;
 
         const result = await pool.request()
             .input('MaKH', sql.Int, MaKH)
+            .input('offset', sql.Int, offset)
+            .input('limit', sql.Int, parseInt(limit))
             .query(query);
 
         // Lấy thông tin dịch vụ cho từng booking
@@ -652,18 +683,53 @@ exports.getMyBookings = async (req, res) => {
                 servicesByBooking[service.MaDat].push(service);
             });
 
-            // Thêm thông tin dịch vụ vào mỗi booking
+            // Thêm thông tin dịch vụ và xử lý đường dẫn ảnh vào mỗi booking
             result.recordset.forEach(booking => {
                 booking.DichVuSuDung = servicesByBooking[booking.MaDat] || [];
                 booking.TongTienDichVu = booking.DichVuSuDung.reduce((total, service) => total + (service.ThanhTien || 0), 0);
                 booking.TongSoDichVu = booking.DichVuSuDung.length;
+                
+                // Tạo đường dẫn đầy đủ cho ảnh khách sạn
+                booking.AnhKhachSanUrl = booking.AnhKhachSan 
+                    ? `${req.protocol}://${req.get('host')}/${booking.AnhKhachSan}`
+                    : null;
+                    
+                // Tạo đường dẫn đầy đủ cho ảnh loại phòng
+                booking.AnhLoaiPhongUrl = booking.AnhLoaiPhong 
+                    ? `${req.protocol}://${req.get('host')}/${booking.AnhLoaiPhong}`
+                    : null;
+            });
+        } else {
+            // Xử lý đường dẫn ảnh cho trường hợp không có booking nào
+            result.recordset.forEach(booking => {
+                booking.DichVuSuDung = [];
+                booking.TongTienDichVu = 0;
+                booking.TongSoDichVu = 0;
+                
+                // Tạo đường dẫn đầy đủ cho ảnh khách sạn
+                booking.AnhKhachSanUrl = booking.AnhKhachSan 
+                    ? `${req.protocol}://${req.get('host')}/${booking.AnhKhachSan}`
+                    : null;
+                    
+                // Tạo đường dẫn đầy đủ cho ảnh loại phòng
+                booking.AnhLoaiPhongUrl = booking.AnhLoaiPhong 
+                    ? `${req.protocol}://${req.get('host')}/${booking.AnhLoaiPhong}`
+                    : null;
             });
         }
 
         res.json({
             success: true,
             data: result.recordset,
-            message: `Tìm thấy ${result.recordset.length} đơn đặt phòng`
+            pagination: {
+                total: countResult.recordset[0].total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(countResult.recordset[0].total / parseInt(limit)),
+                hasNextPage: parseInt(page) < Math.ceil(countResult.recordset[0].total / parseInt(limit)),
+                hasPrevPage: parseInt(page) > 1
+            },
+            message: `Tìm thấy ${result.recordset.length} đơn đặt phòng trên trang ${page}`
         });
     } catch (err) {
         console.error('Lỗi getMyBookings:', err);
@@ -1187,7 +1253,7 @@ exports.searchAvailableRooms = async (req, res) => {
 
         const pool = await poolPromise;
 
-        // First, get all hotels and their room types
+        // First, get all hotels and their room types with images
         const hotelsResult = await pool.request()
             .input('numberOfGuests', sql.Int, guests)
             .query(`
@@ -1200,6 +1266,7 @@ exports.searchAvailableRooms = async (req, res) => {
                     ks.MoTaChung,
                     ks.Latitude,
                     ks.Longitude,
+                    ak.DuongDanAnh as MainImagePath,
                     lp.MaLoaiPhong,
                     lp.TenLoaiPhong,
                     lp.GiaCoSo,
@@ -1212,6 +1279,15 @@ exports.searchAvailableRooms = async (req, res) => {
                 JOIN LoaiPhong lp ON ks.MaKS = lp.MaKS
                 JOIN Phong p ON lp.MaLoaiPhong = p.MaLoaiPhong
                 JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
+                LEFT JOIN AnhKhachSan ak ON ks.MaKS = ak.MaKS
+                    AND ak.LoaiAnh = 'main'
+                    AND ak.IsActive = 1
+                    AND ak.MaAnh = (
+                        SELECT TOP 1 MaAnh 
+                        FROM AnhKhachSan 
+                        WHERE MaKS = ks.MaKS AND IsActive = 1 AND LoaiAnh = 'main'
+                        ORDER BY ThuTu ASC, NgayThem ASC
+                    )
                 WHERE (chg.SoGiuongDoi * 2 + chg.SoGiuongDon) >= @numberOfGuests
                 ORDER BY ks.HangSao DESC, lp.GiaCoSo ASC;
             `);
@@ -1268,6 +1344,9 @@ exports.searchAvailableRooms = async (req, res) => {
                     MoTaChung: record.MoTaChung,
                     Latitude: record.Latitude,
                     Longitude: record.Longitude,
+                    MainImagePath: record.MainImagePath
+                        ? `${req.protocol}://${req.get('host')}/${record.MainImagePath}`
+                        : null,
                     roomTypes: []
                 };
             }
@@ -1381,15 +1460,15 @@ exports.checkIn = async (req, res) => {
                     WHERE MaPhong = @MaPhong
                 `);
 
-            // Cập nhật trạng thái booking
+            // Cập nhật trạng thái booking và ngày nhận phòng thực tế
             await transaction.request()
                 .input('MaDat', sql.Int, MaDat)
                 .input('TrangThaiBooking', sql.NVarChar, 'Đã nhận phòng')
-                .input('ThoiGianCheckIn', sql.DateTime, new Date())
+                .input('NgayNhanPhong', sql.DateTime, new Date())
                 .query(`
                     UPDATE Booking
                     SET TrangThaiBooking = @TrangThaiBooking,
-                        ThoiGianCheckIn = @ThoiGianCheckIn
+                        NgayNhanPhong = @NgayNhanPhong
                     WHERE MaDat = @MaDat
                 `);
 
@@ -1460,15 +1539,15 @@ exports.checkOut = async (req, res) => {
                     WHERE MaPhong = @MaPhong
                 `);
 
-            // Cập nhật trạng thái booking
+            // Cập nhật trạng thái booking và ngày trả phòng thực tế
             await transaction.request()
                 .input('MaDat', sql.Int, MaDat)
                 .input('TrangThaiBooking', sql.NVarChar, 'Đã trả phòng')
-                .input('ThoiGianCheckOut', sql.DateTime, new Date())
+                .input('NgayTraPhong', sql.DateTime, new Date())
                 .query(`
                     UPDATE Booking
                     SET TrangThaiBooking = @TrangThaiBooking,
-                        ThoiGianCheckOut = @ThoiGianCheckOut
+                        NgayTraPhong = @NgayTraPhong
                     WHERE MaDat = @MaDat
                 `);
 
