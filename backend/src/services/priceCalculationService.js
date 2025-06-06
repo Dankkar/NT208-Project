@@ -90,7 +90,9 @@ class PriceCalculationService {
         });
         
         const subtotal = roomPrice + servicesPrice;
-        const finalPrice = this.applyPromotion(subtotal, bookingDetails.promotion);
+        const subtotalAfterPromotion = this.applyPromotion(subtotal, bookingDetails.promotion);
+        const vatAmount = subtotalAfterPromotion * 0.1; // 10% VAT
+        const finalPrice = subtotalAfterPromotion + vatAmount;
 
         // Ensure final price is not NaN
         if (isNaN(finalPrice)) {
@@ -108,11 +110,12 @@ class PriceCalculationService {
             roomPrice,
             servicesPrice,
             subtotal,
+            vatAmount,
             finalPrice,
             promotion: bookingDetails.promotion ? {
                 type: bookingDetails.promotion.type,
                 value: bookingDetails.promotion.value,
-                discountAmount: subtotal - finalPrice
+                discountAmount: subtotal - subtotalAfterPromotion
             } : null
         };
     }

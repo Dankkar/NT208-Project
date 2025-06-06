@@ -30,6 +30,15 @@ const hotelService = {
             console.error('Error fetching suggest locations:', error);
             throw error;
         }
+    },
+    getActivePromotions: async () => {
+        try {
+            const response = await axios.get(`${API_URL}/promotions/active`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching active promotions:', error);
+            throw error;
+        }
     }
 };
 
