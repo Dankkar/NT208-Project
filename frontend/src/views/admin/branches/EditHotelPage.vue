@@ -25,9 +25,18 @@
           <label for="tenKS" class="form-label">Hotel Name (TenKS) <span class="text-danger">*</span></label>
           <input id="tenKS" v-model.trim="editableHotel.TenKS" type="text" class="form-control" required />
         </div>
-        <div class="col-md-6">
-          <label for="diaChi" class="form-label">Address (DiaChi) <span class="text-danger">*</span></label>
-          <input id="diaChi" v-model.trim="editableHotel.DiaChi" type="text" class="form-control" required />
+        <div class="col-md-12">
+          <GeocodingAddressInput
+            v-model="editableHotel.DiaChi"
+            v-model:coordinates="hotelCoordinates"
+            label="Address (DiaChi)"
+            placeholder="Nhập địa chỉ khách sạn (VD: 123 Đường ABC, Quận XYZ, TP.HCM)"
+            input-id="diaChi"
+            :required="true"
+            :disabled="isSubmitting"
+            @geocoding-success="onGeocodingSuccess"
+            @geocoding-error="onGeocodingError"
+          />
         </div>
         <div class="col-md-6">
           <label for="hangSao" class="form-label">Star Rating (HangSao) <span class="text-danger">*</span></label>
@@ -90,6 +99,7 @@
 import { ref, reactive, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
+import GeocodingAddressInput from '@/components/GeocodingAddressInput.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -115,6 +125,9 @@ const pageError = ref('');
 const isSubmitting = ref(false);
 const formError = ref('');
 const successMessage = ref('');
+
+// Biến quản lý tọa độ
+const hotelCoordinates = ref(null);
 
 // Hàm chuyển đổi chuỗi số sang "X sa0"
 function formatHangSaoForSelect(decimalHangSao) {
@@ -162,6 +175,14 @@ async function fetchHotelDetails(id) {
       editableHotel.MaNguoiQuanLy = hotelDetails.MaNguoiQuanLy || null;
       editableHotel.IsActive = hotelDetails.IsActive;
 
+      // Set coordinates if available
+      if (hotelDetails.Latitude && hotelDetails.Longitude) {
+        hotelCoordinates.value = {
+          latitude: hotelDetails.Latitude,
+          longitude: hotelDetails.Longitude
+        };
+      }
+
     } else {
       pageError.value = response.data?.message || `Could not load hotel data for ID ${id}.`;
     }
@@ -194,6 +215,12 @@ async function submitUpdateHotel() {
     MaNguoiQuanLy: editableHotel.MaNguoiQuanLy,
     IsActive: editableHotel.IsActive
   };
+
+  // Add coordinates if available
+  if (hotelCoordinates.value && hotelCoordinates.value.latitude && hotelCoordinates.value.longitude) {
+    payload.Latitude = hotelCoordinates.value.latitude;
+    payload.Longitude = hotelCoordinates.value.longitude;
+  }
 
   if (editableHotel.MaNguoiQuanLy !== undefined) { // Gửi cả khi nó là null để cho phép xóa người quản lý
       payload.MaNguoiQuanLy = editableHotel.MaNguoiQuanLy === '' ? null : parseInt(editableHotel.MaNguoiQuanLy, 10);
@@ -254,4 +281,15 @@ onMounted(() => {
     pageLoading.value = false;
   }
 });
+
+// Handle geocoding events
+function onGeocodingSuccess(coordinates) {
+  console.log('Geocoding success:', coordinates);
+  // Coordinates are automatically updated via v-model:coordinates
+}
+
+function onGeocodingError(error) {
+  console.error('Geocoding error:', error);
+  formError.value = `Lỗi lấy tọa độ: ${error.message}`;
+}
 </script>

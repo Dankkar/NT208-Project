@@ -26,6 +26,9 @@ import EditRoomTypePage from '../views/admin/branches/EditRoomTypePage.vue'
 import FindAmenityPage from '../views/admin/branches/FindAmenityPage.vue'
 import AddAmenityPage    from '../views/admin/branches/AddAmenityPage.vue'
 import EditAmenityPage from '../views/admin/branches/EditAmenityPage.vue'
+import FindRoomPage from '../views/admin/branches/FindRoomPage.vue'
+import AddRoomPage    from '../views/admin/branches/AddRoomPage.vue'
+import EditRoomPage from '../views/admin/branches/EditRoomPage.vue'
 import StatsPage      from '../views/admin/bookings/StatsPage.vue'
 import CheckInOutPage from '../views/admin/bookings/AdminCheckInOutPage.vue'
 // import RemoveBookPage from '../views/admin/bookings/RemoveBookPage.vue'
@@ -73,6 +76,9 @@ const routes = [
       { path: 'branches/find-amenity',       name: 'AdminFindAmenity',       component: FindAmenityPage, props: true },
       { path: 'branches/add-amenity/:hotelId',    name: 'AdminAddAmenity',    component: AddAmenityPage, props: true },
       { path: 'branches/edit-amenity/:amenityId',    name: 'AdminEditAmenity',    component: EditAmenityPage, props: true },
+      { path: 'branches/find-room',       name: 'AdminFindRoom',       component: FindRoomPage, props: true },
+      { path: 'branches/add-room/:hotelId/:roomTypeId',    name: 'AdminAddRoom',    component: AddRoomPage, props: true },
+      { path: 'branches/edit-room/:roomId',    name: 'AdminEditRoom',    component: EditRoomPage, props: true },
 
       // Bookings
       { path: 'bookings/statistics', name: 'BookingsStats', component: StatsPage },

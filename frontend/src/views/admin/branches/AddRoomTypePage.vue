@@ -49,6 +49,23 @@
           <label for="moTa" class="form-label">Description (Optional)</label>
           <textarea id="moTa" v-model="roomTypeData.MoTa" class="form-control" rows="3"></textarea>
         </div>
+
+        <!-- 7. Upload Ảnh -->
+        <div class="col-12">
+          <label for="roomTypeImage" class="form-label">Room Type Image (Optional)</label>
+          <input 
+            type="file" 
+            id="roomTypeImage" 
+            ref="imageInput"
+            @change="handleImageChange" 
+            accept="image/*" 
+            class="form-control" 
+          />
+          <div v-if="imagePreview" class="mt-2">
+            <img :src="imagePreview" alt="Preview" class="img-thumbnail" style="max-width: 200px; max-height: 150px;" />
+            <button type="button" @click="removeImage" class="btn btn-sm btn-outline-danger ms-2">Remove Image</button>
+          </div>
+        </div>
       </div>
 
       <div class="mt-4 d-flex justify-content-end">
@@ -91,6 +108,32 @@ const isSubmitting = ref(false);
 const formError = ref('');
 const successMessage = ref('');
 
+// Image upload variables
+const imageInput = ref(null);
+const selectedImage = ref(null);
+const imagePreview = ref('');
+
+// Image handling functions
+function handleImageChange(event) {
+  const file = event.target.files[0];
+  if (file) {
+    selectedImage.value = file;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      imagePreview.value = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+function removeImage() {
+  selectedImage.value = null;
+  imagePreview.value = '';
+  if (imageInput.value) {
+    imageInput.value.value = '';
+  }
+}
+
 async function fetchSelectedHotelDetails() {
     if(!hotelId.value) {
         pageError.value = "Hotel ID is missing.";
@@ -128,9 +171,27 @@ async function submitAddRoomType() {
   successMessage.value = '';
 
   try {
+    // Prepare FormData for multipart/form-data request
+    const formData = new FormData();
+    formData.append('MaKS', roomTypeData.MaKS);
+    formData.append('TenLoaiPhong', roomTypeData.TenLoaiPhong);
+    formData.append('SoGiuong', roomTypeData.SoGiuong);
+    formData.append('TienNghi', roomTypeData.TienNghi);
+    formData.append('DienTich', roomTypeData.DienTich);
+    formData.append('GiaCoSo', roomTypeData.GiaCoSo);
+    formData.append('MoTa', roomTypeData.MoTa);
+    
+    // Add image if selected
+    if (selectedImage.value) {
+      formData.append('image', selectedImage.value);
+    }
+
     // Gọi API createRoomType của bạn
-    const response = await axios.post(`http://localhost:5000/api/roomTypes/${hotelId.value}`, roomTypeData, {
-      withCredentials: true
+    const response = await axios.post(`http://localhost:5000/api/roomTypes/`, formData, {
+      withCredentials: true,
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
     });
     if (response.status === 201 && response.data?.message) { // API trả về 201 khi tạo thành công
       successMessage.value = response.data.message;
@@ -138,6 +199,8 @@ async function submitAddRoomType() {
       Object.keys(roomTypeData).forEach(key => {
         if(key !== 'MaKS') roomTypeData[key] = (typeof roomTypeData[key] === 'number' ? null : '');
       });
+      // Reset image
+      removeImage();
       setTimeout(() => {
           goBackToManageRoomTypes();
       }, 1000);

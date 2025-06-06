@@ -69,6 +69,7 @@ const sections = [
     children: [
       { name: 'Find Hotel', route: '/admin/branches/find-hotel' },
       { name: 'Find Room Type', route: '/admin/branches/find-room-type' },
+      { name: 'Find Room', route: '/admin/branches/find-room' },
       { name: 'Find Amenity', route: '/admin/branches/find-amenity' },
     ],
   },
