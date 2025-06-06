@@ -12,7 +12,7 @@
             :alt="processedData.displayMainImageAltText" 
             class="hotel-logo-thumb img-fluid"
           />
-          <div>
+          <div class="ms-2">
             <h1 class="fw-bolder mb-0 hotel-title">{{ processedData.displayTitle }}</h1>
             <p class="text-muted small mb-1 mt-1">
                <i class="bi bi-geo-alt-fill"></i> {{ processedData.displaySubtitle1 }}
@@ -108,48 +108,96 @@ import Button from './Button.vue';
 import defaultMainImagePlaceholder from '@/assets/mountain.jpg';
 import defaultRoomImagePlaceholder from '@/assets/room-placeholder.jpg';
 
-const emit = defineEmits(['room-selected']);
+const emit = defineEmits(['room-selected', 'action-clicked']);
 
 const props = defineProps({
   hotelData: { type: Object, required: true },
   imageUrl: { type: String, default: '' },
-  mode: { type: String, default: 'search-results' }
+  // Mode rất quan trọng để quyết định cách hiển thị
+  mode: { 
+    type: String, 
+    default: 'search-results',
+    validator: (value) => ['search-results', 'booking-history'].includes(value)
+  }
 });
 
-const showRoomItems = ref(true);
+const showRoomItems = ref(props.mode === 'booking-history'); // Mặc định mở nếu là history
 const defaultMainImage = defaultMainImagePlaceholder;
 const defaultRoomImage = defaultRoomImagePlaceholder;
 
+// === ĐÂY LÀ PHẦN LOGIC ĐÃ ĐƯỢC HOÀN THIỆN ===
 const processedData = computed(() => {
-  const hotel = props.hotelData;
-  return {
-    displayTitle: hotel.TenKS,
-    displaySubtitle1: hotel.DiaChi,
-    displayRatingAndType: hotel.HangSao ? `${hotel.HangSao} ⭐ - ${hotel.LoaiHinh || ''}`.trim() : hotel.LoaiHinh,
-    displayMainImageUrl: props.imageUrl || hotel.MainImagePath || hotel.HinhAnhKS || defaultMainImage,
-    displayMainImageAltText: `Image of ${hotel.TenKS}`,
-    displayRoomItems: (hotel.roomTypes || []).map(rt => ({
-      id: rt.MaLoaiPhong,
-      name: rt.TenLoaiPhong,
-      guests: rt.SoNguoiToiDa,
-      parsedAmenities: (rt.TienNghi ? rt.TienNghi.split(',').map(s => s.trim()) : ['Thông tin đang cập nhật...']),
-      imageUrl: rt.HinhAnhPhong || defaultRoomImage,
-      price: rt.GiaCoSo,
-      availability: rt.SoPhongTrong,
-      beds: rt.CauHinhGiuong,
-      originalRoomData: rt
-    }))
-  };
+  // --- LOGIC CHO MODE: SEARCH RESULTS ---
+  if (props.mode === 'search-results') {
+    const hotel = props.hotelData;
+    return {
+      displayTitle: hotel.TenKS,
+      displaySubtitle1: hotel.DiaChi,
+      displayRatingAndType: hotel.HangSao ? `${hotel.HangSao} ⭐ - ${hotel.LoaiHinh || ''}`.trim() : hotel.LoaiHinh,
+      displayMainImageUrl: props.imageUrl || hotel.MainImagePath || hotel.HinhAnhKS || defaultMainImage,
+      displayMainImageAltText: `Image of ${hotel.TenKS}`,
+      // Lặp qua roomTypes và chuẩn hóa dữ liệu
+      displayRoomItems: (hotel.roomTypes || []).map(rt => ({
+        id: rt.MaLoaiPhong,
+        name: rt.TenLoaiPhong,
+        guests: rt.SoNguoiToiDa,
+        parsedAmenities: (rt.TienNghi ? rt.TienNghi.split(',').map(s => s.trim()) : [`~${rt.DienTich} m²`, rt.CauHinhGiuong]),
+        imageUrl: rt.HinhAnhPhong || defaultRoomImage,
+        price: rt.GiaCoSo,
+        availability: rt.SoPhongTrong,
+        beds: rt.CauHinhGiuong,
+        originalRoomData: rt
+      })),
+      actions: [], // không có action trong mode này
+    };
+  }
+  
+  // --- LOGIC CHO MODE: BOOKING HISTORY ---
+  if (props.mode === 'booking-history') {
+    const booking = props.hotelData; // booking là object dataForCard
+    return {
+      displayTitle: booking.title,
+      displaySubtitle1: booking.subtitle1,
+      displayRatingAndType: null, // Không hiển thị rating trong history
+      displayMainImageUrl: booking.mainImageUrl || defaultMainImage,
+      displayMainImageAltText: `Image for booking ${booking.historyDetails?.bookingReference}`,
+      // Ánh xạ dữ liệu từ booking.roomItems
+      displayRoomItems: (booking.roomItems || []).map(item => ({
+        id: item.id,
+        name: item.name,
+        guests: item.quantity, // Lấy số lượng khách từ đây
+        parsedAmenities: item.amenities ? [item.amenities] : (item.historyRoomDetails ? [item.historyRoomDetails] : []), // Hiển thị chi tiết đơn giản
+        imageUrl: item.imageUrl || defaultRoomImage,
+        price: item.price, // Giá đã trả
+        availability: 0, // Luôn là 0 trong history
+        beds: `Paid: ${formatPrice(item.price)}`,
+        originalRoomData: item.originalRoomData || item,
+      })),
+      actions: booking.actions || [], // Truyền các action như "Hủy phòng" vào
+    };
+  }
+
+  // Fallback
+  return { displayTitle: 'Invalid Mode', displayRoomItems: [] };
 });
 
-const toggleButtonText = computed(() => showRoomItems.value ? 'Ẩn Loại Phòng' : 'Xem Loại Phòng');
+const toggleButtonText = computed(() => showRoomItems.value ? 'Ẩn Chi Tiết' : 'Xem Chi Tiết');
 const shouldShowToggleButton = computed(() => processedData.value?.displayRoomItems && processedData.value.displayRoomItems.length > 0);
 const toggleRoomItemsVisibility = () => { showRoomItems.value = !showRoomItems.value; };
 const onMainImageError = (event) => { event.target.src = defaultMainImage; };
 const onRoomImageError = (event) => { event.target.src = defaultRoomImage; };
 const formatPrice = (value) => { if (value == null) return 'N/A'; return parseFloat(value).toLocaleString('vi-VN'); };
-const selectThisRoom = (originalRoomData) => emit('room-selected', originalRoomData);
 
+// Emit sự kiện tương ứng với từng mode
+const selectThisRoom = (originalRoomData) => {
+  if (props.mode === 'search-results') {
+    emit('room-selected', originalRoomData);
+  } else if (props.mode === 'booking-history' && processedData.value.actions.length > 0) {
+    // Nếu có action thì cho nút này làm action chính
+    const primaryAction = processedData.value.actions.find(a => a.isPrimary) || processedData.value.actions[0];
+    emit('action-clicked', { actionId: primaryAction.id, bookingItem: props.hotelData.originalItem });
+  }
+};
 </script>
 
 <style scoped>
