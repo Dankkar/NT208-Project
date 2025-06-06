@@ -118,14 +118,21 @@
             </div>
           </section>
 
-          <!-- Section 6: Bản đồ (Cần tích hợp Google Maps hoặc tương tự) -->
+          <!-- Section 6: Bản đồ -->
           <section class="hotel-location-map mb-5">
             <h2 class="section-title">Location</h2>
-            <div class="map-placeholder border rounded p-3 text-center text-muted" style="height: 350px; background-color: #f8f9fa;">
-              <p class="mt-5">Map of {{ hotel.DiaChi }} would be displayed here.</p>
-              <!-- Ví dụ: <iframe src="URL_GOOGLE_MAPS_EMBED" width="100%" height="300" style="border:0;" allowfullscreen="" loading="lazy"></iframe> -->
-              <i class="bi bi-map-fill display-1 text-secondary"></i>
-            </div>
+            <GoogleMapDisplay
+              :latitude="hotel.Latitude"
+              :longitude="hotel.Longitude"
+              :place-name="hotel.TenKS"
+              :address="hotel.DiaChi"
+              :height="400"
+              :zoom="15"
+              :show-coordinates="false"
+              :show-directions-button="true"
+              :show-fullscreen-button="true"
+              :no-coordinates-message="`Vị trí bản đồ chưa được thiết lập cho ${hotel.TenKS}`"
+            />
           </section>
 
           <div class="text-center my-4">
@@ -150,6 +157,7 @@ import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 import Navbar from '../components/NavBar.vue';
+import GoogleMapDisplay from '@/components/GoogleMapDisplay.vue';
 import { useBookingStore } from '@/store/bookingStore';
 import defaultPlaceholderImage from '@/assets/mountain.jpg'; // Một ảnh placeholder chung
 

@@ -44,6 +44,43 @@
           <label for="moTa" class="form-label">Description (Optional)</label>
           <textarea id="moTa" v-model="editableRoomType.MoTa" class="form-control" rows="3"></textarea>
         </div>
+
+        <!-- Upload Ảnh -->
+        <div class="col-12">
+          <label for="roomTypeImage" class="form-label">Room Type Image</label>
+          
+          <!-- Hiển thị ảnh hiện tại nếu có -->
+          <div v-if="currentImagePath && !imagePreview" class="mb-2">
+            <p class="text-muted small">Current image:</p>
+            <img :src="currentImagePath" alt="Current room type image" class="img-thumbnail" style="max-width: 200px; max-height: 150px;" />
+            <div class="mt-1">
+              <button type="button" @click="deleteCurrentImage" class="btn btn-sm btn-outline-danger">Delete Current Image</button>
+            </div>
+          </div>
+
+          <!-- Input file cho ảnh mới -->
+          <input 
+            type="file" 
+            id="roomTypeImage" 
+            ref="imageInput"
+            @change="handleImageChange" 
+            accept="image/*" 
+            class="form-control" 
+          />
+          
+          <!-- Preview ảnh mới được chọn -->
+          <div v-if="imagePreview" class="mt-2">
+            <p class="text-muted small">New image preview:</p>
+            <img :src="imagePreview" alt="Preview" class="img-thumbnail" style="max-width: 200px; max-height: 150px;" />
+            <button type="button" @click="removeNewImage" class="btn btn-sm btn-outline-danger ms-2">Cancel New Image</button>
+          </div>
+
+          <!-- Hiển thị trạng thái delete image -->
+          <div v-if="willDeleteImage" class="mt-2 alert alert-warning">
+            <small>Current image will be deleted when you save.</small>
+            <button type="button" @click="cancelDeleteImage" class="btn btn-sm btn-outline-secondary ms-2">Keep Current Image</button>
+          </div>
+        </div>
         <div class="col-md-6 d-flex align-items-center mt-4">
           <div class="form-check form-switch">
             <input class="form-check-input" type="checkbox" role="switch" id="isActiveSwitch" v-model="editableRoomType.IsActive">
@@ -97,6 +134,13 @@ const isSubmitting = ref(false);
 const formError = ref('');
 const successMessage = ref('');
 
+// Image handling variables
+const imageInput = ref(null);
+const selectedImage = ref(null);
+const imagePreview = ref('');
+const currentImagePath = ref('');
+const willDeleteImage = ref(false);
+
 async function fetchRoomTypeDetails(id) {
   pageLoading.value = true;
   pageError.value = '';
@@ -116,6 +160,9 @@ async function fetchRoomTypeDetails(id) {
       editableRoomType.GiaCoSo = originalRoomTypeData.value.GiaCoSo || null;
       editableRoomType.MoTa = originalRoomTypeData.value.MoTa || '';
       editableRoomType.IsActive = originalRoomTypeData.value.IsActive === 1 || originalRoomTypeData.value.IsActive === true;
+      
+      // Set current image path
+      currentImagePath.value = originalRoomTypeData.value.RoomTypeImagePath || '';
       // Có thể fetch thêm tên KS nếu cần hiển thị
       if(editableRoomType.MaKS) await fetchHotelNameForDisplay(editableRoomType.MaKS);
 
@@ -139,6 +186,37 @@ async function fetchHotelNameForDisplay(hotelId){
     }
 }
 
+// Image handling functions
+function handleImageChange(event) {
+  const file = event.target.files[0];
+  if (file) {
+    selectedImage.value = file;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      imagePreview.value = e.target.result;
+    };
+    reader.readAsDataURL(file);
+    willDeleteImage.value = false; // Cancel delete if new image selected
+  }
+}
+
+function removeNewImage() {
+  selectedImage.value = null;
+  imagePreview.value = '';
+  if (imageInput.value) {
+    imageInput.value.value = '';
+  }
+}
+
+function deleteCurrentImage() {
+  willDeleteImage.value = true;
+  removeNewImage(); // Also remove any new image preview
+}
+
+function cancelDeleteImage() {
+  willDeleteImage.value = false;
+}
+
 
 async function submitUpdateRoomType() {
   if (!editableRoomType.TenLoaiPhong || editableRoomType.GiaCoSo == null || editableRoomType.DienTich == null || !editableRoomType.TienNghi) {
@@ -149,20 +227,31 @@ async function submitUpdateRoomType() {
   formError.value = '';
   successMessage.value = '';
 
-  const payload = {
-    TenLoaiPhong: editableRoomType.TenLoaiPhong,
-    SoGiuong: editableRoomType.SoGiuong,
-    TienNghi: editableRoomType.TienNghi,
-    DienTich: editableRoomType.DienTich,
-    GiaCoSo: editableRoomType.GiaCoSo,
-    MoTa: editableRoomType.MoTa,
-    IsActive: editableRoomType.IsActive
-  };
+  // Prepare FormData for multipart/form-data request
+  const formData = new FormData();
+  formData.append('TenLoaiPhong', editableRoomType.TenLoaiPhong);
+  formData.append('SoGiuong', editableRoomType.SoGiuong);
+  formData.append('TienNghi', editableRoomType.TienNghi);
+  formData.append('DienTich', editableRoomType.DienTich);
+  formData.append('GiaCoSo', editableRoomType.GiaCoSo);
+  formData.append('MoTa', editableRoomType.MoTa);
+  formData.append('IsActive', editableRoomType.IsActive);
+
+  // Handle image operations
+  if (selectedImage.value) {
+    formData.append('image', selectedImage.value);
+  }
+  if (willDeleteImage.value) {
+    formData.append('deleteImage', 'true');
+  }
 
   try {
     // Gọi API updateRoomType của bạn
-    const response = await axios.put(`http://localhost:5000/api/roomTypes/${roomTypeId.value}`, payload, {
-      withCredentials: true
+    const response = await axios.put(`http://localhost:5000/api/roomTypes/${roomTypeId.value}`, formData, {
+      withCredentials: true,
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
     });
     if (response.data?.message) { // API của bạn trả về {message: '...'}
       successMessage.value = response.data.message;

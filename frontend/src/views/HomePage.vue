@@ -249,7 +249,6 @@ async function submitSearchForm() {
     numberOfGuests: parseInt(searchForm.numberOfGuests),
   };
   try {
-    bookingStore.startBookingFromScratch(); // Reset booking state
     await bookingStore.setSearchCriteriaAndFetchRooms(criteria);
     if (bookingStore.roomsError) {
       if (notificationToast.value) notificationToast.value.show(`Search failed: ${bookingStore.roomsError}`, 'error');
