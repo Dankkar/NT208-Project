@@ -12,9 +12,18 @@
           <label for="tenKS" class="form-label">Hotel Name (TenKS) <span class="text-danger">*</span></label>
           <input id="tenKS" v-model.trim="hotelData.TenKS" type="text" class="form-control" required />
         </div>
-        <div class="col-md-6">
-          <label for="diaChi" class="form-label">Address (DiaChi) <span class="text-danger">*</span></label>
-          <input id="diaChi" v-model.trim="hotelData.DiaChi" type="text" class="form-control" required />
+        <div class="col-md-12">
+          <GeocodingAddressInput
+            v-model="hotelData.DiaChi"
+            v-model:coordinates="hotelCoordinates"
+            label="Address (DiaChi)"
+            placeholder="Nhập địa chỉ khách sạn (VD: 123 Đường ABC, Quận XYZ, TP.HCM)"
+            input-id="diaChi"
+            :required="true"
+            :disabled="isSubmitting"
+            @geocoding-success="onGeocodingSuccess"
+            @geocoding-error="onGeocodingError"
+          />
         </div>
         <div class="col-md-6">
           <label for="hangSao" class="form-label">Star Rating (HangSao) <span class="text-danger">*</span></label>
@@ -121,6 +130,7 @@
 import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
+import GeocodingAddressInput from '@/components/GeocodingAddressInput.vue';
 // import { useAuthStore } from '@/store/authStore'; // Nếu bạn cần thông tin admin hiện tại
 
 // const authStore = useAuthStore(); // (Optional)
@@ -140,6 +150,9 @@ const hotelData = reactive({
 const isSubmitting = ref(false);
 const formError = ref('');
 const successMessage = ref('');
+
+// Biến quản lý tọa độ
+const hotelCoordinates = ref(null);
 
 // Biến quản lý ảnh
 const selectedFiles = ref([]);
@@ -237,6 +250,12 @@ async function submitAddHotel() {
     }
   });
 
+  // Append coordinates if available
+  if (hotelCoordinates.value && hotelCoordinates.value.latitude && hotelCoordinates.value.longitude) {
+    formData.append('Latitude', hotelCoordinates.value.latitude);
+    formData.append('Longitude', hotelCoordinates.value.longitude);
+  }
+
   // Append images
   selectedFiles.value.forEach((fileObj, index) => {
     formData.append('images', fileObj.file);
@@ -294,6 +313,17 @@ async function submitAddHotel() {
 
 function goBackToManageHotels() {
   router.push({ name: 'AdminFindHotel' }); // Cần định nghĩa route này
+}
+
+// Handle geocoding events
+function onGeocodingSuccess(coordinates) {
+  console.log('Geocoding success:', coordinates);
+  // Coordinates are automatically updated via v-model:coordinates
+}
+
+function onGeocodingError(error) {
+  console.error('Geocoding error:', error);
+  formError.value = `Lỗi lấy tọa độ: ${error.message}`;
 }
 </script>
 

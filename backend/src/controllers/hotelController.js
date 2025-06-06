@@ -47,6 +47,8 @@ exports.createHotel = async (req, res) => {
         const result = await pool.request()
             .input('TenKS', sql.NVarChar, TenKS)
             .input('DiaChi', sql.NVarChar, DiaChi)
+            .input('Latitude', sql.Decimal(10, 8), req.body.Latitude ? parseFloat(req.body.Latitude) : null)
+            .input('Longitude', sql.Decimal(11, 8), req.body.Longitude ? parseFloat(req.body.Longitude) : null)
             .input('HangSao', sql.Decimal(2,1), parseFloat(HangSao))
             .input('LoaiHinh', sql.NVarChar, LoaiHinh)
             .input('MoTaCoSoVatChat', sql.NVarChar, MoTaCoSoVatChat)
@@ -54,9 +56,9 @@ exports.createHotel = async (req, res) => {
             .input('MotaChung', sql.NVarChar, MotaChung)
             .input('MaNguoiQuanLy', sql.Int, finalMaNguoiQuanLy)
             .query(`
-                INSERT INTO KhachSan (TenKS, DiaChi, HangSao, LoaiHinh, MoTaCoSoVatChat, QuyDinh, MotaChung, MaNguoiQuanLy)
+                INSERT INTO KhachSan (TenKS, DiaChi, Latitude, Longitude, HangSao, LoaiHinh, MoTaCoSoVatChat, QuyDinh, MotaChung, MaNguoiQuanLy)
                 OUTPUT INSERTED.MaKS
-                VALUES (@TenKS, @DiaChi, @HangSao, @LoaiHinh, @MoTaCoSoVatChat, @QuyDinh, @MotaChung, @MaNguoiQuanLy)
+                VALUES (@TenKS, @DiaChi, @Latitude, @Longitude, @HangSao, @LoaiHinh, @MoTaCoSoVatChat, @QuyDinh, @MotaChung, @MaNguoiQuanLy)
             `);
         
         const newHotelId = result.recordset[0].MaKS;
@@ -350,6 +352,14 @@ exports.updateHotel = async (req, res) => {
             updateFields.push('MaNguoiQuanLy = @MaNguoiQuanLy');
             queryParams.MaNguoiQuanLy = MaNguoiQuanLy;
         }
+        if (req.body.Latitude !== undefined) {
+            updateFields.push('Latitude = @Latitude');
+            queryParams.Latitude = req.body.Latitude ? parseFloat(req.body.Latitude) : null;
+        }
+        if (req.body.Longitude !== undefined) {
+            updateFields.push('Longitude = @Longitude');
+            queryParams.Longitude = req.body.Longitude ? parseFloat(req.body.Longitude) : null;
+        }
 
         if (updateFields.length > 0) {
             const query = `
@@ -362,6 +372,10 @@ exports.updateHotel = async (req, res) => {
             Object.keys(queryParams).forEach(key => {
                 if (key === 'MaKS' || key === 'MaNguoiQuanLy') {
                     request.input(key, sql.Int, queryParams[key]);
+                } else if (key === 'Latitude') {
+                    request.input(key, sql.Decimal(10, 8), queryParams[key]);
+                } else if (key === 'Longitude') {
+                    request.input(key, sql.Decimal(11, 8), queryParams[key]);
                 } else if (key === 'MoTaCoSoVatChat' || key === 'QuyDinh' || key === 'MotaChung') {
                     request.input(key, sql.Text, queryParams[key]);
                 } else {

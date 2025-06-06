@@ -50,6 +50,8 @@ const authRoutes = require('./routes/authRoutes');
 const bookingRoutes = require('./routes/bookingRoutes')
 const hotelRoutes = require('./routes/hotelRoutes');
 const roomTypeRoutes = require('./routes/roomTypeRoutes');
+const roomRoutes = require('./routes/roomRoutes');
+const bedConfigRoutes = require('./routes/bedConfigRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const userRoutes = require('./routes/userRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
@@ -64,6 +66,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/hotels', hotelRoutes);
 app.use('/api/roomTypes', roomTypeRoutes);
+app.use('/api/rooms', roomRoutes);
+app.use('/api/bed-configs', bedConfigRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/payments', paymentRoutes);
