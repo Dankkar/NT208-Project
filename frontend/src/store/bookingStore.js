@@ -397,16 +397,30 @@ export const useBookingStore = defineStore('booking', {
     },
 
     navigateToStep(stepId) {
-      if (stepId <= this.maxCompletedStep + 1) {
+      console.log(`[Store] navigateToStep called with stepId: ${stepId}, current step: ${this.currentStep}, maxCompletedStep: ${this.maxCompletedStep}`);
+      
+      // Special case: Allow navigation to Step 3 if user has active hold booking
+      const hasActiveHoldBooking = this.heldBookingMaDat && 
+                                   this.heldBookingExpiresAt && 
+                                   this.heldBookingExpiresAt > Date.now() &&
+                                   this.selectedHotelDetails &&
+                                   this.selectedRoomTypeDetails;
+      
+      const maxAllowedStep = hasActiveHoldBooking ? Math.max(this.maxCompletedStep + 1, 3) : this.maxCompletedStep + 1;
+      console.log(`[Store] hasActiveHoldBooking: ${hasActiveHoldBooking}, maxAllowedStep: ${maxAllowedStep}`);
+      
+      if (stepId <= maxAllowedStep) {
         if (stepId < this.currentStep) {
           if (stepId < 2) { // Về Step 1
-            this.availableHotelsAndRooms = []; this.roomsError = null;
-            this.selectedHotelDetails = null; this.selectedRoomTypeDetails = null;
-            this.guestAndPaymentInput = null; this.finalBookingReference = null;
-            this.heldBookingMaDat = null; this.heldBookingExpiresAt = null; this.holdError = null;
-            this.createBookingError = null; this.clearPreselectedBookingIntent();
+            this.availableHotelsAndRooms = [];
+            this.roomsError = null;
+            this.guestAndPaymentInput = null;
+            this.finalBookingReference = null;
+            this.createBookingError = null;
+            this.clearPreselectedBookingIntent();
             this.maxCompletedStep = 0;
           } else if (stepId < 3) { // Về Step 2
+            console.log('[Store] Navigating back to Step 2, keeping hold booking data');
             // this.selectedHotelDetails = null; 
             // this.selectedRoomTypeDetails = null;
             this.guestAndPaymentInput = null; 
@@ -418,14 +432,23 @@ export const useBookingStore = defineStore('booking', {
             this.clearPreselectedBookingIntent();
             this.maxCompletedStep = Math.min(this.maxCompletedStep, 1);
           } else if (stepId < 4) { // Về Step 3
+            console.log('[Store] Navigating back to Step 3, keeping hold and guest data');
             this.finalBookingReference = null; this.createBookingError = null;
             // Khi về Step 3, guestAndPaymentInput VẪN NÊN ĐƯỢC GIỮ NGUYÊN để người dùng sửa
             // Thông tin hold (heldBookingMaDat, selectedDetails) cũng nên được giữ.
             this.maxCompletedStep = Math.min(this.maxCompletedStep, 2);
           }
+        } else if (stepId > this.currentStep) {
+          console.log(`[Store] Navigating forward to Step ${stepId}`);
+          // When moving forward, just update maxCompletedStep if needed
+          this.maxCompletedStep = Math.max(this.maxCompletedStep, stepId - 1);
         }
+        
         this.currentStep = stepId;
-      } else { console.warn(`Cannot navigate to uncompleted step ${stepId}. Max completed: ${this.maxCompletedStep}`); }
+        console.log(`[Store] Navigation completed. New current step: ${this.currentStep}, maxCompletedStep: ${this.maxCompletedStep}`);
+      } else { 
+        console.warn(`[Store] Cannot navigate to uncompleted step ${stepId}. Max allowed: ${maxAllowedStep}, maxCompleted: ${this.maxCompletedStep}`); 
+      }
     },
 
     resetBookingProcess() {

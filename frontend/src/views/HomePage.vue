@@ -94,7 +94,7 @@
       </div>
     </HeroSection>
 
-    <Feature/>
+    
     <section class="featured py-5">
       <div class="container">
         <h2 class="mb-4">Featured Properties</h2>
@@ -112,7 +112,7 @@
         <div v-else class="text-center text-muted">No featured properties available at the moment.</div>
       </div>
     </section>
-    <Feature/>
+    
     <Post
       :contents="postContents"
       buttonText="Xem thêm"
