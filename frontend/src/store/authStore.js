@@ -95,8 +95,10 @@ export const useAuthStore = defineStore('auth', {
         this.$patch({ user: null });
         if (err.response?.status === 401) { 
           this.authError = 'Session expired or not authenticated.';
+          this.isLoading = false;
         } else { 
-          this.authError = null; // Không hiển thị lỗi nếu chỉ là không có session
+          this.authError = null;
+          this.isLoading = false; // Không hiển thị lỗi nếu chỉ là không có session
         }
         return null;
       } finally {
