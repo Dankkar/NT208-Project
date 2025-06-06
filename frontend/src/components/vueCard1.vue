@@ -85,13 +85,30 @@
                   class="w-100 cta-button"
                   @click="selectThisRoom(roomItem.originalRoomData)"
                 />
-                 <Button
-                  v-else
-                  content="HẾT PHÒNG"
-                  variant="secondary"
-                  class="w-100 cta-button"
-                  disabled
-                />
+                <div v-else>
+                  <Button
+                    content="HẾT PHÒNG"
+                    variant="secondary"
+                    class="w-100 cta-button mb-2"
+                    disabled
+                  />
+                  
+                  <!-- Alternative Dates Section -->
+                  <div v-if="roomItem.alternativeDates && roomItem.alternativeDates.length > 0" class="alternative-dates">
+                    <p class="small text-muted mb-2">Suggested alternative dates:</p>
+                    <div class="alternative-dates-list">
+                      <button 
+                        v-for="(altDate, index) in roomItem.alternativeDates.slice(0, 2)" 
+                        :key="index"
+                        class="btn btn-outline-primary btn-sm w-100 mb-1 alt-date-btn"
+                        @click="selectAlternativeDate(roomItem.originalRoomData, altDate)"
+                      >
+                        {{ formatDate(altDate.checkIn) }} - {{ formatDate(altDate.checkOut) }}
+                        <small class="d-block">{{ altDate.period === 'before' ? 'Earlier' : 'Later' }} (+{{ altDate.daysFromOriginal }} days)</small>
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -107,8 +124,9 @@ import { defineProps, ref, computed, defineEmits } from 'vue';
 import Button from './Button.vue'; 
 import defaultMainImagePlaceholder from '@/assets/mountain.jpg';
 import defaultRoomImagePlaceholder from '@/assets/room-placeholder.jpg';
+import { format } from 'date-fns';
 
-const emit = defineEmits(['room-selected', 'action-clicked']);
+const emit = defineEmits(['room-selected', 'action-clicked', 'alternative-date-selected']);
 
 const props = defineProps({
   hotelData: { type: Object, required: true },
@@ -133,20 +151,21 @@ const processedData = computed(() => {
     return {
       displayTitle: hotel.TenKS,
       displaySubtitle1: hotel.DiaChi,
-      displayRatingAndType: hotel.HangSao ? `${hotel.HangSao} ⭐ - ${hotel.LoaiHinh || ''}`.trim() : hotel.LoaiHinh,
+      displayRatingAndType: hotel.HangSao ? `${hotel.HangSao} - ${hotel.LoaiHinh || ''}`.trim() : hotel.LoaiHinh,
       displayMainImageUrl: props.imageUrl || hotel.MainImagePath || hotel.HinhAnhKS || defaultMainImage,
       displayMainImageAltText: `Image of ${hotel.TenKS}`,
       // Lặp qua roomTypes và chuẩn hóa dữ liệu
       displayRoomItems: (hotel.roomTypes || []).map(rt => ({
         id: rt.MaLoaiPhong,
         name: rt.TenLoaiPhong,
-        guests: rt.SoNguoiToiDa,
+        guests: rt.SoNguoiToiDa || (rt.SoGiuongDoi ? (rt.SoGiuongDoi * 2) + (rt.SoGiuongDon || 0) : 3),
         parsedAmenities: (rt.TienNghi ? rt.TienNghi.split(',').map(s => s.trim()) : [`~${rt.DienTich} m²`, rt.CauHinhGiuong]),
         imageUrl: rt.HinhAnhPhong || defaultRoomImage,
         price: rt.GiaCoSo,
         availability: rt.SoPhongTrong,
         beds: rt.CauHinhGiuong,
-        originalRoomData: rt
+        originalRoomData: rt,
+        alternativeDates: rt.alternativeDates || []
       })),
       actions: [], // không có action trong mode này
     };
@@ -187,6 +206,13 @@ const toggleRoomItemsVisibility = () => { showRoomItems.value = !showRoomItems.v
 const onMainImageError = (event) => { event.target.src = defaultMainImage; };
 const onRoomImageError = (event) => { event.target.src = defaultRoomImage; };
 const formatPrice = (value) => { if (value == null) return 'N/A'; return parseFloat(value).toLocaleString('vi-VN'); };
+const formatDate = (dateString) => {
+  try {
+    return format(new Date(dateString), 'MMM dd');
+  } catch (error) {
+    return dateString;
+  }
+};
 
 // Emit sự kiện tương ứng với từng mode
 const selectThisRoom = (originalRoomData) => {
@@ -197,6 +223,14 @@ const selectThisRoom = (originalRoomData) => {
     const primaryAction = processedData.value.actions.find(a => a.isPrimary) || processedData.value.actions[0];
     emit('action-clicked', { actionId: primaryAction.id, bookingItem: props.hotelData.originalItem });
   }
+};
+
+const selectAlternativeDate = (originalRoomData, suggestedDates) => {
+  console.log('VueCard1: Alternative date selected', { originalRoomData, suggestedDates });
+  emit('alternative-date-selected', {
+    roomInfo: originalRoomData,
+    suggestedDates: suggestedDates
+  });
 };
 </script>
 
@@ -318,6 +352,29 @@ const selectThisRoom = (originalRoomData) => {
   background-color: var(--accent-color-dark, #0b5ed7) !important;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+}
+
+/* Alternative Dates Styling */
+.alternative-dates {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.alt-date-btn {
+  font-size: 0.75rem !important;
+  padding: 0.375rem 0.5rem !important;
+  line-height: 1.2;
+}
+
+.alt-date-btn small {
+  font-size: 0.65rem;
+  opacity: 0.8;
+}
+
+.alt-date-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(13, 110, 253, 0.2);
 }
 
 /* Animation */
