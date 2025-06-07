@@ -1,5 +1,4 @@
 // backend/src/controllers/bookingController.js
-
 const { poolPromise, sql } = require('../database/db');
 const { sendReviewRequestEmail, sendBookingConfirmation, sendBookingNotificationToManager } = require('../utils/emailService');
 const PriceCalculationService = require('../services/priceCalculationService');
@@ -391,9 +390,9 @@ exports.getBookingById = async (req, res) => {
 
         // Kiểm tra quyền xem đơn đặt phòng
         const canView = 
-            currentUser.LoaiUser === 'Admin' || // Admin có thể xem mọi đơn
+            currentUser.role === 'Admin' || // Admin có thể xem mọi đơn
             currentUser.MaKH === booking.MaKH || // Khách hàng xem đơn của mình
-            (currentUser.LoaiUser === 'QuanLyKS' && currentUser.MaKH === booking.MaNguoiQuanLy); // Quản lý KS xem đơn của KS mình
+            (currentUser.role === 'QuanLyKS' && currentUser.MaKH === booking.MaNguoiQuanLy); // Quản lý KS xem đơn của KS mình
 
         if (!canView) {
             return res.status(403).json({ error: 'Bạn không có quyền xem đơn đặt phòng này' });
@@ -435,8 +434,8 @@ exports.cancelBooking = async (req, res) => {
         // Kiểm tra quyền hủy đặt phòng
         const canCancel = 
             currentUser.MaKH === booking.MaKH || // Khách hàng hủy đơn của mình
-            currentUser.LoaiUser === 'Admin' || // Admin có thể hủy mọi đơn
-            (currentUser.LoaiUser === 'QuanLyKS' && currentUser.MaKH === booking.MaNguoiQuanLy); // Quản lý KS chỉ hủy đơn của KS mình
+            currentUser.role === 'Admin' || // Admin có thể hủy mọi đơn
+            (currentUser.role === 'QuanLyKS' && currentUser.MaKH === booking.MaNguoiQuanLy); // Quản lý KS chỉ hủy đơn của KS mình
 
         if (!canCancel) {
             return res.status(403).json({ error: 'Bạn không có quyền hủy đơn đặt phòng này' });
@@ -491,8 +490,9 @@ exports.getBookingByUser = async (req, res) => {
         const { MaKH } = req.params;
         const currentUser = req.user;
 
-        // Kiểm tra quyền truy cập - chỉ Admin và QuanLyKS được xem booking của user khác
-        if (currentUser.LoaiUser !== 'Admin' && currentUser.LoaiUser !== 'QuanLyKS') {
+        // Kiểm tra quyền truy cập
+        if (currentUser.role !== 'Admin' && 
+            currentUser.role !== 'QuanLyKS') {
             return res.status(403).json({ 
                 success: false, 
                 message: 'Bạn không có quyền xem thông tin đặt phòng của user khác' 
@@ -521,7 +521,7 @@ exports.getBookingByUser = async (req, res) => {
         `;
 
         // Nếu là QuanLyKS, chỉ xem được booking của khách sạn mình quản lý
-        if (currentUser.LoaiUser === 'QuanLyKS') {
+        if (currentUser.role === 'QuanLyKS') {
             query += ' AND ks.MaNguoiQuanLy = @MaNguoiQuanLy';
         }
 
@@ -813,86 +813,104 @@ exports.sendBookingConfirmation = async (req, res) => {
 exports.getAllBookings = async (req, res) => {
     try {
         const currentUser = req.user;
+        console.log("[getAllBookings] Requesting User:", JSON.stringify(currentUser, null, 2));
 
-        // Kiểm tra quyền xem tất cả đơn
-        if (!currentUser || !currentUser.role || (currentUser.role !== 'Admin' && currentUser.role !== 'Admin')) {
-            console.error("[getAllBookings] Permission Denied based on currentUser.role. currentUser.role is:", currentUser ? currentUser.role : 'currentUser or currentUser.role is undefined');
-            return res.status(403).json({ error: 'Bạn không có quyền xem tất cả đơn đặt phòng' });
+        // 1. Sửa Kiểm Tra Quyền (dùng 'role')
+        if (!currentUser || !currentUser.role || (currentUser.role !== 'Admin' && currentUser.role !== 'QuanLyKS')) {
+            console.error("[getAllBookings] Permission Denied. Role not Admin or QuanLyKS. Actual role:", currentUser ? currentUser.role : 'N/A');
+            return res.status(403).json({ error: 'Bạn không có quyền xem danh sách đặt phòng này.' });
         }
 
         const { page = 1, limit = 10 } = req.query;
-        const offset = (page - 1) * limit;
+        const numericPage = parseInt(page, 10);
+        const numericLimit = parseInt(limit, 10);
+        const offset = (numericPage - 1) * numericLimit;
 
         const pool = await poolPromise;
+        const request = pool.request(); // Tạo request một lần để thêm input
 
-        // Xây dựng điều kiện WHERE dựa trên quyền
-        let whereClause = '';
-        let params = [];
+        let whereConditions = []; // Mảng các điều kiện WHERE
+        let countWhereConditions = []; // Điều kiện cho count query
 
-        if (currentUser.LoaiUser === 'Admin') {
-            whereClause = 'WHERE b.MaKS = @MaKS';
-            params.push({ name: 'MaKS', value: currentUser.MaKS });
+        // 2. Sửa Filter theo Role
+        if (currentUser.role === 'QuanLyKS') {
+            if (currentUser.MaKS) { // Đảm bảo QuanLyKS có MaKS trong token
+                whereConditions.push('b.MaKS = @MaKS_Filter');
+                countWhereConditions.push('b.MaKS = @MaKS_Filter'); // Tương tự cho count
+                request.input('MaKS_Filter', sql.Int, currentUser.MaKS);
+                console.log(`[getAllBookings] Filtering for QuanLyKS - MaKS: ${currentUser.MaKS}`);
+            } else {
+                console.error("[getAllBookings] QuanLyKS user does not have MaKS property in token.");
+                return res.status(403).json({ error: 'Thông tin tài khoản quản lý không đầy đủ để lọc khách sạn.' });
+            }
         }
+        // Nếu là 'Admin', whereConditions sẽ rỗng, lấy tất cả.
 
-        // Đếm tổng số đơn
+        // Xây dựng mệnh đề WHERE hoàn chỉnh
+        const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+        const countWhereClause = countWhereConditions.length > 0 ? `WHERE ${countWhereConditions.join(' AND ')}` : '';
+
+        // 3. Đếm tổng số đơn (có thể tối ưu JOIN nếu chỉ filter theo Booking.MaKS)
         const countQuery = `
-            SELECT COUNT(*) as total 
+            SELECT COUNT(b.MaDat) as total
             FROM Booking b
-            JOIN KhachSan ks ON b.MaKS = ks.MaKS
-            JOIN Phong p ON b.MaPhong = p.MaPhong
-            JOIN NguoiDung nd ON b.MaKH = nd.MaKH
-            ${whereClause}
+            -- Chỉ JOIN nếu thực sự cần thiết cho điều kiện WHERE hoặc COUNT.
+            -- Nếu QuanLyKS filter bằng b.MaKS thì các JOIN này không cần cho COUNT.
+            -- LEFT JOIN KhachSan ks ON b.MaKS = ks.MaKS
+            -- LEFT JOIN Phong p ON b.MaPhong = p.MaPhong
+            -- LEFT JOIN NguoiDung nd ON b.MaKH = nd.MaKH
+            ${countWhereClause}
         `;
-        const countRequest = pool.request();
-        params.forEach(param => {
-            countRequest.input(param.name, param.value);
-        });
-        const countResult = await countRequest.query(countQuery);
+        // Log count query để kiểm tra
+        console.log("[getAllBookings] Count Query:", countQuery.replace(/\s+/g, ' ').trim());
+        // Input cho count query đã được thêm vào request ở trên nếu là QuanLyKS
 
-        // Lấy danh sách đơn
-        const query = `
-            SELECT 
-                b.MaDat, b.NgayDat, b.NgayNhanPhong, b.NgayTraPhong, 
+        const countResult = await request.query(countQuery); // Sử dụng lại request đã có input (nếu có)
+        const totalBookings = countResult.recordset[0].total;
+
+        // 4. Lấy danh sách đơn (thêm TenLoaiPhong, xử lý các JOIN)
+        const dataQuery = `
+            SELECT
+                b.MaDat, b.NgayDat, b.NgayNhanPhong, b.NgayTraPhong,
                 b.TrangThaiBooking, b.TongTienDuKien,
-                ks.TenKS, p.SoPhong, 
-                nd.HoTen AS TenKhachHang, nd.Email, nd.SDT,
-                chg.TenCauHinh as CauHinhGiuong,
-                chg.SoGiuongDoi,
-                chg.SoGiuongDon
+                ks.TenKS, p.SoPhong,
+                lp.TenLoaiPhong, -- Thêm tên loại phòng
+                nd.HoTen AS TenKhachHang, nd.Email AS EmailKhachHang, nd.SDT AS SdtKhachHang
+                -- Các cột CauHinhGiuong có thể thêm lại nếu cần
             FROM Booking b
             JOIN KhachSan ks ON b.MaKS = ks.MaKS
             JOIN Phong p ON b.MaPhong = p.MaPhong
+            JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong -- JOIN để lấy TenLoaiPhong
             JOIN NguoiDung nd ON b.MaKH = nd.MaKH
-            JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
-            ${whereClause}
+            -- LEFT JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
+            ${whereClause} -- Áp dụng filter cho QuanLyKS ở đây
             ORDER BY b.NgayDat DESC
             OFFSET @offset ROWS
             FETCH NEXT @limit ROWS ONLY
         `;
+        // Log data query
+        console.log("[getAllBookings] Data Query (first 300 chars):", dataQuery.replace(/\s+/g, ' ').trim().substring(0,300));
 
-        const request = pool.request();
-        params.forEach(param => {
-            request.input(param.name, param.value);
-        });
+        // Thêm input cho pagination
         request.input('offset', sql.Int, offset);
-        request.input('limit', sql.Int, limit);
+        request.input('limit', sql.Int, numericLimit);
 
-        const result = await request.query(query);
+        const result = await request.query(dataQuery);
 
         res.json({
             success: true,
             data: result.recordset,
             pagination: {
-                total: countResult.recordset[0].total,
-                page: parseInt(page),
-                limit: parseInt(limit),
-                totalPages: Math.ceil(countResult.recordset[0].total / parseInt(limit))
+                total: totalBookings,
+                page: numericPage,
+                limit: numericLimit,
+                totalPages: Math.ceil(totalBookings / numericLimit) || 1 // Đảm bảo không phải 0 nếu total 0
             }
         });
     }
     catch (err) {
-        console.error('Lỗi getAllBookings:', err);
-        res.status(500).json({error: 'Lỗi server'});
+        console.error('Lỗi getAllBookings:', err.message, err.stack);
+        res.status(500).json({error: 'Lỗi server', details: err.message});
     }
 };
 
@@ -1516,8 +1534,8 @@ exports.checkIn = async (req, res) => {
         
         // Kiểm tra quyền check-in
         const canCheckIn = 
-            currentUser.LoaiUser === 'Admin' || // Admin có thể check-in mọi đơn
-            (currentUser.LoaiUser === 'QuanLyKS' && currentUser.MaKH === booking.MaNguoiQuanLy); // Quản lý KS chỉ check-in đơn của KS mình
+            currentUser.role === 'Admin' || // Admin có thể check-in mọi đơn
+            (currentUser.role === 'QuanLyKS' && currentUser.MaKH === booking.MaNguoiQuanLy); // Quản lý KS chỉ check-in đơn của KS mình
 
         if (!canCheckIn) {
             return res.status(403).json({ error: "Bạn không có quyền thực hiện check-in" });
@@ -1601,8 +1619,8 @@ exports.checkOut = async (req, res) => {
         
         // Kiểm tra quyền check-out
         const canCheckOut = 
-            currentUser.LoaiUser === 'Admin' || // Admin có thể check-out mọi đơn
-            (currentUser.LoaiUser === 'QuanLyKS' && currentUser.MaKH === booking.MaNguoiQuanLy); // Quản lý KS chỉ check-out đơn của KS mình
+            currentUser.role === 'Admin' || // Admin có thể check-out mọi đơn
+            (currentUser.role === 'QuanLyKS' && currentUser.MaKH === booking.MaNguoiQuanLy); // Quản lý KS chỉ check-out đơn của KS mình
 
         if (!canCheckOut) {
             return res.status(403).json({ error: "Bạn không có quyền thực hiện check-out" });

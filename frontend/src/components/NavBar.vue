@@ -29,15 +29,6 @@
     <!-- Desktop Navigation Items -->
     <div class="collapse navbar-collapse justify-content-end d-lg-flex d-none" id="mainNav">
      <ul class="navbar-nav align-items-center">
-      <!-- HOTEL Link -->
-      <!-- <li class="nav-item">
-        <router-link class="nav-link" to="/hotels">
-          <Button 
-          content="HOTEL" 
-          :variant="navButtonVariant"
-          />
-        </router-link>
-      </li> -->
       <!-- LOGIN (if not authenticated) -->
       <li class="nav-item" v-if="!authStore.isAuthenticated">
         <router-link class="nav-link" to="/login">

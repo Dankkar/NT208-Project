@@ -16,7 +16,7 @@ const {
     updateBookingDetails,
     confirmBooking,
 } = require('../controllers/bookingController');
-const { authenticateToken, isAdmin, isStaff, optionalAuthenticationToken } = require('../middlewares/auth');
+const { authenticateToken, isAdmin, optionalAuthenticationToken } = require('../middlewares/auth');
 
 /**
  * @route   POST /api/bookings/search
@@ -92,16 +92,16 @@ router.post('/:MaDat/confirmations', authenticateToken, sendBookingConfirmation)
 /**
  * @route   PUT /api/bookings/:MaDat/check-in
  * @desc    Check-in đơn đặt phòng
- * @access  Staff Only
+ * @access  Admin Only
  */
-router.put('/:MaDat/check-in', authenticateToken, isStaff, checkIn);
+router.put('/:MaDat/check-in', authenticateToken, isAdmin, checkIn);
 
 /**
  * @route   PUT /api/bookings/:MaDat/check-out
  * @desc    Check-out đơn đặt phòng
- * @access  Staff Only
+ * @access  Admin Only
  */
-router.put('/:MaDat/check-out', authenticateToken, isStaff, checkOut);
+router.put('/:MaDat/check-out', authenticateToken, isAdmin, checkOut);
 
 /**
  * @route   PUT /api/bookings/:MaDat/details

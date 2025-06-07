@@ -110,10 +110,14 @@ const pagination = reactive({
 });
 
 // === Utility Functions ===
-const formatCurrency = (value) => { /* ... như đã implement ở StatisticsPage ... */ };
+const formatCurrency = (value) => {
+  if (value == null || isNaN(parseFloat(value))) return 'N/A';
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', minimumFractionDigits: 0 }).format(value);
+};
+
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A';
-  const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
+  const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh' };
   try {
     return new Date(dateString).toLocaleString('vi-VN', options);
   } catch (e) { return 'Invalid Date';}
@@ -179,8 +183,8 @@ async function performCheckIn(bookingId) {
   messageType.value = 'info';
 
   try {
-    // API là POST /api/bookings/:MaDat/check-in
-    const response = await axios.post(`http://localhost:5000/api/bookings/${bookingId}/check-in`, {}, {
+    // API là put /api/bookings/:MaDat/check-in
+    const response = await axios.put(`http://localhost:5000/api/bookings/${bookingId}/check-in`, {}, {
       withCredentials: true
     });
     if (response.data && response.data.message) { // Backend trả về { message: '...' }
@@ -207,8 +211,8 @@ async function performCheckOut(bookingId) {
   actionMessage.value = '';
   messageType.value = 'info';
   try {
-    // API là POST /api/bookings/:MaDat/check-out
-    const response = await axios.post(`http://localhost:5000/api/bookings/${bookingId}/check-out`, {}, {
+    // API là put /api/bookings/:MaDat/check-out
+    const response = await axios.put(`http://localhost:5000/api/bookings/${bookingId}/check-out`, {}, {
       withCredentials: true
     });
      if (response.data && response.data.message) {

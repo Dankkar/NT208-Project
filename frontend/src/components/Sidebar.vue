@@ -61,7 +61,6 @@ const sections = [
     title: 'Dashboard',
     children: [
       { name: 'Reservations', route: '/admin/reservations' },
-      { name: 'Reviews', route: 'admin/reviews' },
     ],
   },
   {
@@ -78,7 +77,6 @@ const sections = [
     children: [
       { name: 'Statistics', route: '/admin/bookings/statistics' },
       { name: 'CheckIn/CheckOut', route: '/admin/bookings/check-in-out' },
-      { name: 'Remove Bookings', route: '/admin/bookings/remove' },
     ],
   },
   {
@@ -88,11 +86,17 @@ const sections = [
     ],
   },
   {
+    title: 'Reviews',
+    children: [
+      { name: 'Find Review', route: '/admin/reviews/find-review' },
+    ]
+  },
+  {
     title: 'Promotions',
     children: [
       { name: 'Manage Promotions', route: '/admin/promotions' },
-    ],
-  },
+    ]
+  }
 ];
 
 // Determine if a section should be open based on current route

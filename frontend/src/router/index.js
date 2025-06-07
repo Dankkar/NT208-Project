@@ -8,7 +8,6 @@ import MenuButton from '../components/MenuButton.vue'
 import Profile from '../views/Profile.vue'
 import Hotels from '../views/Hotels.vue'
 import Dashboard from '../views/Dashboard.vue'
-import RatingDetails from '../views/RatingDetails.vue'
 import HotelDetails from '../views/HotelDetails.vue'
 import Reserve from '../views/Reserve.vue'
 import BookingProcess from '../views/BookingProcess.vue'
@@ -30,10 +29,10 @@ import FindRoomPage from '../views/admin/branches/FindRoomPage.vue'
 import AddRoomPage    from '../views/admin/branches/AddRoomPage.vue'
 import EditRoomPage from '../views/admin/branches/EditRoomPage.vue'
 import StatsPage      from '../views/admin/bookings/StatsPage.vue'
-import CheckInOutPage from '../views/admin/bookings/AdminCheckInOutPage.vue'
-// import RemoveBookPage from '../views/admin/bookings/RemoveBookPage.vue'
+import CheckInOutPage from '../views/admin/bookings/AdminCheckInOutPage.vue'  
 import FindUserPage    from '../views/admin/users/FindUserPage.vue'
 import EditUserPage from '../views/admin/users/EditUserPage.vue'
+import FindReviewPage from '../views/admin/reviews/FindReviewPage.vue'
 import ManagePromotionsPage from '../views/admin/promotions/ManagePromotionsPage.vue'
 import AddPromotionPage from '../views/admin/promotions/AddPromotionPage.vue'
 import EditPromotionPage from '../views/admin/promotions/EditPromotionPage.vue'
@@ -49,9 +48,8 @@ const routes = [
   { path: '/reset-password', name: 'ResetPasswordQuery', component: ResetPasswordPage },
   { path: '/Homepage',name: 'Homepage', component: HomePage,     meta: {navbarBehavior: 'homepage'}},
   { path: '/Menu', name: "Menu", component: MenuButton},
-  { path: '/profile', name: "Profile", component:Profile, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
-  { path: '/hotels', name: "Hotels", component:Hotels, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
-  { path: '/hotels/ratings', name: "RatingDetails", component:RatingDetails, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
+  { path: '/profile', name: 'Profile', component:Profile, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
+  { path: '/hotels', name: 'Hotels', component:Hotels, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
   { path: '/reserve', name: 'Reserve', component: Reserve, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
   { path: '/bookingprocess', name: 'BookingProcess', component: BookingProcess, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
   { path: '/BookingProcess', redirect: '/bookingprocess' }, // Redirect for backward compatibility
@@ -68,7 +66,6 @@ const routes = [
 
       // Dashboard chính
       // { path: 'reservations', name: 'Reservations', component: ReservationsPage },
-      // { path: 'reviews',      name: 'Reviews',      component: ReviewsPage },
 
       // Branches
       {path: 'branches/find-hotel',       name: 'AdminFindHotel',       component: FindHotelPage },
@@ -87,7 +84,9 @@ const routes = [
       // Bookings
       { path: 'bookings/statistics', name: 'BookingsStats', component: StatsPage },
       { path: 'bookings/check-in-out/', name: 'BookingsCheckInOut', component: CheckInOutPage, props: true },
-      // { path: 'bookings/remove',     name: 'BookingsRemove', component: RemoveBookPage },
+
+      //Reviews
+      { path: 'reviews/find-review',    name: 'AdminFindReview',    component: FindReviewPage },
 
       // Users
       { path: 'users/find-user',    name: 'AdminFindUser',    component: FindUserPage },

@@ -19,7 +19,7 @@ exports.createHotel = async (req, res) => {
         const path = require('path');
         
         // Xác định MaNguoiQuanLy - ưu tiên từ body, nếu không có thì dùng user hiện tại
-        let finalMaNguoiQuanLy = MaNguoiQuanLy || req.user.MaKH;
+        let finalMaNguoiQuanLy = MaNguoiQuanLy || req.user.MaKH 
         
         // Validate role của người được chỉ định làm quản lý
         const managerValidation = await pool.request()
@@ -384,9 +384,9 @@ exports.updateHotel = async (req, res) => {
                 } else if (key === 'HangSao') {
                     request.input(key, sql.Decimal(3, 1), queryParams[key]);
                 } else if (key === 'MoTaCoSoVatChat' || key === 'QuyDinh' || key === 'MotaChung') {
-                    request.input(key, sql.Text, queryParams[key]);
+                    request.input(key, sql.NVarChar(sql.MAX), queryParams[key]);
                 } else {
-                    request.input(key, sql.VarChar, queryParams[key]);
+                    request.input(key, sql.NVarChar, queryParams[key]);
                 }
             });
             
@@ -614,9 +614,9 @@ exports.uploadHotelWithImages = async (req, res) => {
                 if (key === 'MaKS' || key === 'MaNguoiQuanLy') {
                     request.input(key, sql.Int, queryParams[key]);
                 } else if (key === 'MoTaCoSoVatChat' || key === 'QuyDinh' || key === 'MotaChung') {
-                    request.input(key, sql.Text, queryParams[key]);
+                    request.input(key, sql.NVarChar(sql.MAX), queryParams[key]);
                 } else {
-                    request.input(key, sql.VarChar, queryParams[key]);
+                    request.input(key, sql.NVarChar, queryParams[key]);
                 }
             });
 
@@ -769,19 +769,19 @@ exports.getAllHotels = async (req, res) => {
         const { page = 1, limit = 10, sortBy = 'rating', sortOrder = 'desc' } = req.query;
         const offset = (page - 1) * limit;
         const pool = await poolPromise;
-        const isAdmin = req.user && req.user.Role === 'admin';
-
         const countResult = await pool.request().query(`
             SELECT COUNT(*) as total
             FROM KhachSan
         `);
 
-        // Base query without NguoiQuanLy
+        // Base query
         let query = `
             SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh, ks.IsActive,
+                   nd.HoTen AS NguoiQuanLy,
                    MIN(lp.GiaCoSo) as GiaThapNhat,
                    ak.DuongDanAnh as MainImagePath
             FROM KhachSan ks
+            LEFT JOIN NguoiDung nd ON ks.MaNguoiQuanLy = nd.MaKH
             LEFT JOIN Phong p ON ks.MaKS = p.MaKS
             LEFT JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
             LEFT JOIN AnhKhachSan ak ON ks.MaKS = ak.MaKS
@@ -795,33 +795,9 @@ exports.getAllHotels = async (req, res) => {
                 )
         `;
 
-        // Add NguoiQuanLy to query if user is admin
-        if (isAdmin) {
-            query = `
-                SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh, ks.IsActive,
-                       nd.HoTen AS NguoiQuanLy,
-                       MIN(lp.GiaCoSo) as GiaThapNhat,
-                       ak.DuongDanAnh as MainImagePath
-                FROM KhachSan ks
-                LEFT JOIN NguoiDung nd ON ks.MaNguoiQuanLy = nd.MaKH
-                LEFT JOIN Phong p ON ks.MaKS = p.MaKS
-                LEFT JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
-                LEFT JOIN AnhKhachSan ak ON ks.MaKS = ak.MaKS
-                    AND ak.LoaiAnh = 'main'
-                    AND ak.IsActive = 1
-                    AND ak.MaAnh = (
-                        SELECT TOP 1 MaAnh 
-                        FROM AnhKhachSan 
-                        WHERE MaKS = ks.MaKS AND IsActive = 1 AND LoaiAnh = 'main'
-                        ORDER BY ThuTu ASC, NgayThem ASC
-                    )
-            `;
-        }
-
         // Add GROUP BY
         query += `
-            GROUP BY ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh, ak.DuongDanAnh, ks.IsActive
-            ${isAdmin ? ', nd.HoTen' : ''}
+            GROUP BY ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh, ak.DuongDanAnh, ks.IsActive, nd.HoTen
         `;
 
         // Handle sorting based on parameters
@@ -904,7 +880,7 @@ exports.getHotelById = async (req, res) => {
             .input('MaKS', sql.Int, MaKS)
             .query(`
                 SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh,
-                       ks.MoTaCoSoVatChat, ks.QuyDinh, ks.MoTaChung, ks.IsActive
+                       ks.MoTaCoSoVatChat, ks.QuyDinh, ks.MoTaChung, ks.Latitude, ks.Longitude, ks.IsActive, ks.MaNguoiQuanLy
                 FROM KhachSan ks
                 WHERE ks.MaKS = @MaKS
             `);
@@ -1123,7 +1099,7 @@ exports.suggestLocations = async (req, res) => {
         const keyword = req.query.keyword; //từ khóa tìm kiếm
         const pool = await poolPromise;
         const result = await pool.request()
-            .input('keyword', sql.VarChar, keyword)
+            .input('keyword', sql.NVarChar, keyword)
             .query(`
                 SELECT DISTINCT DiaChi
                 FROM KhachSan
@@ -1836,7 +1812,7 @@ exports.deleteHotelImage = async (req, res) => {
             .input('MaAnh', sql.Int, parseInt(MaAnh))
             .query(`
                 UPDATE AnhKhachSan 
-                SET IsActive = 0, NgayCapNhat = GETDATE()
+                SET IsActive = 0, NgayThem = GETDATE()
                 WHERE MaAnh = @MaAnh
             `);
 
@@ -1915,7 +1891,7 @@ exports.updateHotelImage = async (req, res) => {
             });
         }
 
-        updateFields.push('NgayCapNhat = GETDATE()');
+        updateFields.push('NgayThem = GETDATE()');
 
         // Thực hiện update
         const request = pool.request();
@@ -1945,7 +1921,7 @@ exports.updateHotelImage = async (req, res) => {
                     ThuTu,
                     MoTa,
                     NgayThem,
-                    NgayCapNhat
+                    NgayThem
                 FROM AnhKhachSan
                 WHERE MaAnh = @MaAnh
             `);
