@@ -66,7 +66,6 @@ const routes = [
 
       // Dashboard chính
       // { path: 'reservations', name: 'Reservations', component: ReservationsPage },
-      // { path: 'reviews',      name: 'Reviews',      component: ReviewsPage },
 
       // Branches
       {path: 'branches/find-hotel',       name: 'AdminFindHotel',       component: FindHotelPage },

@@ -19,7 +19,7 @@ exports.createHotel = async (req, res) => {
         const path = require('path');
         
         // Xác định MaNguoiQuanLy - ưu tiên từ body, nếu không có thì dùng user hiện tại
-        let finalMaNguoiQuanLy = MaNguoiQuanLy || req.user.MaKH;
+        let finalMaNguoiQuanLy = MaNguoiQuanLy || req.user.MaKH 
         
         // Validate role của người được chỉ định làm quản lý
         const managerValidation = await pool.request()
@@ -873,7 +873,7 @@ exports.getHotelById = async (req, res) => {
             .input('MaKS', sql.Int, MaKS)
             .query(`
                 SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh,
-                       ks.MoTaCoSoVatChat, ks.QuyDinh, ks.MoTaChung, ks.Latitude, ks.Longitude, ks.IsActive
+                       ks.MoTaCoSoVatChat, ks.QuyDinh, ks.MoTaChung, ks.Latitude, ks.Longitude, ks.IsActive, ks.MaNguoiQuanLy
                 FROM KhachSan ks
                 WHERE ks.MaKS = @MaKS
             `);

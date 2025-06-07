@@ -90,7 +90,7 @@ const sections = [
     children: [
       { name: 'Find Review', route: '/admin/reviews/find-review' },
     ]
-  }
+  },
   {
     title: 'Promotions',
     children: [
