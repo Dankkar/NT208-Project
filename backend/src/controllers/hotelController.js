@@ -859,7 +859,7 @@ exports.getHotelById = async (req, res) => {
             .input('MaKS', sql.Int, MaKS)
             .query(`
                 SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh,
-                       ks.MoTaCoSoVatChat, ks.QuyDinh, ks.MoTaChung
+                       ks.MoTaCoSoVatChat, ks.QuyDinh, ks.MoTaChung, ks.Latitude, ks.Longitude, ks.IsActive
                 FROM KhachSan ks
                 WHERE ks.MaKS = @MaKS
             `);

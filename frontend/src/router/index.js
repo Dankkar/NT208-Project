@@ -29,6 +29,7 @@ import StatsPage      from '../views/admin/bookings/StatsPage.vue'
 import CheckInOutPage from '../views/admin/bookings/AdminCheckInOutPage.vue'  
 import FindUserPage    from '../views/admin/users/FindUserPage.vue'
 import EditUserPage from '../views/admin/users/EditUserPage.vue'
+import FindReviewPage from '../views/admin/reviews/FindReviewPage.vue'
 
 
 
@@ -41,8 +42,8 @@ const routes = [
   { path: '/reset-password', name: 'ResetPasswordQuery', component: ResetPasswordPage },
   { path: '/Homepage',name: 'Homepage', component: HomePage,     meta: {navbarBehavior: 'homepage'}},
   { path: '/Menu', name: "Menu", component: MenuButton},
-  { path: '/profile', name: "Profile", component:Profile, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
-  { path: '/hotels', name: "Hotels", component:Hotels, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
+  { path: '/profile', name: 'Profile', component:Profile, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
+  { path: '/hotels', name: 'Hotels', component:Hotels, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
   { path: '/reserve', name: 'Reserve', component: Reserve, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
   { path: '/BookingProcess', name: 'BookingProcess', component: BookingProcess, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
   { path: '/BookingHistory', name: 'BookingHistory', component: BookingHistory, meta: {navbarBehavior: 'stickyWithHideOnScroll'}}, 
@@ -74,6 +75,9 @@ const routes = [
       // Bookings
       { path: 'bookings/statistics', name: 'BookingsStats', component: StatsPage },
       { path: 'bookings/check-in-out/', name: 'BookingsCheckInOut', component: CheckInOutPage, props: true },
+
+      //Reviews
+      { path: 'reviews/find-review',    name: 'AdminFindReview',    component: FindReviewPage },
 
       // Users
       { path: 'users/find-user',    name: 'AdminFindUser',    component: FindUserPage },

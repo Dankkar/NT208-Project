@@ -1,5 +1,4 @@
 //backend/src/index.js
-
 require('dotenv').config();
 const { initBookingCleanupJob } = require('./services/bookingCleanupService');
 const path = require('path');

@@ -3,9 +3,11 @@ const router = express.Router();
 const {
   createReview,
   getHotelReviews,
-  getBookingReviews
+  getBookingReviews,
+  adminGetHotelReviews,
+  adminSetReviewApproval
 } = require('../controllers/reviewController');
-const { authenticateToken } = require('../middlewares/auth');
+const { authenticateToken, isAdmin } = require('../middlewares/auth');
 
 // -------- PUBLIC ROUTES --------
 
@@ -19,5 +21,11 @@ router.get('/booking/:MaDat', getBookingReviews);
 
 // POST /reviews - Tạo đánh giá (phải đăng nhập)
 router.post('/', authenticateToken, createReview);
+
+// GET /api/reviews/admin/hotel/:MaKS - Admin lấy tất cả review (có phân trang) của một khách sạn
+router.get('/admin/hotel/:MaKS', authenticateToken, isAdmin, adminGetHotelReviews);
+
+// PUT /api/reviews/admin/:MaDG/approval - Admin cập nhật trạng thái duyệt (true/false)
+router.put('/admin/:MaDG/approval', authenticateToken, isAdmin, adminSetReviewApproval);
 
 module.exports = router;

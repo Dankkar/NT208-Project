@@ -212,14 +212,13 @@ CREATE TABLE HoaDon (
     CONSTRAINT FK_HoaDon_KhuyenMai FOREIGN KEY (MaKM) REFERENCES KhuyenMai(MaKM) ON DELETE SET NULL -- Nếu KM bị xóa, hóa đơn không còn áp dụng KM đó
 );
 
-
 -- Bảng Bài Đánh Giá (Review) - Liên kết User, Booking, Hotel
 CREATE TABLE BaiDanhGia (
     MaDG INT PRIMARY KEY IDENTITY(1,1),         -- Mã Đánh giá (PK)
     MaKH INT NOT NULL,                          -- Ai đánh giá (FK)
     MaDat INT NOT NULL,                         -- Đánh giá cho Booking nào (FK) -> Giúp biết KS, Phòng (nếu cần)
     MaKS INT NOT NULL,                          -- Đánh giá về Khách sạn nào (FK) - Có thể lấy từ MaDat
-    Sao INT NOT NULL CHECK (Sao BETWEEN 1 AND 5), -- Số sao đánh giá (1-5)
+    Sao Decimal(2,1) NOT NULL CHECK (Sao BETWEEN 1 AND 5), -- Số sao đánh giá (1-5)
     NoiDung NVARCHAR(MAX),                      -- Nội dung bình luận
     NgayDG DATETIME2 DEFAULT GETDATE(),         -- Ngày đánh giá
     IsApproved BIT DEFAULT 0,                   -- Đánh giá đã được duyệt hiển thị chưa?
@@ -346,11 +345,6 @@ VALUES
 (1, 46, 1, 1400000, 100000, 280000, 150000, N'Thẻ tín dụng', N'Đã thanh toán'),
 (2, 49, NULL, 7500000, 300000, 0, 300000, N'Tiền mặt', N'Chưa thanh toán');
 
-INSERT INTO BaiDanhGia (MaKH, MaDat, MaKS, Sao, NoiDung)
-VALUES
-(1, 1, 1, 5, N'Phòng sạch sẽ, gần biển, nhân viên thân thiện'),
-(2, 2, 2, 4, N'Không gian yên tĩnh, thích hợp nghỉ dưỡng');
-
 SELECT * FROM KhachSan
 select * from LoaiPhong
 select * from Phong
@@ -437,3 +431,25 @@ select * from LoaiPhong
 
 SELECT * FROM AnhKhachSan
 select * from KhachSan
+
+select * from baidanhgia
+select * from booking
+INSERT INTO BaiDanhGia (MaKH, MaDat, MaKS, Sao, NoiDung)
+VALUES
+(49, 6, 1, 5, N'Phòng sạch sẽ, gần biển, nhân viên thân thiện'),
+(49, 7, 2, 4, N'Không gian yên tĩnh, thích hợp nghỉ dưỡng'),
+(49, 7, 2, 4, N'Không gian yên tĩnh'),
+(49, 7, 2, 4, N'Không gian yên tĩnh, thích hợp nghỉ'),
+(49, 7, 2, 4, N'Thích hợp nghỉ dưỡng'),
+(49, 7, 2, 4, N'Không gian thích hợp nghỉ dưỡng'),
+(49, 7, 2, 4, N'Không gian yên tĩnh, nghỉ dưỡng'),
+(49, 7, 2, 4, N'Không gian'),
+(49, 7, 2, 4, N'Không thích hợp nghỉ dưỡng');
+
+delete BaiDanhGia
+
+update BaiDanhGia
+
+ALTER TABLE BaiDanhGia
+ADD CHECK (Sao BETWEEN 1 AND 5)
+

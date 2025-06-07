@@ -53,3 +53,4 @@ app.use(pinia)
 
 // Mount app directly - no need to initialize session on startup
 app.mount('#app')
+

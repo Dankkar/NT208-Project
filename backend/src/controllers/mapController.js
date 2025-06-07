@@ -125,3 +125,32 @@ exports.getNearbyHotels = async (req, res) => {
         });
     }
 }; 
+
+// Get Google Maps API Key for Client-Side usage
+exports.getMapsApiKeyClientSide = (req, res) => {
+    try {
+        // Key này DÀNH CHO CLIENT và đã được HẠN CHẾ HTTP REFERRER trong Google Cloud Console
+        // Đảm bảo tên biến môi trường này đúng với file .env của bạn
+        const apiKey = process.env.GOOGLE_MAPS_API_KEY_CLIENT_SIDE;
+
+        if (!apiKey) {
+            console.error("LỖI: Biến môi trường GOOGLE_MAPS_API_KEY_CLIENT_SIDE chưa được định nghĩa.");
+            return res.status(500).json({
+                success: false,
+                message: "Lỗi cấu hình máy chủ: Không tìm thấy API key cho bản đồ."
+            });
+        }
+
+        res.json({
+            success: true,
+            apiKey: apiKey // Trả về key này cho client
+        });
+
+    } catch (error) {
+        console.error("Lỗi khi cung cấp Google Maps API key (client-side):", error);
+        res.status(500).json({
+            success: false,
+            message: "Lỗi máy chủ nội bộ khi lấy cấu hình bản đồ."
+        });
+    }
+};

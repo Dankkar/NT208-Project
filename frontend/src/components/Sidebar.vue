@@ -61,7 +61,6 @@ const sections = [
     title: 'Dashboard',
     children: [
       { name: 'Reservations', route: '/admin/reservations' },
-      { name: 'Reviews', route: 'admin/reviews' },
     ],
   },
   {
@@ -85,6 +84,12 @@ const sections = [
       { name: 'Find User', route: '/admin/users/find-user' },
     ],
   },
+  {
+    title: 'Reviews',
+    children: [
+      { name: 'Find Review', route: '/admin/reviews/find-review' },
+    ]
+  }
 ];
 
 // Determine if a section should be open based on current route
