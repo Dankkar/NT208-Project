@@ -76,6 +76,43 @@
             <input class="form-check-input" type="checkbox" role="switch" id="isActiveSwitch" v-model="editableHotel.IsActive">
             <label class="form-check-label" for="isActiveSwitch">Is Active</label>
         </div>
+
+        <!-- Thêm phần quản lý ảnh -->
+        <div class="col-12 mt-4">
+          <label class="form-label">Hotel Images</label>
+          <div class="mb-3">
+            <input
+              type="file"
+              class="form-control"
+              accept="image/*"
+              multiple
+              @change="handleImageSelect"
+              :disabled="isSubmitting"
+            >
+            <small class="form-text text-muted">You can select multiple images. Click on an image to set it as main image.</small>
+          </div>
+
+          <!-- Hiển thị ảnh -->
+          <div class="row g-3">
+            <div v-for="(image, index) in previewImages" :key="index" class="col-md-3">
+              <div class="card h-100">
+                <img :src="image.url" class="card-img-top" style="height: 200px; object-fit: cover; cursor: pointer"
+                     @click="setMainImage(index)"
+                     :class="{'border border-primary': mainImageIndex === index}">
+                <div class="card-body p-2">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">
+                      {{ mainImageIndex === index ? 'Main Image' : 'Click to set as main' }}
+                    </small>
+                    <button type="button" class="btn btn-sm btn-danger" @click="removeImage(index)">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="mt-4 d-flex justify-content-end">
@@ -120,6 +157,13 @@ const editableHotel = reactive({
   IsActive: ''
 });
 
+// Thêm các biến quản lý ảnh
+const selectedImages = ref([]);
+const previewImages = ref([]);
+const existingImages = ref([]);
+const mainImageIndex = ref(null);
+const deleteImageIds = ref([]);
+
 const pageLoading = ref(true);
 const pageError = ref('');
 const isSubmitting = ref(false);
@@ -149,21 +193,60 @@ function parseHangSaoForPayload(stringHangSao) {
     return null; // Hoặc xử lý lỗi nếu định dạng không đúng
 }
 
+// Thêm các hàm xử lý ảnh
+function handleImageSelect(event) {
+  const files = event.target.files;
+  if (files) {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.type.startsWith('image/')) {
+        selectedImages.value.push(file);
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          previewImages.value.push({
+            url: e.target.result,
+            file: file,
+            isNew: true
+          });
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  }
+}
+
+function removeImage(index) {
+  const image = previewImages.value[index];
+  if (image.isNew) {
+    // Nếu là ảnh mới, xóa khỏi cả selectedImages và previewImages
+    const fileIndex = selectedImages.value.indexOf(image.file);
+    if (fileIndex > -1) {
+      selectedImages.value.splice(fileIndex, 1);
+    }
+  } else {
+    // Nếu là ảnh cũ, thêm vào danh sách ảnh cần xóa
+    deleteImageIds.value.push(image.MaAnh);
+  }
+  previewImages.value.splice(index, 1);
+}
+
+function setMainImage(index) {
+  mainImageIndex.value = index;
+}
+
 async function fetchHotelDetails(id) {
   pageLoading.value = true;
   pageError.value = '';
   try {
-    // API của bạn là GET /api/hotels/:MaKS
     const response = await axios.get(`http://localhost:5000/api/hotels/${id}`, {
       withCredentials: true,
     });
 
-    // API getHotelById của bạn trả về { success: true, data: { ...hotelData, roomTypes, services, priceRange... } }
     if (response.data && response.data.success && response.data.data) {
-      const hotelDetails = response.data.data; // Đây là object khách sạn, chưa bao gồm roomTypes, services...
-      originalHotelData.value = { ...hotelDetails }; // Sao chép để tránh mutate
+      const hotelDetails = response.data.data;
+      originalHotelData.value = { ...hotelDetails };
 
-      // Gán vào editableHotel (chỉ các trường khách sạn)
+      // Gán các trường thông tin cơ bản
       editableHotel.MaKS = hotelDetails.MaKS;
       editableHotel.TenKS = hotelDetails.TenKS || '';
       editableHotel.DiaChi = hotelDetails.DiaChi || '';
@@ -175,6 +258,21 @@ async function fetchHotelDetails(id) {
       editableHotel.MaNguoiQuanLy = hotelDetails.MaNguoiQuanLy || null;
       editableHotel.IsActive = hotelDetails.IsActive;
 
+      // Xử lý ảnh
+      if (hotelDetails.AllImages && Array.isArray(hotelDetails.AllImages)) {
+        existingImages.value = hotelDetails.AllImages;
+        previewImages.value = hotelDetails.AllImages.map(img => ({
+          ...img,
+          url: img.FullPath,
+          isNew: false
+        }));
+        // Tìm ảnh chính
+        const mainIdx = hotelDetails.AllImages.findIndex(img => img.LoaiAnh === 'main');
+        if (mainIdx !== -1) {
+          mainImageIndex.value = mainIdx;
+        }
+      }
+
       // Set coordinates if available
       if (hotelDetails.Latitude && hotelDetails.Longitude) {
         hotelCoordinates.value = {
@@ -182,7 +280,6 @@ async function fetchHotelDetails(id) {
           longitude: hotelDetails.Longitude
         };
       }
-
     } else {
       pageError.value = response.data?.message || `Could not load hotel data for ID ${id}.`;
     }
@@ -203,42 +300,47 @@ async function submitUpdateHotel() {
   formError.value = '';
   successMessage.value = '';
 
-  // Tạo payload chỉ với các trường mà API updateHotel mong đợi
-  const payload = {
-    TenKS: editableHotel.TenKS,
-    DiaChi: editableHotel.DiaChi,
-    HangSao: editableHotel.HangSao,
-    LoaiHinh: editableHotel.LoaiHinh,
-    MoTaCoSoVatChat: editableHotel.MoTaCoSoVatChat,
-    QuyDinh: editableHotel.QuyDinh,
-    MotaChung: editableHotel.MotaChung,
-    MaNguoiQuanLy: editableHotel.MaNguoiQuanLy,
-    IsActive: editableHotel.IsActive
-  };
+  // Tạo FormData để gửi cả file và dữ liệu
+  const formData = new FormData();
+  
+  // Thêm các trường thông tin cơ bản
+  formData.append('TenKS', editableHotel.TenKS);
+  formData.append('DiaChi', editableHotel.DiaChi);
+  formData.append('HangSao', parseHangSaoForPayload(editableHotel.HangSao));
+  formData.append('LoaiHinh', editableHotel.LoaiHinh);
+  formData.append('MoTaCoSoVatChat', editableHotel.MoTaCoSoVatChat);
+  formData.append('QuyDinh', editableHotel.QuyDinh);
+  formData.append('MotaChung', editableHotel.MotaChung);
+  formData.append('MaNguoiQuanLy', editableHotel.MaNguoiQuanLy === '' ? '' : editableHotel.MaNguoiQuanLy);
+  formData.append('IsActive', editableHotel.IsActive);
+
+  // Thêm thông tin về ảnh
+  if (mainImageIndex.value !== null) {
+    formData.append('mainImageIndex', mainImageIndex.value);
+  }
+  if (deleteImageIds.value.length > 0) {
+    formData.append('deleteImageIds', JSON.stringify(deleteImageIds.value));
+  }
+
+  // Thêm các file ảnh mới
+  selectedImages.value.forEach((file, index) => {
+    formData.append('images', file);
+  });
 
   // Add coordinates if available
   if (hotelCoordinates.value && hotelCoordinates.value.latitude && hotelCoordinates.value.longitude) {
-    payload.Latitude = hotelCoordinates.value.latitude;
-    payload.Longitude = hotelCoordinates.value.longitude;
+    formData.append('Latitude', hotelCoordinates.value.latitude);
+    formData.append('Longitude', hotelCoordinates.value.longitude);
   }
-
-  if (editableHotel.MaNguoiQuanLy !== undefined) { // Gửi cả khi nó là null để cho phép xóa người quản lý
-      payload.MaNguoiQuanLy = editableHotel.MaNguoiQuanLy === '' ? null : parseInt(editableHotel.MaNguoiQuanLy, 10);
-      if (editableHotel.MaNguoiQuanLy !== '' && editableHotel.MaNguoiQuanLy !== null && isNaN(payload.MaNguoiQuanLy)) {
-          formError.value = "Manager ID must be a valid number or empty to remove.";
-          isSubmitting.value = false;
-          return;
-      }
-  }
-
 
   try {
-    // API updateHotel là PUT /api/hotels/:MaKS
-    const response = await axios.put(`http://localhost:5000/api/hotels/${hotelId.value}`, payload, {
-      withCredentials: true
+    const response = await axios.put(`http://localhost:5000/api/hotels/${hotelId.value}`, formData, {
+      withCredentials: true,
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
     });
 
-    // API updateHotel của bạn trả về { message: '...' }
     if (response.data && response.data.message) {
       successMessage.value = response.data.message;
       setTimeout(() => {
