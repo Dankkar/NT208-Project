@@ -236,12 +236,12 @@ async function resumeHeldBooking() {
   }
   
   // Check if hold booking has expired
-  if (bookingStore.heldBookingExpiresAt && Date.now() > bookingStore.heldBookingExpiresAt) {
-    resumeError.value = "Your previous room hold has expired. Please select a room again or start a new search.";
-    // Cập nhật store để phản ánh đúng trạng thái hết hạn
+    if (bookingStore.heldBookingExpiresAt && Date.now() > bookingStore.heldBookingExpiresAt) {
+      resumeError.value = "Your previous room hold has expired. Please select a room again or start a new search.";
+      // Cập nhật store để phản ánh đúng trạng thái hết hạn
     bookingStore.holdError = "Your previous room hold has expired. Please find a new room.";
-    bookingStore.heldBookingMaDat = null;
-    bookingStore.heldBookingExpiresAt = null;
+      bookingStore.heldBookingMaDat = null;
+      bookingStore.heldBookingExpiresAt = null;
     return;
   }
   

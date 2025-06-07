@@ -200,9 +200,14 @@ exports.updateHotel = async (req, res) => {
         }
 
         // Nếu có MaNguoiQuanLy, validate role của người được chỉ định
-        if (MaNguoiQuanLy !== undefined && MaNguoiQuanLy !== null) {
+        if (
+          MaNguoiQuanLy !== undefined &&
+          MaNguoiQuanLy !== null &&
+          MaNguoiQuanLy !== '' &&
+          !isNaN(MaNguoiQuanLy)
+        ) {
             const managerValidation = await pool.request()
-                .input('MaKH', sql.Int, MaNguoiQuanLy)
+                .input('MaKH', sql.Int, parseInt(MaNguoiQuanLy, 10))
                 .query(`
                     SELECT MaKH, LoaiUser, HoTen 
                     FROM NguoiDung 
@@ -376,6 +381,8 @@ exports.updateHotel = async (req, res) => {
                     request.input(key, sql.Decimal(10, 8), queryParams[key]);
                 } else if (key === 'Longitude') {
                     request.input(key, sql.Decimal(11, 8), queryParams[key]);
+                } else if (key === 'HangSao') {
+                    request.input(key, sql.Decimal(3, 1), queryParams[key]);
                 } else if (key === 'MoTaCoSoVatChat' || key === 'QuyDinh' || key === 'MotaChung') {
                     request.input(key, sql.NVarChar(sql.MAX), queryParams[key]);
                 } else {
