@@ -11,6 +11,7 @@ import 'bootstrap-icons/font/bootstrap-icons.css'
 import vue3GoogleLogin from 'vue3-google-login'
 import axios from 'axios'
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
+import './assets/styles/variables.css'
 
 // Configure axios defaults
 axios.defaults.baseURL = 'http://localhost:5000'

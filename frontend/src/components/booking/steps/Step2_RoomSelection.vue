@@ -227,27 +227,36 @@ async function handleAlternativeDateSelection(originalHotelData, payloadFromCard
 const resumeError = ref('');
 async function resumeHeldBooking() {
   resumeError.value = '';
-  if (bookingStore.heldBookingMaDat && bookingStore.selectedHotelDetails && bookingStore.selectedRoomTypeDetails && bookingStore.searchCriteria) {
-    
-    // Kiểm tra lượt giữ còn hạn không
-    if (bookingStore.heldBookingExpiresAt && Date.now() > bookingStore.heldBookingExpiresAt) {
-      resumeError.value = "Your previous room hold has expired. Please select a room again or start a new search.";
-      // Cập nhật store để phản ánh đúng trạng thái hết hạn
-      bookingStore.holdError = "Your previous room hold has expired. Please find a new room."; // Lỗi này sẽ làm ẩn block "Action Required"
-      bookingStore.heldBookingMaDat = null;
-      bookingStore.heldBookingExpiresAt = null;
-      // bookingStore.selectedHotelDetails = null; // Tuỳ chọn: có thể xóa hoặc giữ lại
-      // bookingStore.selectedRoomTypeDetails = null; // Tuỳ chọn
-      return; // Dừng, người dùng sẽ thấy lỗi mới trên block lỗi chung
-    }
-    
-    bookingStore.holdError = null;
-    bookingStore.navigateToStep(3); // Chuyển sang bước 3 để xác nhận giữ phòng
-  } else {
-    resumeError.value = "Could not retrieve details for your current held booking. Please check 'My Bookings' or start a new search.";
-    alert("Error: Could not retrieve details for your current held booking. Please check 'My Bookings' or start a new search.");
-    
+  console.log('Attempting to resume held booking...');
+  
+  // First check if we have a valid hold booking
+  if (!bookingStore.heldBookingMaDat) {
+    resumeError.value = "No held booking found. Please select a room first.";
+    return;
   }
+  
+  // Check if hold booking has expired
+  if (bookingStore.heldBookingExpiresAt && Date.now() > bookingStore.heldBookingExpiresAt) {
+    resumeError.value = "Your previous room hold has expired. Please select a room again or start a new search.";
+    // Cập nhật store để phản ánh đúng trạng thái hết hạn
+    bookingStore.holdError = "Your previous room hold has expired. Please find a new room.";
+    bookingStore.heldBookingMaDat = null;
+    bookingStore.heldBookingExpiresAt = null;
+    return;
+  }
+  
+  // Check if we have required details, if not try to restore them
+  if (!bookingStore.selectedHotelDetails || !bookingStore.selectedRoomTypeDetails || !bookingStore.searchCriteria) {
+    console.warn('Step2: Missing some details for hold booking, but will attempt to continue. Step 3 will handle missing data.');
+    console.log('Missing details:');
+    if (!bookingStore.selectedHotelDetails) console.log('- selectedHotelDetails missing');
+    if (!bookingStore.selectedRoomTypeDetails) console.log('- selectedRoomTypeDetails missing');
+    if (!bookingStore.searchCriteria) console.log('- searchCriteria missing');
+  }
+  
+  // Clear any hold errors and navigate to Step 3
+  bookingStore.holdError = null;
+  bookingStore.navigateToStep(3);
 }
 
 function goToMyBookingsPage() {

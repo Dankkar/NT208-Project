@@ -105,6 +105,10 @@
                 <span class="text-muted">VAT (est.):</span>
                 <span class="text-muted">{{ formatDisplayPrice(confirmationDetails.paymentSummary.vatAmount) }}</span>
               </div>
+              <div v-if="confirmationDetails.paymentSummary.promotionDiscount > 0" class="d-flex justify-content-between small mb-1 text-success">
+                <span>Promotion Discount:</span>
+                <span>- {{ formatDisplayPrice(confirmationDetails.paymentSummary.promotionDiscount) }}</span>
+              </div>
               <div v-if="confirmationDetails.paymentSummary.depositPaid > 0" class="d-flex justify-content-between small mb-1 text-success">
                 <span>Deposit Paid:</span>
                 <span>- {{ formatDisplayPrice(confirmationDetails.paymentSummary.depositPaid) }}</span>
@@ -112,7 +116,7 @@
                <hr class="my-2">
               <div class="d-flex justify-content-between fw-bold h5 mb-0">
                 <span>TOTAL PAID:</span>
-                <span>{{ formatDisplayPrice(confirmationDetails.paymentSummary.amountDue) }}</span>
+                <span>{{ formatDisplayPrice(confirmationDetails.paymentSummary.finalPrice) }}</span>
               </div>
             </div>
             <div class="card-body text-muted small" v-else>Payment summary not available.</div>

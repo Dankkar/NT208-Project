@@ -47,6 +47,8 @@ exports.createHotel = async (req, res) => {
         const result = await pool.request()
             .input('TenKS', sql.NVarChar, TenKS)
             .input('DiaChi', sql.NVarChar, DiaChi)
+            .input('Latitude', sql.Decimal(10, 8), req.body.Latitude ? parseFloat(req.body.Latitude) : null)
+            .input('Longitude', sql.Decimal(11, 8), req.body.Longitude ? parseFloat(req.body.Longitude) : null)
             .input('HangSao', sql.Decimal(2,1), parseFloat(HangSao))
             .input('LoaiHinh', sql.NVarChar, LoaiHinh)
             .input('MoTaCoSoVatChat', sql.NVarChar, MoTaCoSoVatChat)
@@ -54,9 +56,9 @@ exports.createHotel = async (req, res) => {
             .input('MotaChung', sql.NVarChar, MotaChung)
             .input('MaNguoiQuanLy', sql.Int, finalMaNguoiQuanLy)
             .query(`
-                INSERT INTO KhachSan (TenKS, DiaChi, HangSao, LoaiHinh, MoTaCoSoVatChat, QuyDinh, MotaChung, MaNguoiQuanLy)
+                INSERT INTO KhachSan (TenKS, DiaChi, Latitude, Longitude, HangSao, LoaiHinh, MoTaCoSoVatChat, QuyDinh, MotaChung, MaNguoiQuanLy)
                 OUTPUT INSERTED.MaKS
-                VALUES (@TenKS, @DiaChi, @HangSao, @LoaiHinh, @MoTaCoSoVatChat, @QuyDinh, @MotaChung, @MaNguoiQuanLy)
+                VALUES (@TenKS, @DiaChi, @Latitude, @Longitude, @HangSao, @LoaiHinh, @MoTaCoSoVatChat, @QuyDinh, @MotaChung, @MaNguoiQuanLy)
             `);
         
         const newHotelId = result.recordset[0].MaKS;
@@ -350,6 +352,14 @@ exports.updateHotel = async (req, res) => {
             updateFields.push('MaNguoiQuanLy = @MaNguoiQuanLy');
             queryParams.MaNguoiQuanLy = MaNguoiQuanLy;
         }
+        if (req.body.Latitude !== undefined) {
+            updateFields.push('Latitude = @Latitude');
+            queryParams.Latitude = req.body.Latitude ? parseFloat(req.body.Latitude) : null;
+        }
+        if (req.body.Longitude !== undefined) {
+            updateFields.push('Longitude = @Longitude');
+            queryParams.Longitude = req.body.Longitude ? parseFloat(req.body.Longitude) : null;
+        }
 
         if (updateFields.length > 0) {
             const query = `
@@ -362,6 +372,10 @@ exports.updateHotel = async (req, res) => {
             Object.keys(queryParams).forEach(key => {
                 if (key === 'MaKS' || key === 'MaNguoiQuanLy') {
                     request.input(key, sql.Int, queryParams[key]);
+                } else if (key === 'Latitude') {
+                    request.input(key, sql.Decimal(10, 8), queryParams[key]);
+                } else if (key === 'Longitude') {
+                    request.input(key, sql.Decimal(11, 8), queryParams[key]);
                 } else if (key === 'MoTaCoSoVatChat' || key === 'QuyDinh' || key === 'MotaChung') {
                     request.input(key, sql.NVarChar(sql.MAX), queryParams[key]);
                 } else {
@@ -1225,9 +1239,12 @@ exports.searchAvailableHotels = async (req, res) => {
             availableRoomsMap.set(`${room.MaKS}-${room.MaLoaiPhong}`, room.SoPhongTrong);
         });
 
-        // Format response
+        // Format response - Group by room type to avoid duplicates
         const hotels = {};
+        const roomTypeMap = new Map(); // Track processed room types to avoid duplicates
+
         for (const record of hotelsResult.recordset) {
+            // Initialize hotel if not exists
             if (!hotels[record.MaKS]) {
                 hotels[record.MaKS] = {
                     MaKS: record.MaKS,
@@ -1245,8 +1262,22 @@ exports.searchAvailableHotels = async (req, res) => {
                 };
             }
 
-            const roomKey = `${record.MaKS}-${record.MaLoaiPhong}`;
-            const availableRooms = availableRoomsMap.get(roomKey) || 0;
+            const roomTypeKey = `${record.MaKS}-${record.MaLoaiPhong}`;
+            
+            // Check if this room type is already processed
+            if (roomTypeMap.has(roomTypeKey)) {
+                // Add bed configuration to existing room type
+                const existingRoomType = roomTypeMap.get(roomTypeKey);
+                if (!existingRoomType.bedConfigurations) {
+                    existingRoomType.bedConfigurations = [existingRoomType.CauHinhGiuong];
+                }
+                if (!existingRoomType.bedConfigurations.includes(record.CauHinhGiuong)) {
+                    existingRoomType.bedConfigurations.push(record.CauHinhGiuong);
+                }
+                continue;
+            }
+
+            const availableRooms = availableRoomsMap.get(roomTypeKey) || 0;
 
             const roomType = {
                 MaLoaiPhong: record.MaLoaiPhong,
@@ -1257,14 +1288,16 @@ exports.searchAvailableHotels = async (req, res) => {
                 RoomImagePath: record.RoomImagePath
                     ? `${req.protocol}://${req.get('host')}/${record.RoomImagePath}`
                     : null,
-                CauHinhGiuong: record.CauHinhGiuong,
+                CauHinhGiuong: record.CauHinhGiuong, // Keep first bed config for compatibility
                 SoGiuongDoi: record.SoGiuongDoi,
                 SoGiuongDon: record.SoGiuongDon,
-                SoPhongTrong: availableRooms
+                SoPhongTrong: availableRooms,
+                bedConfigurations: [record.CauHinhGiuong] // Array of all bed configurations
             };
 
             // If no rooms available, get alternative dates
             if (availableRooms === 0) {
+                console.log(`No rooms available for room type ${record.MaLoaiPhong}, getting alternative dates...`);
                 try {
                     const alternativeDatesResult = await exports.suggestAlternativeDates({
                         body: {
@@ -1274,14 +1307,21 @@ exports.searchAvailableHotels = async (req, res) => {
                         }
                     });
 
+                    console.log('Alternative dates result:', alternativeDatesResult);
+
                     if (alternativeDatesResult && alternativeDatesResult.success) {
                         roomType.alternativeDates = alternativeDatesResult.data.suggestions;
+                        console.log(`Added ${alternativeDatesResult.data.suggestions.length} alternative dates to room type ${record.MaLoaiPhong}`);
                     }
                 } catch (error) {
                     console.error('Error getting alternative dates:', error);
                 }
             }
 
+            // Store in map to track processed room types
+            roomTypeMap.set(roomTypeKey, roomType);
+            
+            // Add to hotel's room types array
             hotels[record.MaKS].roomTypes.push(roomType);
         }
 
@@ -1326,6 +1366,13 @@ exports.suggestAlternativeDates = async (req, res) => {
         const originalDuration = Math.ceil((new Date(NgayTraPhong) - new Date(NgayNhanPhong)) / (1000 * 60 * 60 * 24));
 
         // Tìm các khoảng thời gian thay thế
+        console.log('suggestAlternativeDates - Input parameters:', {
+            NgayNhanPhong,
+            NgayTraPhong,
+            MaLoaiPhong,
+            originalDuration
+        });
+
         const result = await pool.request()
             .input('NgayNhanPhong', sql.Date, NgayNhanPhong)
             .input('NgayTraPhong', sql.Date, NgayTraPhong)
@@ -1449,6 +1496,8 @@ exports.suggestAlternativeDates = async (req, res) => {
                     END,
                     DaysFromOriginal
             `);
+
+        console.log('suggestAlternativeDates - Query result:', result.recordset);
 
         const suggestions = result.recordset.map(date => ({
             checkIn: date.CheckInDate,

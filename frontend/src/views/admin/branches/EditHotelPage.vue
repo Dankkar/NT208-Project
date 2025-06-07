@@ -21,59 +21,50 @@
         <h3 class="mb-3">Hotel Information</h3>
         <hr class="my-2">
 
-        <div v-if="formError" class="alert alert-danger">{{ formError }}</div>
-        <div v-if="successMessage" class="alert alert-success">{{ successMessage }}</div>
-
-        <p class="text-muted">Editing Hotel ID: <strong>{{ hotelId }}</strong></p>
-
-        <div class="row g-3 mt-1">
-          <!-- ... (Nội dung các trường thông tin khách sạn) ... -->
-          <div class="col-md-6">
-            <label for="tenKS" class="form-label">Hotel Name (TenKS) <span class="text-danger">*</span></label>
-            <input id="tenKS" v-model.trim="editableHotel.TenKS" type="text" class="form-control" required />
-          </div>
-          <div class="col-md-6">
-            <label for="diaChi" class="form-label">Address (DiaChi) <span class="text-danger">*</span></label>
-            <input id="diaChi" v-model.trim="editableHotel.DiaChi" type="text" class="form-control" required />
-          </div>
-          <div class="col-md-6">
-            <label for="hangSao" class="form-label">Star Rating (HangSao) <span class="text-danger">*</span></label>
-            <select id="hangSao" v-model="editableHotel.HangSao" class="form-select" required>
-              <option value="" disabled>-- Select Stars --</option>
-              <option value="1 sao">1 Star</option>
-              <option value="2 sao">2 Stars</option>
-              <option value="3 sao">3 Stars</option>
-              <option value="4 sao">4 Stars</option>
-              <option value="5 sao">5 Stars</option>
-            </select>
-          </div>
-          <div class="col-md-6">
-            <label for="loaiHinh" class="form-label">Hotel Type (LoaiHinh) <span class="text-danger">*</span></label>
-            <input id="loaiHinh" v-model.trim="editableHotel.LoaiHinh" type="text" class="form-control" required />
-          </div>
-          <div class="col-12">
-            <label for="moTaCoSoVatChat" class="form-label">Facility Description (MoTaCoSoVatChat) <span class="text-danger">*</span></label>
-            <textarea id="moTaCoSoVatChat" v-model="editableHotel.MoTaCoSoVatChat" class="form-control" rows="4" required></textarea>
-          </div>
-          <div class="col-12">
-            <label for="quyDinh" class="form-label">Regulations (QuyDinh) <span class="text-danger">*</span></label>
-            <textarea id="quyDinh" v-model="editableHotel.QuyDinh" class="form-control" rows="4" required></textarea>
-          </div>
-          <div class="col-12">
-            <label for="motaChung" class="form-label">General Description (MotaChung)</label>
-            <textarea id="motaChung" v-model="editableHotel.MotaChung" class="form-control" rows="3"></textarea>
-          </div>
-          <div class="col-md-6">
-            <label for="maNguoiQuanLyEdit" class="form-label">Assign Manager (MaNguoiQuanLy)</label>
-            <input id="maNguoiQuanLyEdit" v-model="editableHotel.MaNguoiQuanLy" type="text" class="form-control" placeholder="Enter User ID or leave blank"/>
-            <small class="form-text text-muted">Enter User ID or leave blank to remove manager.</small>
-          </div>
-           <div class="col-12">
-             <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" role="switch" id="isActiveSwitch" v-model="editableHotel.IsActive">
-                <label class="form-check-label" for="isActiveSwitch">Is Active</label>
-            </div>
-          </div>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label for="tenKS" class="form-label">Hotel Name (TenKS) <span class="text-danger">*</span></label>
+          <input id="tenKS" v-model.trim="editableHotel.TenKS" type="text" class="form-control" required />
+        </div>
+        <div class="col-md-12">
+          <GeocodingAddressInput
+            v-model="editableHotel.DiaChi"
+            v-model:coordinates="hotelCoordinates"
+            label="Address (DiaChi)"
+            placeholder="Nhập địa chỉ khách sạn (VD: 123 Đường ABC, Quận XYZ, TP.HCM)"
+            input-id="diaChi"
+            :required="true"
+            :disabled="isSubmitting"
+            @geocoding-success="onGeocodingSuccess"
+            @geocoding-error="onGeocodingError"
+          />
+        </div>
+        <div class="col-md-6">
+          <label for="hangSao" class="form-label">Star Rating (HangSao) <span class="text-danger">*</span></label>
+           <select id="hangSao" v-model="editableHotel.HangSao" class="form-select" required>
+            <option value="" disabled>-- Select Stars --</option>
+            <option value="1 sao">1 Star</option>
+            <option value="2 sao">2 Stars</option>
+            <option value="3 sao">3 Stars</option>
+            <option value="4 sao">4 Stars</option>
+            <option value="5 sao">5 Stars</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label for="loaiHinh" class="form-label">Hotel Type (LoaiHinh) <span class="text-danger">*</span></label>
+          <input id="loaiHinh" v-model.trim="editableHotel.LoaiHinh" type="text" class="form-control" required />
+        </div>
+        <div class="col-12">
+          <label for="moTaCoSoVatChat" class="form-label">Facility Description (MoTaCoSoVatChat) <span class="text-danger">*</span></label>
+          <textarea id="moTaCoSoVatChat" v-model="editableHotel.MoTaCoSoVatChat" class="form-control" rows="4" required></textarea>
+        </div>
+        <div class="col-12">
+          <label for="quyDinh" class="form-label">Regulations (QuyDinh) <span class="text-danger">*</span></label>
+          <textarea id="quyDinh" v-model="editableHotel.QuyDinh" class="form-control" rows="4" required></textarea>
+        </div>
+         <div class="col-12">
+          <label for="motaChung" class="form-label">General Description (MotaChung)</label>
+          <textarea id="motaChung" v-model="editableHotel.MotaChung" class="form-control" rows="3"></textarea>
         </div>
 
         <!-- Upload New Images Section -->
@@ -190,6 +181,7 @@
 import { ref, reactive, onMounted, watch, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
+import GeocodingAddressInput from '@/components/GeocodingAddressInput.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -249,6 +241,10 @@ const getIsSettingMain = (maAnh) => !!imageOperationsLoading.settingMain[maAnh];
 const getIsUpdatingImageDetails = (maAnh) => !!imageOperationsLoading.updatingDetails[maAnh];
 
 
+// Biến quản lý tọa độ
+const hotelCoordinates = ref(null);
+
+// Hàm chuyển đổi chuỗi số sang "X sa0"
 function formatHangSaoForSelect(decimalHangSao) {
     if (decimalHangSao === null || decimalHangSao === undefined) return '';
     const sao = Math.floor(decimalHangSao);
@@ -304,7 +300,14 @@ async function fetchHotelData(id) {
       editableHotel.MaNguoiQuanLy = hotelDataWithImages.MaNguoiQuanLy !== null && hotelDataWithImages.MaNguoiQuanLy !== undefined ? String(hotelDataWithImages.MaNguoiQuanLy) : '';
       editableHotel.IsActive = hotelDataWithImages.IsActive !== undefined ? hotelDataWithImages.IsActive : true;
 
-      allHotelImages.value = hotelDataWithImages.AllImages || [];
+      // Set coordinates if available
+      if (hotelDetails.Latitude && hotelDetails.Longitude) {
+        hotelCoordinates.value = {
+          latitude: hotelDetails.Latitude,
+          longitude: hotelDetails.Longitude
+        };
+      }
+
     } else {
       pageError.value = response.data?.message || `Could not load hotel data for ID ${id}.`;
       editableHotel.MaKS = null;
@@ -337,6 +340,20 @@ async function submitFullHotelUpdate() {
     formError.value = "Manager ID must be a valid number or blank.";
     isSubmitting.value = false;
     return;
+  }
+  // Add coordinates if available
+  if (hotelCoordinates.value && hotelCoordinates.value.latitude && hotelCoordinates.value.longitude) {
+    payload.Latitude = hotelCoordinates.value.latitude;
+    payload.Longitude = hotelCoordinates.value.longitude;
+  }
+
+  if (editableHotel.MaNguoiQuanLy !== undefined) { // Gửi cả khi nó là null để cho phép xóa người quản lý
+      payload.MaNguoiQuanLy = editableHotel.MaNguoiQuanLy === '' ? null : parseInt(editableHotel.MaNguoiQuanLy, 10);
+      if (editableHotel.MaNguoiQuanLy !== '' && editableHotel.MaNguoiQuanLy !== null && isNaN(payload.MaNguoiQuanLy)) {
+          formError.value = "Manager ID must be a valid number or empty to remove.";
+          isSubmitting.value = false;
+          return;
+      }
   }
 
   if (newSelectedFiles.value.length > 0) {
@@ -546,6 +563,17 @@ onMounted(() => {
     editableHotel.MaKS = null;
   }
 });
+
+// Handle geocoding events
+function onGeocodingSuccess(coordinates) {
+  console.log('Geocoding success:', coordinates);
+  // Coordinates are automatically updated via v-model:coordinates
+}
+
+function onGeocodingError(error) {
+  console.error('Geocoding error:', error);
+  formError.value = `Lỗi lấy tọa độ: ${error.message}`;
+}
 </script>
 
 <style scoped>

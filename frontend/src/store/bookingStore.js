@@ -99,14 +99,15 @@ export const useBookingStore = defineStore('booking', {
       const finalPaymentDetails = apiResponseData.priceDetails || {};
 
       const defaultRoomPrice = (room.GiaCoSo || 0) * nights;
-      const totalRoomPriceCalc = finalPaymentDetails.totalRoomPrice !== undefined ? finalPaymentDetails.totalRoomPrice : defaultRoomPrice;
+      const totalRoomPriceCalc = finalPaymentDetails.roomPrice !== undefined ? finalPaymentDetails.roomPrice : defaultRoomPrice;
       const vatAmountCalc = finalPaymentDetails.vatAmount !== undefined ? finalPaymentDetails.vatAmount : totalRoomPriceCalc * 0.1;
-      const totalServicePriceCalc = finalPaymentDetails.totalServicePrice || 0;
-      const promotionDiscountCalc = finalPaymentDetails.promotionDiscount || 0;
-      const finalPriceCalc = apiResponseData.TongTienDuKien !== undefined // Nếu backend trả về TongTienDuKien trong `data` của createBooking
-        ? apiResponseData.TongTienDuKien
-        : finalPaymentDetails.finalPrice !== undefined
+      const totalServicePriceCalc = finalPaymentDetails.servicesPrice || 0;
+      // Map promotion discount correctly from backend response
+      const promotionDiscountCalc = finalPaymentDetails.promotion?.discountAmount || 0;
+      const finalPriceCalc = finalPaymentDetails.finalPrice !== undefined
             ? finalPaymentDetails.finalPrice
+            : apiResponseData.TongTienDuKien !== undefined
+                ? apiResponseData.TongTienDuKien
             : (totalRoomPriceCalc + vatAmountCalc + totalServicePriceCalc - promotionDiscountCalc);
 
       return {
@@ -131,10 +132,14 @@ export const useBookingStore = defineStore('booking', {
           HinhAnhPhong: room.HinhAnhPhong || defaultRoomImagePlaceholder
         },
         paymentSummary: {
-          totalRoomPrice: totalRoomPriceCalc, vatAmount: vatAmountCalc,
-          totalServicePrice: totalServicePriceCalc, promotionDiscount: promotionDiscountCalc,
-          finalPrice: finalPriceCalc, depositPaid: 0,
-          totalAlreadyPaid: finalPriceCalc, amountDue: 0
+          totalRoomPrice: totalRoomPriceCalc, 
+          vatAmount: vatAmountCalc,
+          totalServicePrice: totalServicePriceCalc, 
+          promotionDiscount: promotionDiscountCalc,
+          finalPrice: finalPriceCalc, 
+          depositPaid: 0,
+          totalAlreadyPaid: finalPriceCalc, 
+          amountDue: finalPriceCalc // Show actual amount due instead of 0
         },
         customerDetails: {
           fullName: `${guestInput.title || ''} ${guestInput.firstName} ${guestInput.lastName}`.trim(),
@@ -225,25 +230,26 @@ export const useBookingStore = defineStore('booking', {
       this.isHoldingRoom = true; this.holdError = null;
       const { hotelInfo, roomInfo, searchCriteria } = payload;
 
-      let maPhongToHold = roomInfo.MaPhong; // Ưu tiên MaPhong từ roomInfo nếu có
-      if (!maPhongToHold && roomInfo.availableSpecificRoomIds && roomInfo.availableSpecificRoomIds.length > 0) {
-          maPhongToHold = roomInfo.availableSpecificRoomIds[0]; // Lấy phòng cụ thể đầu tiên
-      } else if (!maPhongToHold && roomInfo.MaLoaiPhong) {
-           console.warn(`MaPhong not in roomInfo, attempting with MaLoaiPhong: ${roomInfo.MaLoaiPhong}. Backend 'holdBooking' must support this or be adapted.`);
-           maPhongToHold = roomInfo.MaLoaiPhong; // Nếu backend chấp nhận MaLoaiPhong cho hold
-      } else if (!maPhongToHold) {
-           this.holdError = 'Cannot hold room: Missing specific Room ID (MaPhong) or Room Type ID (MaLoaiPhong).';
-           this.isHoldingRoom = false;
-           return;
+      // Kiểm tra có MaLoaiPhong không
+      if (!roomInfo.MaLoaiPhong) {
+        this.holdError = 'Cannot hold room: Missing Room Type ID (MaLoaiPhong).';
+        this.isHoldingRoom = false;
+        return;
       }
 
       const nights = differenceInDays(parseISO(searchCriteria.endDate), parseISO(searchCriteria.startDate)) || 1;
+      
+      // Chỉ gửi MaLoaiPhong, để backend tự động tìm và assign phòng trống
       const holdData = {
-        MaKS: hotelInfo.MaKS, MaPhong: maPhongToHold,
-        NgayNhanPhong: searchCriteria.startDate, NgayTraPhong: searchCriteria.endDate,
+        MaKS: hotelInfo.MaKS, 
+        MaLoaiPhong: roomInfo.MaLoaiPhong, // Luôn gửi MaLoaiPhong thay vì MaPhong
+        NgayNhanPhong: searchCriteria.startDate, 
+        NgayTraPhong: searchCriteria.endDate,
         SoLuongKhach: searchCriteria.numberOfGuests,
         TongTienDuKien: (roomInfo.GiaCoSo || 0) * (nights > 0 ? nights : 1), // Đảm bảo nights > 0
       };
+
+      console.log('Holding room with room type only - backend will auto-assign specific room:', holdData);
 
       try {
         const response = await axios.post(`/api/bookings/hold`, holdData);
@@ -252,7 +258,13 @@ export const useBookingStore = defineStore('booking', {
           const HOLD_DURATION_MINUTES = 15;
           this.heldBookingExpiresAt = Date.now() + HOLD_DURATION_MINUTES * 60 * 1000;
           this.selectedHotelDetails = { ...hotelInfo }; // Lưu bản sao
-          this.selectedRoomTypeDetails = { ...roomInfo }; // Lưu bản sao
+          this.selectedRoomTypeDetails = { 
+            ...roomInfo, 
+            assignedRoomId: response.data.assignedRoomId // Lưu ID phòng được assign
+          }; 
+          
+          console.log(`Successfully held room type ${roomInfo.MaLoaiPhong}, assigned room ID: ${response.data.assignedRoomId}`);
+          
           this.currentStep = 3;
           this.maxCompletedStep = Math.max(this.maxCompletedStep, 2);
           this.clearPreselectedBookingIntent();
@@ -385,16 +397,30 @@ export const useBookingStore = defineStore('booking', {
     },
 
     navigateToStep(stepId) {
-      if (stepId <= this.maxCompletedStep + 1) {
+      console.log(`[Store] navigateToStep called with stepId: ${stepId}, current step: ${this.currentStep}, maxCompletedStep: ${this.maxCompletedStep}`);
+      
+      // Special case: Allow navigation to Step 3 if user has active hold booking
+      const hasActiveHoldBooking = this.heldBookingMaDat && 
+                                   this.heldBookingExpiresAt && 
+                                   this.heldBookingExpiresAt > Date.now() &&
+                                   this.selectedHotelDetails &&
+                                   this.selectedRoomTypeDetails;
+      
+      const maxAllowedStep = hasActiveHoldBooking ? Math.max(this.maxCompletedStep + 1, 3) : this.maxCompletedStep + 1;
+      console.log(`[Store] hasActiveHoldBooking: ${hasActiveHoldBooking}, maxAllowedStep: ${maxAllowedStep}`);
+      
+      if (stepId <= maxAllowedStep) {
         if (stepId < this.currentStep) {
           if (stepId < 2) { // Về Step 1
-            this.availableHotelsAndRooms = []; this.roomsError = null;
-            this.selectedHotelDetails = null; this.selectedRoomTypeDetails = null;
-            this.guestAndPaymentInput = null; this.finalBookingReference = null;
-            this.heldBookingMaDat = null; this.heldBookingExpiresAt = null; this.holdError = null;
-            this.createBookingError = null; this.clearPreselectedBookingIntent();
+            this.availableHotelsAndRooms = [];
+            this.roomsError = null;
+            this.guestAndPaymentInput = null;
+            this.finalBookingReference = null;
+            this.createBookingError = null;
+            this.clearPreselectedBookingIntent();
             this.maxCompletedStep = 0;
           } else if (stepId < 3) { // Về Step 2
+            console.log('[Store] Navigating back to Step 2, keeping hold booking data');
             // this.selectedHotelDetails = null; 
             // this.selectedRoomTypeDetails = null;
             this.guestAndPaymentInput = null; 
@@ -406,14 +432,23 @@ export const useBookingStore = defineStore('booking', {
             this.clearPreselectedBookingIntent();
             this.maxCompletedStep = Math.min(this.maxCompletedStep, 1);
           } else if (stepId < 4) { // Về Step 3
+            console.log('[Store] Navigating back to Step 3, keeping hold and guest data');
             this.finalBookingReference = null; this.createBookingError = null;
             // Khi về Step 3, guestAndPaymentInput VẪN NÊN ĐƯỢC GIỮ NGUYÊN để người dùng sửa
             // Thông tin hold (heldBookingMaDat, selectedDetails) cũng nên được giữ.
             this.maxCompletedStep = Math.min(this.maxCompletedStep, 2);
           }
+        } else if (stepId > this.currentStep) {
+          console.log(`[Store] Navigating forward to Step ${stepId}`);
+          // When moving forward, just update maxCompletedStep if needed
+          this.maxCompletedStep = Math.max(this.maxCompletedStep, stepId - 1);
         }
+        
         this.currentStep = stepId;
-      } else { console.warn(`Cannot navigate to uncompleted step ${stepId}. Max completed: ${this.maxCompletedStep}`); }
+        console.log(`[Store] Navigation completed. New current step: ${this.currentStep}, maxCompletedStep: ${this.maxCompletedStep}`);
+      } else { 
+        console.warn(`[Store] Cannot navigate to uncompleted step ${stepId}. Max allowed: ${maxAllowedStep}, maxCompleted: ${this.maxCompletedStep}`); 
+      }
     },
 
     resetBookingProcess() {

@@ -94,7 +94,7 @@ exports.createBooking = async (req, res) => {
                     .input('MaCodeKM', sql.NVarChar, promotionCode)
                     .input('currentDate', sql.DateTime, new Date())
                     .query(`
-                        SELECT MaKM, LoaiKM, GiaTriKM
+                        SELECT MaKM, TenKM, LoaiKM, GiaTriKM
                         FROM KhuyenMai
                         WHERE MaCodeKM = @MaCodeKM
                         AND IsActive = 1
@@ -130,7 +130,13 @@ exports.createBooking = async (req, res) => {
                 checkIn: bookingInfo.NgayNhanPhong,
                 checkOut: bookingInfo.NgayTraPhong,
                 services: serviceDetails,
-                promotion: promotion
+                promotion: promotion ? {
+                    type: promotion.LoaiKM === 'Giảm %' ? 'PERCENTAGE' : 'FIXED',
+                    value: promotion.GiaTriKM,
+                    code: promotionCode,
+                    id: promotion.MaKM,
+                    name: promotion.TenKM
+                } : null
             };
 
             console.log('Booking details for price calculation:', {
@@ -912,11 +918,13 @@ exports.getAllBookings = async (req, res) => {
 exports.holdBooking = async (req, res) => {
     try {
         const {
-            MaKS, MaPhong,
+            MaKS, MaPhong, MaLoaiPhong, // Accept both MaPhong and MaLoaiPhong
             NgayNhanPhong, NgayTraPhong,
             SoLuongKhach, YeuCauDacBiet,
             TongTienDuKien
         } = req.body;
+
+        console.log('holdBooking - Received data:', { MaKS, MaPhong, MaLoaiPhong, NgayNhanPhong, NgayTraPhong, SoLuongKhach });
 
         const currentUser = req.user; // Will be undefined for guests
 
@@ -948,9 +956,54 @@ exports.holdBooking = async (req, res) => {
 
         const pool = await poolPromise;
 
+        // Prioritize room type selection - auto-assign available room
+        let selectedMaPhong = null;
+        
+        if (MaLoaiPhong) {
+            // Room type provided - find available room of this type
+            console.log(`Finding available room for room type: ${MaLoaiPhong}`);
+            const availableRoomResult = await pool.request()
+                .input('MaKS', sql.Int, MaKS)
+                .input('MaLoaiPhong', sql.Int, MaLoaiPhong)
+                .input('NgayNhanPhong', sql.Date, NgayNhanPhong)
+                .input('NgayTraPhong', sql.Date, NgayTraPhong)
+                .query(`
+                    SELECT TOP 1 p.MaPhong
+                    FROM Phong p
+                    WHERE p.MaKS = @MaKS 
+                    AND p.MaLoaiPhong = @MaLoaiPhong
+                    AND p.TrangThaiPhong != N'Bảo trì'
+                    AND p.MaPhong NOT IN (
+                        SELECT b.MaPhong FROM Booking b
+                        WHERE (b.NgayNhanPhong < @NgayTraPhong AND b.NgayTraPhong > @NgayNhanPhong)
+                        AND b.TrangThaiBooking != N'Đã hủy'
+                        AND (
+                            b.TrangThaiBooking != N'Tạm giữ'
+                            OR (b.TrangThaiBooking = N'Tạm giữ' AND b.ThoiGianGiuCho IS NOT NULL AND DATEDIFF(MINUTE, b.ThoiGianGiuCho, GETDATE()) <= 15)
+                        )
+                    )
+                    ORDER BY p.MaPhong
+                `);
+
+            if (availableRoomResult.recordset.length === 0) {
+                return res.status(400).json({ 
+                    error: "Không có phòng trống cho loại phòng này trong khoảng thời gian bạn chọn" 
+                });
+            }
+            
+            selectedMaPhong = availableRoomResult.recordset[0].MaPhong;
+            console.log(`Auto-assigned room ${selectedMaPhong} for room type ${MaLoaiPhong}`);
+        } else if (MaPhong) {
+            // Specific room provided - use it directly
+            selectedMaPhong = MaPhong;
+            console.log(`Using specific room ${selectedMaPhong}`);
+        } else {
+            return res.status(400).json({ error: "Vui lòng cung cấp MaPhong hoặc MaLoaiPhong" });
+        }
+
         // Kiểm tra số lượng khách với cấu hình giường
         const bedConfigResult = await pool.request()
-            .input('MaPhong', sql.Int, MaPhong)
+            .input('MaPhong', sql.Int, selectedMaPhong)
             .query(`
                 SELECT chg.SoGiuongDoi, chg.SoGiuongDon
                 FROM Phong p
@@ -971,15 +1024,15 @@ exports.holdBooking = async (req, res) => {
             });
         }
 
-        // Check room availability
+        // Check room availability (redundant check for safety, since we already filtered above)
         const check = await pool.request()
-            .input('MaPhong', sql.Int, MaPhong)
+            .input('MaPhong', sql.Int, selectedMaPhong)
             .input('NgayNhanPhong', sql.Date, NgayNhanPhong)
             .input('NgayTraPhong', sql.Date, NgayTraPhong)
             .query(`
                 SELECT COUNT(*) as count FROM Booking
                 WHERE MaPhong = @MaPhong
-                AND (NgayNhanPhong <= @NgayTraPhong AND NgayTraPhong >= @NgayNhanPhong)
+                AND (NgayNhanPhong < @NgayTraPhong AND NgayTraPhong > @NgayNhanPhong)
                 AND TrangThaiBooking != N'Đã hủy'
                 AND (
                     TrangThaiBooking != N'Tạm giữ'
@@ -1000,7 +1053,7 @@ exports.holdBooking = async (req, res) => {
             .input('MaKH', sql.Int, currentUser ? currentUser.MaKH : null)
             .input('MaKhach', sql.Int, currentUser ? null : req.session.guestId || null)        
             .input('MaKS', sql.Int, MaKS)
-            .input('MaPhong', sql.Int, MaPhong)
+            .input('MaPhong', sql.Int, selectedMaPhong)
             .input('NgayNhanPhong', sql.Date, NgayNhanPhong)
             .input('NgayTraPhong', sql.Date, NgayTraPhong)
             .input('SoLuongKhach', sql.Int, SoLuongKhach)
@@ -1022,7 +1075,7 @@ exports.holdBooking = async (req, res) => {
         req.session.bookingInfo = {
             MaDat,
             MaKS,
-            MaPhong,
+            MaPhong: selectedMaPhong, // Use the selected room ID
             NgayNhanPhong,
             NgayTraPhong,
             SoLuongKhach,
@@ -1034,7 +1087,8 @@ exports.holdBooking = async (req, res) => {
         res.status(201).json({
             success: true, 
             MaDat,
-            message: 'Đã giữ phòng thành công. Bạn có 15 phút để hoàn tất đặt phòng.'
+            assignedRoomId: selectedMaPhong, // Trả về ID phòng đã được assign
+            message: `Đã giữ phòng ${selectedMaPhong} thành công. Bạn có 15 phút để hoàn tất đặt phòng.`
         });
     }
     catch(err) {
@@ -1067,6 +1121,13 @@ exports.suggestAlternativeDates = async (req, res) => {
         const originalDuration = Math.ceil((new Date(NgayTraPhong) - new Date(NgayNhanPhong)) / (1000 * 60 * 60 * 24));
 
         // Tìm các khoảng thời gian thay thế
+        console.log('[bookingController] suggestAlternativeDates - Input parameters:', {
+            NgayNhanPhong,
+            NgayTraPhong,
+            MaLoaiPhong,
+            originalDuration
+        });
+
         const result = await pool.request()
             .input('NgayNhanPhong', sql.Date, NgayNhanPhong)
             .input('NgayTraPhong', sql.Date, NgayTraPhong)
@@ -1190,6 +1251,8 @@ exports.suggestAlternativeDates = async (req, res) => {
                     END,
                     DaysFromOriginal
             `);
+
+        console.log('[bookingController] suggestAlternativeDates - Query result:', result.recordset);
 
         const suggestions = result.recordset.map(date => ({
             checkIn: date.CheckInDate,
@@ -1349,9 +1412,12 @@ exports.searchAvailableRooms = async (req, res) => {
             availableRoomsMap.set(`${room.MaKS}-${room.MaLoaiPhong}`, room.SoPhongTrong);
         });
 
-        // Format response
+        // Format response - Group by room type to avoid duplicates
         const hotels = {};
+        const roomTypeMap = new Map(); // Track processed room types to avoid duplicates
+
         for (const record of hotelsResult.recordset) {
+            // Initialize hotel if not exists
             if (!hotels[record.MaKS]) {
                 hotels[record.MaKS] = {
                     MaKS: record.MaKS,
@@ -1369,8 +1435,22 @@ exports.searchAvailableRooms = async (req, res) => {
                 };
             }
 
-            const roomKey = `${record.MaKS}-${record.MaLoaiPhong}`;
-            const availableRooms = availableRoomsMap.get(roomKey) || 0;
+            const roomTypeKey = `${record.MaKS}-${record.MaLoaiPhong}`;
+            
+            // Check if this room type is already processed
+            if (roomTypeMap.has(roomTypeKey)) {
+                // Add bed configuration to existing room type
+                const existingRoomType = roomTypeMap.get(roomTypeKey);
+                if (!existingRoomType.bedConfigurations) {
+                    existingRoomType.bedConfigurations = [existingRoomType.CauHinhGiuong];
+                }
+                if (!existingRoomType.bedConfigurations.includes(record.CauHinhGiuong)) {
+                    existingRoomType.bedConfigurations.push(record.CauHinhGiuong);
+                }
+                continue;
+            }
+
+            const availableRooms = availableRoomsMap.get(roomTypeKey) || 0;
 
             const roomType = {
                 MaLoaiPhong: record.MaLoaiPhong,
@@ -1378,14 +1458,16 @@ exports.searchAvailableRooms = async (req, res) => {
                 GiaCoSo: record.GiaCoSo,
                 DienTich: record.DienTich,
                 TienNghi: record.TienNghi,
-                CauHinhGiuong: record.CauHinhGiuong,
+                CauHinhGiuong: record.CauHinhGiuong, // Keep first bed config for compatibility
                 SoGiuongDoi: record.SoGiuongDoi,
                 SoGiuongDon: record.SoGiuongDon,
-                SoPhongTrong: availableRooms
+                SoPhongTrong: availableRooms,
+                bedConfigurations: [record.CauHinhGiuong] // Array of all bed configurations
             };
 
             // If no rooms available, get alternative dates
             if (availableRooms === 0) {
+                console.log(`[searchAvailableRooms] No rooms available for room type ${record.MaLoaiPhong}, getting alternative dates...`);
                 try {
                     const alternativeDatesResult = await exports.suggestAlternativeDates({
                         body: {
@@ -1395,14 +1477,21 @@ exports.searchAvailableRooms = async (req, res) => {
                         }
                     });
 
+                    console.log('[searchAvailableRooms] Alternative dates result:', alternativeDatesResult);
+
                     if (alternativeDatesResult && alternativeDatesResult.success) {
                         roomType.alternativeDates = alternativeDatesResult.data.suggestions;
+                        console.log(`[searchAvailableRooms] Added ${alternativeDatesResult.data.suggestions.length} alternative dates to room type ${record.MaLoaiPhong}`);
                     }
                 } catch (error) {
-                    console.error('Error getting alternative dates:', error);
+                    console.error('[searchAvailableRooms] Error getting alternative dates:', error);
                 }
             }
 
+            // Store in map to track processed room types
+            roomTypeMap.set(roomTypeKey, roomType);
+            
+            // Add to hotel's room types array
             hotels[record.MaKS].roomTypes.push(roomType);
         }
 
