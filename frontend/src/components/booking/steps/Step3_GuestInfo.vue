@@ -208,8 +208,7 @@
                 type="submit"
                 :is-loading="bookingStore.isCreatingBooking"
                 :disabled="bookingStore.isCreatingBooking || !bookingStore.isTimerActive"
-                textColor="#fff" fontSize="18px" backgroundColor="black"
-                colorHover="white" bgHover="#198754" borderRadius="6px"
+                variant= "confirm"
                 class="w-100 text-uppercase fw-bold py-2"
                 />
           </div>

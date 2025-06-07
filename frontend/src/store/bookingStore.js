@@ -388,12 +388,18 @@ export const useBookingStore = defineStore('booking', {
       if (stepId <= this.maxCompletedStep + 1) {
         if (stepId < this.currentStep) {
           if (stepId < 2) { // Về Step 1
-            this.availableHotelsAndRooms = []; this.roomsError = null;
-            this.selectedHotelDetails = null; this.selectedRoomTypeDetails = null;
-            this.guestAndPaymentInput = null; this.finalBookingReference = null;
-            this.heldBookingMaDat = null; this.heldBookingExpiresAt = null; this.holdError = null;
-            this.createBookingError = null; this.clearPreselectedBookingIntent();
-            this.maxCompletedStep = 0;
+            // this.availableHotelsAndRooms = []; 
+            this.roomsError = null;
+            // this.selectedHotelDetails = null;
+            // this.selectedRoomTypeDetails = null;
+            this.guestAndPaymentInput = null; 
+            this.finalBookingReference = null;
+            // this.heldBookingMaDat = null; 
+            // this.heldBookingExpiresAt = null; 
+            // this.holdError = null;
+            this.createBookingError = null; 
+            this.clearPreselectedBookingIntent();
+            this.maxCompletedStep = Math.max(this.maxCompletedStep, 0)
           } else if (stepId < 3) { // Về Step 2
             // this.selectedHotelDetails = null; 
             // this.selectedRoomTypeDetails = null;
@@ -404,12 +410,12 @@ export const useBookingStore = defineStore('booking', {
             // this.holdError = null;
             this.createBookingError = null; 
             this.clearPreselectedBookingIntent();
-            this.maxCompletedStep = Math.min(this.maxCompletedStep, 1);
+            this.maxCompletedStep = Math.max(this.maxCompletedStep, 1);
           } else if (stepId < 4) { // Về Step 3
             this.finalBookingReference = null; this.createBookingError = null;
             // Khi về Step 3, guestAndPaymentInput VẪN NÊN ĐƯỢC GIỮ NGUYÊN để người dùng sửa
             // Thông tin hold (heldBookingMaDat, selectedDetails) cũng nên được giữ.
-            this.maxCompletedStep = Math.min(this.maxCompletedStep, 2);
+            this.maxCompletedStep = Math.max(this.maxCompletedStep, 2);
           }
         }
         this.currentStep = stepId;

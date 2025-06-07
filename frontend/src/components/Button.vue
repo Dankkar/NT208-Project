@@ -21,7 +21,7 @@ const props = defineProps({
   variant: {
     type: String,
     default: 'secondary',
-    validator: (value) => ['primary', 'secondary', 'text', 'nav-dark', 'nav-light', 'outline'].includes(value),
+    validator: (value) => ['primary', 'secondary', 'text', 'nav-dark', 'nav-light', 'outline', 'confirm'].includes(value),
   },
 
   // KÍCH THƯỚC (MỚI!)
@@ -172,6 +172,21 @@ const buttonClasses = computed(() => {
   color: var(--white-color, #fff) !important;
   border: none;
 }
+
+.btn-confirm {
+  background-color: #1a1a1a;
+  color: white; 
+  border: none; 
+  font-weight: 600; 
+  padding: 0.25rem 1rem;
+  margin-top: 0.25rem;
+}
+
+.btn-confirm:hover {
+  background-color: #343a40;
+  color: white;  
+}
+
 
 
 /* 
