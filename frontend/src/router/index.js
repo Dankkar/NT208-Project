@@ -34,6 +34,9 @@ import CheckInOutPage from '../views/admin/bookings/AdminCheckInOutPage.vue'
 // import RemoveBookPage from '../views/admin/bookings/RemoveBookPage.vue'
 import FindUserPage    from '../views/admin/users/FindUserPage.vue'
 import EditUserPage from '../views/admin/users/EditUserPage.vue'
+import ManagePromotionsPage from '../views/admin/promotions/ManagePromotionsPage.vue'
+import AddPromotionPage from '../views/admin/promotions/AddPromotionPage.vue'
+import EditPromotionPage from '../views/admin/promotions/EditPromotionPage.vue'
 
 
 
@@ -50,7 +53,8 @@ const routes = [
   { path: '/hotels', name: "Hotels", component:Hotels, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
   { path: '/hotels/ratings', name: "RatingDetails", component:RatingDetails, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
   { path: '/reserve', name: 'Reserve', component: Reserve, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
-  { path: '/BookingProcess', name: 'BookingProcess', component: BookingProcess, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
+  { path: '/bookingprocess', name: 'BookingProcess', component: BookingProcess, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
+  { path: '/BookingProcess', redirect: '/bookingprocess' }, // Redirect for backward compatibility
   { path: '/BookingHistory', name: 'BookingHistory', component: BookingHistory, meta: {navbarBehavior: 'stickyWithHideOnScroll'}}, 
   { path: '/TransactionHistory', name: 'TransactionHistory', component: TransactionHistory, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
   { path: '/hotels/:id', name: 'HotelDetails', component: HotelDetails, meta: {navbarBehavior: 'stickyWithHideOnScroll'}, props: true},
@@ -88,6 +92,11 @@ const routes = [
       // Users
       { path: 'users/find-user',    name: 'AdminFindUser',    component: FindUserPage },
       { path: 'users/edit-user/:userId',    name: 'AdminEditUser',    component: EditUserPage, props: true },
+
+      // Promotions
+      { path: 'promotions', name: 'AdminManagePromotions', component: ManagePromotionsPage },
+      { path: 'promotions/add', name: 'AdminAddPromotion', component: AddPromotionPage },
+      { path: 'promotions/edit/:promotionId', name: 'AdminEditPromotion', component: EditPromotionPage, props: true },
     ]
   },
 ]

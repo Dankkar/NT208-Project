@@ -45,16 +45,42 @@
           <textarea id="moTa" v-model="editableRoomType.MoTa" class="form-control" rows="3"></textarea>
         </div>
 
-        <!-- Upload Ảnh -->
+                  <!-- Upload Ảnh -->
         <div class="col-12">
           <label for="roomTypeImage" class="form-label">Room Type Image</label>
           
+          <!-- Debug info (remove in production) -->
+          <div v-if="currentImagePath" class="small text-info mb-2">
+            Debug: Image path = {{ currentImagePath }}
+          </div>
+          
           <!-- Hiển thị ảnh hiện tại nếu có -->
-          <div v-if="currentImagePath && !imagePreview" class="mb-2">
+          <div v-if="currentImagePath && !imagePreview && !willDeleteImage" class="mb-2">
             <p class="text-muted small">Current image:</p>
-            <img :src="currentImagePath" alt="Current room type image" class="img-thumbnail" style="max-width: 200px; max-height: 150px;" />
-            <div class="mt-1">
+            <div class="position-relative d-inline-block">
+              <img 
+                v-if="!imageLoadError"
+                :src="currentImagePath" 
+                alt="Current room type image" 
+                class="img-thumbnail" 
+                style="max-width: 200px; max-height: 150px; object-fit: cover;" 
+                @error="handleImageError"
+                @load="handleImageLoad"
+              />
+              <div 
+                v-else 
+                class="img-thumbnail d-flex align-items-center justify-content-center bg-light text-muted" 
+                style="max-width: 200px; height: 150px;"
+              >
+                <i class="bi bi-image" style="font-size: 2rem;"></i>
+                <span class="ms-2">Image not found</span>
+              </div>
+            </div>
+            <div class="mt-2">
               <button type="button" @click="deleteCurrentImage" class="btn btn-sm btn-outline-danger">Delete Current Image</button>
+            </div>
+            <div v-if="imageLoadError" class="text-warning small mt-1">
+              <small>⚠️ Could not load image from: {{ currentImagePath }}</small>
             </div>
           </div>
 
@@ -140,10 +166,19 @@ const selectedImage = ref(null);
 const imagePreview = ref('');
 const currentImagePath = ref('');
 const willDeleteImage = ref(false);
+const imageLoadError = ref(false);
 
 async function fetchRoomTypeDetails(id) {
   pageLoading.value = true;
   pageError.value = '';
+  
+  // Reset image variables
+  currentImagePath.value = '';
+  imagePreview.value = '';
+  selectedImage.value = null;
+  willDeleteImage.value = false;
+  imageLoadError.value = false;
+  
   try {
     // BẠN CẦN TẠO API GET /api/room-types/:id Ở BACKEND ĐỂ LẤY CHI TIẾT 1 LOẠI PHÒNG
     const response = await axios.get(`http://localhost:5000/api/roomTypes/${id}`, {
@@ -161,8 +196,13 @@ async function fetchRoomTypeDetails(id) {
       editableRoomType.MoTa = originalRoomTypeData.value.MoTa || '';
       editableRoomType.IsActive = originalRoomTypeData.value.IsActive === 1 || originalRoomTypeData.value.IsActive === true;
       
-      // Set current image path
-      currentImagePath.value = originalRoomTypeData.value.RoomTypeImagePath || '';
+      // Set current image path - check both possible field names
+      currentImagePath.value = originalRoomTypeData.value.RoomImagePath || originalRoomTypeData.value.RoomTypeImagePath || '';
+      
+      // Debug log to check image path
+      console.log('Original room type data:', originalRoomTypeData.value);
+      console.log('Current image path:', currentImagePath.value);
+      
       // Có thể fetch thêm tên KS nếu cần hiển thị
       if(editableRoomType.MaKS) await fetchHotelNameForDisplay(editableRoomType.MaKS);
 
@@ -215,6 +255,16 @@ function deleteCurrentImage() {
 
 function cancelDeleteImage() {
   willDeleteImage.value = false;
+}
+
+function handleImageError() {
+  imageLoadError.value = true;
+  console.error('Failed to load image:', currentImagePath.value);
+}
+
+function handleImageLoad() {
+  imageLoadError.value = false;
+  console.log('Image loaded successfully:', currentImagePath.value);
 }
 
 

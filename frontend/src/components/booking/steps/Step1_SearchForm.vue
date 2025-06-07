@@ -215,7 +215,7 @@ async function handleLocalSearchSubmit() {
 /* Giữ lại style global cho Datepicker nếu nó cần thiết từ đây */
 /* Ví dụ, nếu bạn cần style một số thứ mà ::v-deep không làm được hoặc phức tạp */
 .dp__theme_light { /* Ví dụ tùy chỉnh theme của datepicker nếu cần */
-  /* --dp-primary-color: #007bff; */
+  --dp-primary-color: #007bff;
 }
 /* Style cho wrapper của Datepicker nếu có thêm div bọc không mong muốn */
 /* Dòng này có thể không cần thiết nữa nếu Datepicker đã được render đúng */

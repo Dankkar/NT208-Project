@@ -47,18 +47,19 @@ router.get('/user/:MaKH', authenticateToken, isAdmin, getBookingByUser);
 router.get('/my-bookings', authenticateToken, getMyBookings);
 
 /**
+ * @route   POST /api/bookings/hold
+ * @desc    Đặt phòng và giữ chỗ
+ * @access  Public
+ */
+router.post('/hold', holdBooking);
+
+/**
  * @route   POST /api/bookings
  * @desc    Tạo đơn đặt phòng mới
  * @access  Private (không bắt buộc login, dùng token nếu có)
  */
 router.post('/', optionalAuthenticationToken, createBooking);
 
-/**
- * @route   POST /api/bookings/hold
- * @desc    Đặt phòng và giữ chỗ
- * @access  Public
- */
-router.post('/hold', holdBooking);
 
 /**
  * @route   GET /api/bookings/:MaDat

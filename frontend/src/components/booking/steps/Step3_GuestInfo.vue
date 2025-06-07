@@ -165,6 +165,64 @@
              <p v-else class="text-muted small">No additional services currently available for this hotel.</p>
           </section>
 
+          <!-- Promotion Code Section -->
+          <section class="mb-4">
+            <h5 class="mb-3 fw-medium pb-2 border-bottom">Promotion Code</h5>
+            <div class="row g-3">
+              <div class="col-md-8">
+                <label for="promotionCode" class="form-label small">Enter promotion code (optional)</label>
+                <input 
+                  type="text" 
+                  class="form-control form-control-sm" 
+                  id="promotionCode" 
+                  v-model.trim="formData.promotionCode" 
+                  placeholder="Enter promotion code" 
+                  :disabled="bookingStore.isCreatingBooking || isValidatingPromotion"
+                  @blur="validatePromotionCode"
+                />
+                <div v-if="promotionValidationMessage" 
+                     :class="['small', 'mt-1', promotionValidationStatus === 'valid' ? 'text-success' : 'text-danger']">
+                  <i :class="promotionValidationStatus === 'valid' ? 'bi bi-check-circle-fill' : 'bi bi-exclamation-circle-fill'"></i>
+                  {{ promotionValidationMessage }}
+                </div>
+              </div>
+              <div class="col-md-4 d-flex align-items-end">
+                <button 
+                  type="button" 
+                  class="btn btn-outline-primary btn-sm w-100" 
+                  @click="validatePromotionCode"
+                  :disabled="!formData.promotionCode || bookingStore.isCreatingBooking || isValidatingPromotion"
+                >
+                  <span v-if="isValidatingPromotion" class="spinner-border spinner-border-sm me-1" role="status"></span>
+                  {{ isValidatingPromotion ? 'Checking...' : 'Apply Code' }}
+                </button>
+              </div>
+            </div>
+            <!-- Promotion Details Display -->
+            <div v-if="appliedPromotion && promotionValidationStatus === 'valid'" class="mt-3 p-3 bg-success bg-opacity-10 border border-success border-opacity-25 rounded">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                                     <h6 class="text-success fw-semibold mb-1">
+                     <i class="bi bi-check-circle-fill me-1"></i>
+                     {{ appliedPromotion.TenKM }}
+                   </h6>
+                   <p class="small text-muted mb-1">{{ appliedPromotion.MoTaKM }}</p>
+                   <p class="small text-success fw-medium mb-0">
+                     Discount: {{ appliedPromotion.LoaiKM === 'Giảm %' ? `${appliedPromotion.PhanTramGiam}% off` : `${appliedPromotion.PhanTramGiam} VND off` }}
+                   </p>
+                </div>
+                <button 
+                  type="button" 
+                  class="btn btn-sm btn-outline-danger" 
+                  @click="removePromotionCode"
+                  :disabled="bookingStore.isCreatingBooking"
+                >
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+            </div>
+          </section>
+
           <section class="mb-4">
             <h5 class="mb-3 fw-medium pb-2 border-bottom">Payment Method (Symbolic)</h5>
             <div class="mb-3 payment-icons">
@@ -250,6 +308,13 @@
               <span class="item-label summary-text-light">Subtotal (Services)</span>
               <span class="item-value summary-text-light">{{ formatPrice(totalSelectedServicesPrice) }}</span>
             </div>
+                         <div class="summary-item" v-if="promotionDiscountAmount > 0">
+               <span class="item-label text-success">
+                 <i class="bi bi-tag-fill me-1"></i>Promotion Discount 
+                 ({{ appliedPromotion.LoaiKM === 'Giảm %' ? `${appliedPromotion.PhanTramGiam}%` : 'Fixed Amount' }})
+               </span>
+               <span class="item-value text-success">-{{ formatPrice(promotionDiscountAmount) }}</span>
+            </div>
             <div class="summary-item">
               <span class="item-label summary-text-light">Taxes & Fees (est. 10%)</span>
               <span class="item-value summary-text-light">{{ formatPrice(estimatedTaxesAndFees) }}</span>
@@ -306,6 +371,12 @@ const details = computed(() => bookingStore.dataForStep3Display);
 
 const availableHotelServices = ref([]);
 const isLoadingServices = ref(false);
+
+// Promotion code related reactive variables
+const isValidatingPromotion = ref(false);
+const promotionValidationStatus = ref(''); // 'valid', 'invalid', or ''
+const promotionValidationMessage = ref('');
+const appliedPromotion = ref(null);
 
 async function fetchHotelServices(maKS) {
   if (!maKS) return;
@@ -369,18 +440,93 @@ const updateServiceQuantity = (maLoaiDV, quantityString) => {
   }
 };
 
+// Promotion code validation function
+const validatePromotionCode = async () => {
+  if (!formData.promotionCode.trim()) {
+    resetPromotionValidation();
+    return;
+  }
+
+  isValidatingPromotion.value = true;
+  promotionValidationMessage.value = '';
+  promotionValidationStatus.value = '';
+  appliedPromotion.value = null;
+
+  try {
+    const response = await axios.get(`/api/promotions/validate/${encodeURIComponent(formData.promotionCode.trim())}`);
+    
+    if (response.data && response.data.success) {
+      const promotion = response.data.data;
+              promotionValidationStatus.value = 'valid';
+        const discountText = promotion.LoaiKM === 'Giảm %' ? 
+            `${promotion.PhanTramGiam}% discount` : 
+            `${promotion.PhanTramGiam} VND discount`;
+        promotionValidationMessage.value = `Promotion code applied successfully! You'll get ${discountText}.`;
+        appliedPromotion.value = promotion;
+    } else {
+      promotionValidationStatus.value = 'invalid';
+      promotionValidationMessage.value = response.data?.message || 'Invalid promotion code.';
+    }
+  } catch (error) {
+    console.error('Error validating promotion code:', error);
+    promotionValidationStatus.value = 'invalid';
+    if (error.response?.status === 404) {
+      promotionValidationMessage.value = 'Promotion code not found.';
+    } else {
+      promotionValidationMessage.value = 'Error validating promotion code. Please try again.';
+    }
+  } finally {
+    isValidatingPromotion.value = false;
+  }
+};
+
+// Remove promotion code
+const removePromotionCode = () => {
+  formData.promotionCode = '';
+  resetPromotionValidation();
+};
+
+// Reset promotion validation state
+const resetPromotionValidation = () => {
+  promotionValidationStatus.value = '';
+  promotionValidationMessage.value = '';
+  appliedPromotion.value = null;
+};
+
 const totalSelectedServicesPrice = computed(() => {
     return formData.services.reduce((total, service) => total + (service.GiaDV * service.quantity), 0);
 });
 
+// Promotion discount calculation
+const promotionDiscountAmount = computed(() => {
+    if (!appliedPromotion.value || promotionValidationStatus.value !== 'valid') {
+        return 0;
+    }
+    const roomSubtotal = details.value?.paymentSummaryPreview?.subtotal || 0;
+    const servicesSubtotal = totalSelectedServicesPrice.value;
+    const subtotalBeforeDiscount = roomSubtotal + servicesSubtotal;
+    
+    if (appliedPromotion.value.LoaiKM === 'Giảm %') {
+        return subtotalBeforeDiscount * (appliedPromotion.value.PhanTramGiam / 100);
+    } else {
+        // Fixed amount discount
+        return Math.min(appliedPromotion.value.PhanTramGiam, subtotalBeforeDiscount);
+    }
+});
+
 const estimatedTaxesAndFees = computed(() => {
     const roomSubtotal = details.value?.paymentSummaryPreview?.subtotal || 0;
-    return (roomSubtotal + totalSelectedServicesPrice.value) * 0.1;
+    const servicesSubtotal = totalSelectedServicesPrice.value;
+    const subtotalAfterDiscount = (roomSubtotal + servicesSubtotal) - promotionDiscountAmount.value;
+    return subtotalAfterDiscount * 0.1;
 });
 
 const estimatedGrandTotal = computed(() => {
     const roomSubtotal = details.value?.paymentSummaryPreview?.subtotal || 0;
-    return roomSubtotal + totalSelectedServicesPrice.value + estimatedTaxesAndFees.value;
+    const servicesSubtotal = totalSelectedServicesPrice.value;
+    const discountAmount = promotionDiscountAmount.value;
+    const taxesAndFees = estimatedTaxesAndFees.value;
+    return roomSubtotal + servicesSubtotal - discountAmount + taxesAndFees;
 });
 
 function resetFormToDefaults() {
@@ -397,6 +543,9 @@ function resetFormToDefaults() {
     Object.keys(errors.billingAddress).forEach(key => errors.billingAddress[key] = '');
     errors.agreedToTerms = '';
     formSubmitted.value = false;
+    
+    // Reset promotion validation state
+    resetPromotionValidation();
 }
 
 function initializeFormDataFromStore() {
@@ -418,6 +567,11 @@ function initializeFormDataFromStore() {
     formData.promotionCode = typeof stored.promotionCode === 'string' ? stored.promotionCode : defaults.promotionCode;
     formData.agreedToTerms = typeof stored.agreedToTerms === 'boolean' ? stored.agreedToTerms : defaults.agreedToTerms;
     formData.billingAddress = { ...defaults.billingAddress, ...(stored.billingAddress || {}) };
+    
+    // If promotion code exists, validate it to restore promotion state
+    if (formData.promotionCode) {
+      validatePromotionCode();
+    }
   } else if(authStore.isAuthenticated && authStore.currentUser) {
         console.log("STEP 3 INIT: Branch 2 - User logged in, pre-filling GUEST INFO from profile.");
       const userProfile = authStore.currentUser;
@@ -495,6 +649,14 @@ watch(() => bookingStore.selectedHotelDetails?.MaKS, (newMaKS, oldMaKS) => {
   if (newMaKS && newMaKS !== oldMaKS) {
     fetchHotelServices(newMaKS);
     formData.services = []; // Reset services đã chọn khi khách sạn thay đổi
+  }
+});
+
+// Watch promotion code changes to reset validation when code is cleared
+watch(() => formData.promotionCode, (newCode, oldCode) => {
+  if (!newCode && oldCode) {
+    // Promotion code was cleared, reset validation
+    resetPromotionValidation();
   }
 });
 

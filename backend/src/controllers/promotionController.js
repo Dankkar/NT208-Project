@@ -4,12 +4,98 @@ const { poolPromise, sql } = require('../database/db');
 exports.getAllPromotions = async (req, res) => {
     try {
         const pool = await poolPromise;
-        const result = await pool.request().query(`
-            SELECT * FROM KhuyenMai
+        const { 
+            page = 1, 
+            limit = 10, 
+            search = '', 
+            status = '', 
+            timeStatus = '' 
+        } = req.query;
+        
+        const pageNum = parseInt(page) || 1;
+        const limitNum = parseInt(limit) || 10;
+        const offset = (pageNum - 1) * limitNum;
+        
+        // Build WHERE conditions
+        let whereConditions = [];
+        let queryParams = [];
+        
+        // Search filter
+        if (search.trim()) {
+            whereConditions.push('(TenKM LIKE @search OR MaCodeKM LIKE @search)');
+            queryParams.push({ name: 'search', type: sql.NVarChar, value: `%${search.trim()}%` });
+        }
+        
+        // Status filter
+        if (status !== '') {
+            whereConditions.push('IsActive = @status');
+            queryParams.push({ name: 'status', type: sql.Bit, value: parseInt(status) });
+        }
+        
+        // Time status filter
+        if (timeStatus) {
+            switch (timeStatus) {
+                case 'current':
+                    whereConditions.push('NgayBD <= GETDATE() AND NgayKT >= GETDATE()');
+                    break;
+                case 'upcoming':
+                    whereConditions.push('NgayBD > GETDATE()');
+                    break;
+                case 'expired':
+                    whereConditions.push('NgayKT < GETDATE()');
+                    break;
+            }
+        }
+        
+        const whereClause = whereConditions.length > 0 ? 'WHERE ' + whereConditions.join(' AND ') : '';
+        
+        // Count total records
+        let countRequest = pool.request();
+        queryParams.forEach(param => {
+            countRequest.input(param.name, param.type, param.value);
+        });
+        
+        const countResult = await countRequest.query(`
+            SELECT COUNT(*) as total FROM KhuyenMai ${whereClause}
         `);
+        
+        // Get paginated results
+        let dataRequest = pool.request()
+            .input('offset', sql.Int, offset)
+            .input('limit', sql.Int, limitNum);
+            
+        queryParams.forEach(param => {
+            dataRequest.input(param.name, param.type, param.value);
+        });
+        
+        const result = await dataRequest.query(`
+            SELECT 
+                MaKM,
+                MaCodeKM,
+                TenKM,
+                MoTaKM,
+                NgayBD as NgayBatDau,
+                NgayKT as NgayKetThuc,
+                LoaiKM,
+                GiaTriKM as PhanTramGiam,
+                DieuKienApDung,
+                IsActive as TrangThai
+            FROM KhuyenMai 
+            ${whereClause}
+            ORDER BY MaKM DESC
+            OFFSET @offset ROWS
+            FETCH NEXT @limit ROWS ONLY
+        `);
+        
         res.status(200).json({
             success: true,
-            data: result.recordset
+            data: result.recordset,
+            pagination: {
+                total: countResult.recordset[0].total,
+                page: pageNum,
+                limit: limitNum,
+                totalPages: Math.ceil(countResult.recordset[0].total / limitNum)
+            }
         });
     } catch (error) {
         console.error('Lỗi getAllPromotions:', error);
@@ -24,22 +110,35 @@ exports.getActivePromotions = async (req, res) => {
     try {
         const pool = await poolPromise;
         const { page = 1, limit = 10 } = req.query;
-        const offset = (page - 1) * limit;
+        const pageNum = parseInt(page) || 1;
+        const limitNum = parseInt(limit) || 10;
+        const offset = (pageNum - 1) * limitNum;
         const countResult = await pool.request().query(`
             SELECT COUNT(*) as total
             FROM KhuyenMai
-            WHERE NgayBatDau <= GETDATE() 
-            AND NgayKetThuc >= GETDATE()
-            AND TrangThai = 1
+            WHERE NgayBD <= GETDATE() 
+            AND NgayKT >= GETDATE()
+            AND IsActive = 1
         `);
         const result = await pool.request()
             .input('offset', sql.Int, offset)
-            .input('limit', sql.Int, limit)
+            .input('limit', sql.Int, limitNum)
             .query(`
-                SELECT * FROM KhuyenMai
-                WHERE NgayBatDau <= GETDATE() 
-                AND NgayKetThuc >= GETDATE()
-                AND TrangThai = 1
+                SELECT 
+                    MaKM,
+                    MaCodeKM,
+                    TenKM,
+                    MoTaKM,
+                    NgayBD as NgayBatDau,
+                    NgayKT as NgayKetThuc,
+                    LoaiKM,
+                    GiaTriKM as PhanTramGiam,
+                    DieuKienApDung,
+                    IsActive as TrangThai
+                FROM KhuyenMai
+                WHERE NgayBD <= GETDATE() 
+                AND NgayKT >= GETDATE()
+                AND IsActive = 1
                 ORDER BY MaKM DESC
                 OFFSET @offset ROWS
                 FETCH NEXT @limit ROWS ONLY
@@ -49,9 +148,9 @@ exports.getActivePromotions = async (req, res) => {
             data: result.recordset,
             pagination: {
                 total: countResult.recordset[0].total,
-                page: parseInt(page),
-                limit: parseInt(limit),
-                totalPages: Math.ceil(countResult.recordset[0].total / parseInt(limit))
+                page: pageNum,
+                limit: limitNum,
+                totalPages: Math.ceil(countResult.recordset[0].total / limitNum)
             }
         });
     } catch (error) {
@@ -69,7 +168,21 @@ exports.getPromotionDetails = async (req, res) => {
         const { MaKM } = req.params;
         const result = await pool.request()
             .input('MaKM', sql.Int, MaKM)
-            .query('SELECT * FROM KhuyenMai WHERE MaKM = @MaKM');
+            .query(`
+                SELECT 
+                    MaKM,
+                    MaCodeKM,
+                    TenKM,
+                    MoTaKM,
+                    NgayBD as NgayBatDau,
+                    NgayKT as NgayKetThuc,
+                    LoaiKM,
+                    GiaTriKM as PhanTramGiam,
+                    DieuKienApDung,
+                    IsActive as TrangThai
+                FROM KhuyenMai 
+                WHERE MaKM = @MaKM
+            `);
         
         if (result.recordset.length === 0) {
             return res.status(404).json({
@@ -98,11 +211,22 @@ exports.validatePromotion = async (req, res) => {
         const result = await pool.request()
             .input('MaCodeKM', sql.NVarChar, MaCodeKM)
             .query(`
-                SELECT * FROM KhuyenMai
+                SELECT 
+                    MaKM,
+                    MaCodeKM,
+                    TenKM,
+                    MoTaKM,
+                    NgayBD as NgayBatDau,
+                    NgayKT as NgayKetThuc,
+                    LoaiKM,
+                    GiaTriKM as PhanTramGiam,
+                    DieuKienApDung,
+                    IsActive as TrangThai
+                FROM KhuyenMai
                 WHERE MaCodeKM = @MaCodeKM
-                AND NgayBatDau <= GETDATE()
-                AND NgayKetThuc >= GETDATE()
-                AND TrangThai = 1
+                AND NgayBD <= GETDATE()
+                AND NgayKT >= GETDATE()
+                AND IsActive = 1
             `);
 
         if (result.recordset.length === 0) {
@@ -128,18 +252,20 @@ exports.validatePromotion = async (req, res) => {
 exports.createPromotion = async (req, res) => {
     try {
         const pool = await poolPromise;
-        const { TenKM, MoTa, MaCodeKM, PhanTramGiam, NgayBatDau, NgayKetThuc } = req.body;
+        const { TenKM, MoTa, MaCodeKM, PhanTramGiam, NgayBatDau, NgayKetThuc, TrangThai = true } = req.body;
         
         const result = await pool.request()
             .input('TenKM', sql.NVarChar, TenKM)
-            .input('MoTa', sql.NVarChar, MoTa)
+            .input('MoTaKM', sql.NVarChar, MoTa)
             .input('MaCodeKM', sql.NVarChar, MaCodeKM)
-            .input('PhanTramGiam', sql.Decimal, PhanTramGiam)
-            .input('NgayBatDau', sql.DateTime, NgayBatDau)
-            .input('NgayKetThuc', sql.DateTime, NgayKetThuc)
+            .input('GiaTriKM', sql.Decimal, PhanTramGiam)
+            .input('NgayBD', sql.DateTime, NgayBatDau)
+            .input('NgayKT', sql.DateTime, NgayKetThuc)
+            .input('IsActive', sql.Bit, TrangThai)
+            .input('LoaiKM', sql.NVarChar, 'Giảm %')
             .query(`
-                INSERT INTO KhuyenMai (TenKM, MoTa, MaCodeKM, PhanTramGiam, NgayBatDau, NgayKetThuc, TrangThai)
-                VALUES (@TenKM, @MoTa, @MaCodeKM, @PhanTramGiam, @NgayBatDau, @NgayKetThuc, 1);
+                INSERT INTO KhuyenMai (TenKM, MoTaKM, MaCodeKM, GiaTriKM, NgayBD, NgayKT, IsActive, LoaiKM)
+                VALUES (@TenKM, @MoTaKM, @MaCodeKM, @GiaTriKM, @NgayBD, @NgayKT, @IsActive, @LoaiKM);
                 SELECT SCOPE_IDENTITY() AS MaKM;
             `);
 
@@ -165,21 +291,21 @@ exports.updatePromotion = async (req, res) => {
         const result = await pool.request()
             .input('MaKM', sql.Int, MaKM)
             .input('TenKM', sql.NVarChar, TenKM)
-            .input('MoTa', sql.NVarChar, MoTa)
+            .input('MoTaKM', sql.NVarChar, MoTa)
             .input('MaCodeKM', sql.NVarChar, MaCodeKM)
-            .input('PhanTramGiam', sql.Decimal, PhanTramGiam)
-            .input('NgayBatDau', sql.DateTime, NgayBatDau)
-            .input('NgayKetThuc', sql.DateTime, NgayKetThuc)
-            .input('TrangThai', sql.Bit, TrangThai)
+            .input('GiaTriKM', sql.Decimal, PhanTramGiam)
+            .input('NgayBD', sql.DateTime, NgayBatDau)
+            .input('NgayKT', sql.DateTime, NgayKetThuc)
+            .input('IsActive', sql.Bit, TrangThai)
             .query(`
                 UPDATE KhuyenMai
                 SET TenKM = @TenKM,
-                    MoTa = @MoTa,
+                    MoTaKM = @MoTaKM,
                     MaCodeKM = @MaCodeKM,
-                    PhanTramGiam = @PhanTramGiam,
-                    NgayBatDau = @NgayBatDau,
-                    NgayKetThuc = @NgayKetThuc,
-                    TrangThai = @TrangThai
+                    GiaTriKM = @GiaTriKM,
+                    NgayBD = @NgayBD,
+                    NgayKT = @NgayKT,
+                    IsActive = @IsActive
                 WHERE MaKM = @MaKM
             `);
 
@@ -243,9 +369,9 @@ exports.applyPromotionToBooking = async (req, res) => {
             .query(`
                 SELECT * FROM KhuyenMai
                 WHERE MaCodeKM = @MaCodeKM
-                AND NgayBatDau <= GETDATE()
-                AND NgayKetThuc >= GETDATE()
-                AND TrangThai = 1
+                AND NgayBD <= GETDATE()
+                AND NgayKT >= GETDATE()
+                AND IsActive = 1
             `);
 
         if (promotion.recordset.length === 0) {

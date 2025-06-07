@@ -87,6 +87,12 @@ const sections = [
       { name: 'Find User', route: '/admin/users/find-user' },
     ],
   },
+  {
+    title: 'Promotions',
+    children: [
+      { name: 'Manage Promotions', route: '/admin/promotions' },
+    ],
+  },
 ];
 
 // Determine if a section should be open based on current route
