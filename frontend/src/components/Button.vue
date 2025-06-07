@@ -3,7 +3,7 @@
   <button :class="buttonClasses" :style="{ textAlign: textAlign }">
     <i v-if="iconMenu" v-show="iconMenu" :class="['bi', icon, { 'me-2': hasContent && iconMenu }]"></i>
     <span v-if="hasContent" class="w-100">{{ content }}</span>
-    <i v-if="icon && !iconMenu" :class="['bi ps-1 pt-1', icon, { 'me-2': hasContent }]"></i>
+    <i v-if="icon && !iconMenu" :class="['bi ps-1', icon, { 'me-2': hasContent }]"></i>
 
   </button>
 </template>

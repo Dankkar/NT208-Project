@@ -180,12 +180,9 @@
                   :disabled="bookingStore.isCreatingBooking || isValidatingPromotion"
                   @blur="validatePromotionCode"
                 />
-                <div v-if="promotionValidationMessage" 
-                     :class="['small', 'mt-1', promotionValidationStatus === 'valid' ? 'text-success' : 'text-danger']">
-                  <i :class="promotionValidationStatus === 'valid' ? 'bi bi-check-circle-fill' : 'bi bi-exclamation-circle-fill'"></i>
-                  {{ promotionValidationMessage }}
-                </div>
+
               </div>
+
               <div class="col-md-4 d-flex align-items-end">
                 <button 
                   type="button" 
@@ -198,6 +195,11 @@
                 </button>
               </div>
             </div>
+             <div v-if="promotionValidationMessage" 
+                     :class="['small', 'mt-1', promotionValidationStatus === 'valid' ? 'text-success' : 'text-danger']">
+                  <i :class="promotionValidationStatus === 'valid' ? 'bi bi-check-circle-fill' : 'bi bi-exclamation-circle-fill'"></i>
+                  {{ promotionValidationMessage }}
+                </div>
             <!-- Promotion Details Display -->
             <div v-if="appliedPromotion && promotionValidationStatus === 'valid'" class="mt-3 p-3 bg-success bg-opacity-10 border border-success border-opacity-25 rounded">
               <div class="d-flex justify-content-between align-items-start">
@@ -580,8 +582,8 @@ function initializeFormDataFromStore() {
       if (userProfile.HoTen) {
         const nameParts = userProfile.HoTen.trim().split(' ');
         if(nameParts.length > 1 ) {
-        firstName = nameParts.pop();
-        lastName = nameParts.join(' ');
+         lastName = nameParts.pop();
+          firstName = nameParts.join(' ');
       } 
       else {
         lastName = userProfile.HoTen;
