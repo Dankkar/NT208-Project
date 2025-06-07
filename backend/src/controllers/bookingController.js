@@ -645,7 +645,14 @@ exports.getMyBookings = async (req, res) => {
                     ORDER BY ThuTu ASC, NgayThem ASC
                 )
             WHERE b.MaKH = @MaKH
-            ORDER BY b.NgayDat DESC
+            ORDER BY 
+                CASE 
+                    WHEN b.TrangThaiBooking = N'Đã xác nhận' THEN 1
+                    WHEN b.TrangThaiBooking = N'Đã nhận phòng' THEN 2
+                    ELSE 3
+                END,
+                ABS(DATEDIFF(DAY, GETDATE(), b.NgayNhanPhong)) ASC,
+                b.NgayNhanPhong ASC
             OFFSET @offset ROWS
             FETCH NEXT @limit ROWS ONLY
         `;
@@ -884,12 +891,17 @@ exports.getAllBookings = async (req, res) => {
             JOIN NguoiDung nd ON b.MaKH = nd.MaKH
             -- LEFT JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
             ${whereClause} -- Áp dụng filter cho QuanLyKS ở đây
-            ORDER BY b.NgayDat DESC
+            ORDER BY 
+                CASE 
+                    WHEN b.TrangThaiBooking = N'Đã xác nhận' THEN 1
+                    WHEN b.TrangThaiBooking = N'Đã nhận phòng' THEN 2
+                    ELSE 3
+                END,
+                ABS(DATEDIFF(DAY, GETDATE(), b.NgayNhanPhong)) ASC,
+                b.NgayNhanPhong ASC
             OFFSET @offset ROWS
             FETCH NEXT @limit ROWS ONLY
         `;
-        // Log data query
-        console.log("[getAllBookings] Data Query (first 300 chars):", dataQuery.replace(/\s+/g, ' ').trim().substring(0,300));
 
         // Thêm input cho pagination
         request.input('offset', sql.Int, offset);

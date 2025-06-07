@@ -402,6 +402,33 @@ exports.updateHotel = async (req, res) => {
 
         //3. Xu ly upload anh neu co
         const uploadedImages = [];
+        
+        // Xử lý mainImageIndex cho cả ảnh cũ và ảnh mới
+        let shouldUpdateMainImage = false;
+        let newMainImageId = null;
+        
+        if (mainImageIndex !== undefined && mainImageIndex !== null && !isNaN(mainImageIndex)) {
+            // Lấy danh sách ảnh hiện tại
+            const currentImages = await pool.request()
+                .input('MaKS', sql.Int, parseInt(MaKS))
+                .query(`
+                    SELECT MaAnh, ThuTu
+                    FROM AnhKhachSan
+                    WHERE MaKS = @MaKS AND IsActive = 1
+                    ORDER BY NgayThem ASC, ThuTu ASC
+                `);
+            
+            const totalExistingImages = currentImages.recordset.length;
+            const selectedIndex = parseInt(mainImageIndex);
+            
+            // Nếu index trỏ đến ảnh cũ
+            if (selectedIndex < totalExistingImages) {
+                newMainImageId = currentImages.recordset[selectedIndex].MaAnh;
+                shouldUpdateMainImage = true;
+            }
+            // Nếu index trỏ đến ảnh mới sẽ được upload, xử lý sau khi upload
+        }
+        
         if (req.files && req.files.length > 0) {
             //Tao thu muc neu chua co
             const hotelDir = path.join(__dirname, `../../uploads/hotels/${MaKS}`);
@@ -409,21 +436,9 @@ exports.updateHotel = async (req, res) => {
                 fs.mkdirSync(hotelDir, {recursive: true});
             }
 
-            // Đặt tất cả ảnh hiện tại về gallery trước nếu có chỉ định ảnh main mới
-            if(mainImageIndex !== undefined && mainImageIndex !== null) {
-                await pool.request()
-                    .input('MaKS', sql.Int, parseInt(MaKS))
-                    .query(`
-                        UPDATE AnhKhachSan
-                        SET LoaiAnh = 'gallery'
-                        WHERE MaKS = @MaKS AND LoaiAnh = 'main' AND IsActive = 1
-                    `);
-            }
-
             //Upload tung file
             for (let i = 0; i < req.files.length; i++) {
                 const file = req.files[i];
-                const isMainImage = (mainImageIndex == i) || (mainImageIndex === undefined && i === 0); //Ảnh đầu tiên làm main nếu không chỉ định
                 
                 try {
                     //Di chuyen file vao thu muc khach san
@@ -440,7 +455,7 @@ exports.updateHotel = async (req, res) => {
                     .input('MaKS', sql.Int, parseInt(MaKS))
                     .input('TenFile', sql.NVarChar, file.filename)
                     .input('DuongDanAnh', sql.NVarChar, relativePath)
-                    .input('LoaiAnh', sql.NVarChar, isMainImage ? 'main' : 'gallery')
+                    .input('LoaiAnh', sql.NVarChar, 'gallery') // Tạm thời để gallery, sẽ update main sau
                     .input('ThuTu', sql.Int, i)
                     .input('MoTa', sql.NVarChar, `Ảnh khách sạn ${TenKS || hotelCheck.recordset[0].TenKS}`)
                     .query(`
@@ -449,12 +464,35 @@ exports.updateHotel = async (req, res) => {
                         VALUES (@MaKS, @TenFile, @DuongDanAnh, @LoaiAnh, @ThuTu, @MoTa)
                     `);
 
+                    const newImageId = insertResult.recordset[0].MaAnh;
+                    
+                    // Kiểm tra nếu ảnh mới này được chọn làm main
+                    if (mainImageIndex !== undefined && mainImageIndex !== null) {
+                        const currentImages = await pool.request()
+                            .input('MaKS', sql.Int, parseInt(MaKS))
+                            .input('NewImageId', sql.Int, newImageId)
+                            .query(`
+                                SELECT COUNT(*) as total
+                                FROM AnhKhachSan
+                                WHERE MaKS = @MaKS AND IsActive = 1 AND MaAnh != @NewImageId
+                            `);
+                        
+                        const totalOtherImages = currentImages.recordset[0].total;
+                        const selectedIndex = parseInt(mainImageIndex);
+                        
+                        // Nếu index trỏ đến ảnh mới này
+                        if (selectedIndex === totalOtherImages + i) {
+                            newMainImageId = newImageId;
+                            shouldUpdateMainImage = true;
+                        }
+                    }
+
                     uploadedImages.push({
-                        MaAnh: insertResult.recordset[0].MaAnh,
+                        MaAnh: newImageId,
                         TenFile: file.filename,
                         DuongDanAnh: relativePath,
-                        LoaiAnh: isMainImage ? 'main' : 'gallery',
-                        IsMain: isMainImage,
+                        LoaiAnh: 'gallery',
+                        IsMain: false,
                         FullPath: `${req.protocol}://${req.get('host')}/${relativePath}`
                     });
 
@@ -464,8 +502,64 @@ exports.updateHotel = async (req, res) => {
             }
             
             if (uploadedImages.length > 0) {
-                const mainImages = uploadedImages.filter(img => img.IsMain);
-                imageActions.push(`Đã upload ${uploadedImages.length} ảnh mới${mainImages.length > 0 ? ' (bao gồm 1 ảnh chính)' : ''}`);
+                imageActions.push(`Đã upload ${uploadedImages.length} ảnh mới`);
+            }
+        }
+        
+        // Cập nhật ảnh main nếu cần
+        if (shouldUpdateMainImage && newMainImageId) {
+            // Đặt tất cả ảnh về gallery
+            await pool.request()
+                .input('MaKS', sql.Int, parseInt(MaKS))
+                .query(`
+                    UPDATE AnhKhachSan
+                    SET LoaiAnh = 'gallery'
+                    WHERE MaKS = @MaKS AND IsActive = 1
+                `);
+            
+            // Đặt ảnh được chọn làm main
+            await pool.request()
+                .input('MaAnh', sql.Int, newMainImageId)
+                .query(`
+                    UPDATE AnhKhachSan
+                    SET LoaiAnh = 'main'
+                    WHERE MaAnh = @MaAnh AND IsActive = 1
+                `);
+            
+            imageActions.push('Đã cập nhật ảnh chính');
+            
+            // Cập nhật uploadedImages để reflect việc thay đổi main
+            const updatedImage = uploadedImages.find(img => img.MaAnh === newMainImageId);
+            if (updatedImage) {
+                updatedImage.LoaiAnh = 'main';
+                updatedImage.IsMain = true;
+            }
+        } else if (req.files && req.files.length > 0 && (mainImageIndex === undefined || mainImageIndex === null)) {
+            // Nếu không chỉ định main và có upload ảnh mới, đặt ảnh đầu tiên làm main
+            if (uploadedImages.length > 0) {
+                const firstImageId = uploadedImages[0].MaAnh;
+                
+                // Đặt tất cả ảnh về gallery
+                await pool.request()
+                    .input('MaKS', sql.Int, parseInt(MaKS))
+                    .query(`
+                        UPDATE AnhKhachSan
+                        SET LoaiAnh = 'gallery'
+                        WHERE MaKS = @MaKS AND IsActive = 1
+                    `);
+                
+                // Đặt ảnh đầu tiên làm main
+                await pool.request()
+                    .input('MaAnh', sql.Int, firstImageId)
+                    .query(`
+                        UPDATE AnhKhachSan
+                        SET LoaiAnh = 'main'
+                        WHERE MaAnh = @MaAnh AND IsActive = 1
+                    `);
+                
+                uploadedImages[0].LoaiAnh = 'main';
+                uploadedImages[0].IsMain = true;
+                imageActions.push('Đã đặt ảnh đầu tiên làm ảnh chính');
             }
         }
 
