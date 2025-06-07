@@ -3,7 +3,7 @@
   <button :class="buttonClasses" :style="{ textAlign: textAlign }">
     <i v-if="iconMenu" v-show="iconMenu" :class="['bi', icon, { 'me-2': hasContent && iconMenu }]"></i>
     <span v-if="hasContent" class="w-100">{{ content }}</span>
-    <i v-if="icon && !iconMenu" :class="['bi ps-1 pt-1', icon, { 'me-2': hasContent }]"></i>
+    <i v-if="icon && !iconMenu" :class="['bi ps-1', icon, { 'me-2': hasContent }]"></i>
 
   </button>
 </template>
@@ -21,7 +21,7 @@ const props = defineProps({
   variant: {
     type: String,
     default: 'secondary',
-    validator: (value) => ['primary', 'secondary', 'text', 'nav-dark', 'nav-light', 'outline'].includes(value),
+    validator: (value) => ['primary', 'secondary', 'text', 'nav-dark', 'nav-light', 'outline', 'confirm'].includes(value),
   },
 
   // KÍCH THƯỚC (MỚI!)
@@ -172,6 +172,21 @@ const buttonClasses = computed(() => {
   color: var(--white-color, #fff) !important;
   border: none;
 }
+
+.btn-confirm {
+  background-color: #1a1a1a;
+  color: white; 
+  border: none; 
+  font-weight: 600; 
+  padding: 0.25rem 1rem;
+  margin-top: 0.25rem;
+}
+
+.btn-confirm:hover {
+  background-color: #343a40;
+  color: white;  
+}
+
 
 
 /* 

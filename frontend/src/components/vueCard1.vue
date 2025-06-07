@@ -52,44 +52,59 @@
                   <img :src="roomItem.imageUrl" @error="onRoomImageError($event)" :alt="`Image of ${roomItem.name}`" class="img-fluid room-image">
                 </div>
                 <div class="col-md-6 d-flex flex-column justify-content-center info-column">
-                  <h6 class="fw-bold room-name">{{ roomItem.name }}</h6>
-                  <p class="text-muted mb-3">Up to {{ roomItem.guests || 'N/A' }} guests</p>
+                  <h4 class="fw-bold room-name">{{ roomItem.name }}</h4>
+                  <!-- <p class="text-muted mb-3">Up to {{ roomItem.guests || 'N/A' }} guests</p> -->
                   <div class="amenities-list">
-                    <p v-for="amenity in roomItem.parsedAmenities" :key="amenity" class="mb-1">
-                      <i class="bi bi-check-circle text-success me-2"></i> {{ amenity }}
-                    </p>
+                    <div v-if="mode === 'search-results'">
+                      <p v-for="amenity in roomItem.parsedAmenities" :key="amenity" class="mb-1">
+                        <i class="bi bi-check-circle text-success me-2"></i> {{ amenity }}
+                      </p>
+                    </div>
+  
+                    <div v-else-if="mode === 'booking-history'">
+                      <p v-for="(detailLine, index) in roomItem.parsedAmenities" :key="index" class="mb-1">
+                        <!-- Icon ở đây có thể giữ nguyên hoặc thay đổi tùy bạn -->
+                        <i class="bi bi-check-circle text-success me-2"></i> 
+                        {{ detailLine }}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
             <!-- Cột phải: Giá & Nút CTA -->
-            <div class="col-lg-4">
-              <div class="price-box">
-                <p class="text-muted small mb-0">{{ roomItem.priceLabel }}</p>
-                <p class="price-amount fw-bolder mb-0 lh-1">{{ formatPrice(roomItem.price) }}</p>
-                <p v-if="mode === 'search-results'" class="text-muted small mt-0 mb-3">/ đêm</p>
-                <div class="price-details small mb-auto">
-                   <p class="mb-1">Included VAT and charges</p>
-                   <p v-if="roomItem.availability > 0" class="mb-0">{{ roomItem.beds }} available</p>
-                </div>
+                <div class="col-lg-4">
+                  <div class="price-box">
+                    <p class="text-muted small mb-0">{{ roomItem.priceLabel }}</p>
+                    <p class="price-amount fw-bolder mb-0 lh-1">{{ formatPrice(roomItem.price) }}</p>
+                    <p v-if="mode === 'search-results'" class="text-muted small mt-0 mb-3">/ đêm</p>
+                    
+                    <div class="price-details small">
+                        <p class="mb-1">Included VAT and charges</p>
+                        <p v-if="roomItem.availability > 0" class="mb-0">{{ roomItem.beds }} available</p>
+                    </div>
 
-                <!-- Nút CTA động theo mode -->
-                <Button
-                  v-if="mode === 'search-results'"
-                  content="Book this Room"
-                  :disabled="roomItem.availability <= 0"
-                  class="cta-button"
-                  @click="handleCtaClick(roomItem.originalRoomData)"
-                />
-                 <Button
-                  v-else-if="mode === 'booking-history' && processedData.actions.length > 0"
-                  :content="processedData.actions[0].label.toUpperCase()"
-                  class="cta-button cta-history"
-                  @click="handleCtaClick(roomItem.originalRoomData)"
-                />
-              </div>
-            </div>
+                    <div class="cta-button-wrapper mt-auto"> <!-- Wrapper mới cho nút -->
+                        <Button
+                          v-if="mode === 'search-results'"
+                          :content="roomItem.availability <= 0 ? 'Room is Full': 'Book this Room'"
+                          :disabled="roomItem.availability <= 0"
+                          variant="confirm"
+                          :block="true"
+                          @click="handleCtaClick(roomItem.originalRoomData)"
+                        />
+                        <Button
+                          v-else-if="mode === 'booking-history' && processedData.actions.length > 0"
+                          :content="processedData.actions[0].label.toUpperCase()"
+                          class="mt-2"
+                          variant="confirm"
+                          :block="true"
+                          @click="handleCtaClick(roomItem.originalRoomData)"
+                        />
+                    </div>
+                  </div>
+                </div>
 
           </div>
         </div>
@@ -153,7 +168,8 @@ const processedData = computed(() => {
   
   // --- LOGIC CHO MODE: BOOKING HISTORY (ĐÃ PHỤC HỒI) ---
   if (props.mode === 'booking-history') {
-    const booking = props.hotelData; // booking là object dataForCard
+    const booking = props.hotelData; 
+    const hasActions = booking.actions && booking.actions.length > 0;// booking là object dataForCard
     return {
       displayTitle: booking.title,
       displaySubtitle1: booking.subtitle1,
@@ -164,11 +180,11 @@ const processedData = computed(() => {
         id: item.id,
         name: item.name,
         guests: item.quantity,
-        parsedAmenities: item.amenities ? [item.amenities] : (item.historyRoomDetails ? [item.historyRoomDetails] : []),
+        parsedAmenities: item.amenities ? [item.amenities] : (item.historyRoomDetails ? item.historyRoomDetails : []),
         imageUrl: item.imageUrl || defaultRoomImage,
         price: item.price,
         priceLabel: 'PAID',
-        availability: 0, 
+        availability: hasActions ? 1 : 0,  
         beds: `Quantity: ${item.quantity}`,
         originalRoomData: item.originalRoomData || item,
       })),
@@ -198,28 +214,72 @@ const handleCtaClick = (originalRoomData) => {
 </script>
 
 <style scoped>
-/* Toàn bộ style không thay đổi so với phiên bản trước */
-.hotel-card { border: 1px solid #e9ecef; border-radius: 8px !important; }
+/* ================================== */
+/* === PHONG CÁCH GỐC (DESKTOP) === */
+/* ================================== */
+.hotel-card { border: 1px solid #e9ecef; border-radius: 8px !important; overflow: hidden; }
 .card-header { background-color: white; padding: 1rem 1.5rem; border-bottom: 1px solid #e9ecef !important; }
 .hotel-logo-thumb { width: 60px; height: 45px; object-fit: cover; border-radius: 4px; }
-.hotel-title { font-size: 1.25rem; font-weight: 700; }
+.hotel-title { font-size: 1.25rem; font-weight: 700; line-height: 1.2; }
 .list-group-item { border-top: 1px solid #e9ecef; padding: 1.5rem; }
 .list-group-item:first-child { border-top: none; }
-.room-image { width: 100%; height: 200px; object-fit: cover; }
-.info-column { padding: 1rem 1.5rem; }
-.room-name { font-size: 1.1rem; font-weight: 700; }
-.price-box { height: 100%; padding: 1.5rem; display: flex; flex-direction: column; text-align: center; }
+.room-image { width: 100%; height: 200px; object-fit: cover; border-radius: 4px; }
+.info-column { padding: 0 1.5rem; }
+.room-name { font-size: 1.5rem; font-weight: 700; margin-top: 1rem; margin-left: 1rem; }
+.amenities-list .bi { font-size: 0.9rem;  margin-left: 1rem;}
+
+.price-box {
+  height: 100%;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+}
 .price-amount { font-size: 1.75rem; font-weight: 800; }
-.cta-button { background-color: #1a1a1a; color: white; border: none; font-weight: 600; padding: 0.75rem 1rem; }
-.cta-button:hover { background-color: #343a40; }
-.cta-button.cta-history { background-color: #dc3545; }
-.cta-button.cta-history:hover { background-color: #c82333; }
-.room-item-card.is-unavailable .price-box { background-color: #f1f3f5; }
-.room-item-card.is-unavailable .cta-button { background-color: #adb5bd; color: #6c757d; pointer-events: none; }
-.room-item-card.mode-search-result { border: 1px solid #e9ecef; }
-.room-item-card.mode-search-result:not(.is-unavailable):hover { border-color: var(--accent-color, #0d6efd); box-shadow: 0 4px 16px rgba(13, 110, 253, 0.1); }
+.price-details { flex-grow: 1;}
+
+/* --- Các Mode --- */
+.room-item-card.is-unavailable .btn,
+.room-item-card.is-unavailable :deep(.btn-custom-base) {
+  opacity: 0.65;
+  pointer-events: none;
+}
 .mode-search-result .price-box { background-color: #fef8f8; }
 .mode-history .price-box { background-color: #f8f9fa; }
-.slide-fade-enter-active, .slide-fade-leave-active { transition: all 0.25s ease-in-out; }
-.slide-fade-enter-from, .slide-fade-leave-to { opacity: 0; transform: translateY(-10px); }
+
+
+/* ================================== */
+/* === PHONG CÁCH RESPONSIVE === */
+/* ================================== */
+
+/* Áp dụng cho màn hình nhỏ hơn 992px (Tablet và dưới) */
+@media (max-width: 991.98px) {
+  /* Hủy flex của .row để xếp chồng */
+  .room-item-card .row, .col-lg-8 .row { display: block; }
+  .room-item-card [class^="col-"], .col-lg-8 [class^="col-"] {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .info-column { padding: 0; margin-top: 1rem; }
+  .room-name { margin-top: 0; margin-left: 1rem; }
+
+  .price-box {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-top: 1px solid #e9ecef;
+  }
+}
+
+/* Áp dụng cho màn hình nhỏ hơn 768px (Mobile) */
+@media (max-width: 767.98px) {
+  .card-header { flex-direction: column !important; align-items: flex-start !important; }
+  .card-header > .d-flex.justify-content-between { width: 100%; }
+  .card-header > .d-flex.justify-content-between:last-child { margin-top: 0.75rem; }
+  .card-header :deep(.btn-custom-base) { width: 100%; }
+
+  .hotel-title { font-size: 1.1rem; }
+  .list-group-item { padding: 1rem; }
+  .room-image { height: 180px; }
+}
 </style>

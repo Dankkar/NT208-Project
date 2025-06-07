@@ -129,4 +129,24 @@ function navigateToStep(stepId) {
 .progress-step:not(.clickable):not(.active-step) {
   opacity: 0.7;
 }
+
+@media (max-width: 991.98px) {
+  .step-label {
+    /* Mặc định ẩn TẤT CẢ các label chữ */
+    display: none;
+  }
+
+  /* CHỈ HIỂN THỊ LẠI label của bước đang active */
+  .progress-step.active-step .step-label {
+    display: block; /* Ghi đè luật `display: none` ở trên */
+  }
+
+  /* Điều chỉnh một chút cho đẹp hơn trên mobile */
+  .step-number-wrapper {
+     margin-bottom: 0 !important; /* Xóa khoảng trống dưới số khi chữ bị ẩn */
+  }
+  .progress-step.active-step .step-number-wrapper {
+    margin-bottom: 4px !important; /* Thêm lại khoảng trống nhỏ khi chữ hiện ra */
+  }
+}
 </style>

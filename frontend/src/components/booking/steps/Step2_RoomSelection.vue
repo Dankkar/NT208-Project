@@ -19,7 +19,7 @@
       </p>
       <hr>
       <div v-if="resumeError" class="alert alert-danger small py-2">{{ resumeError }}</div>
-      <button class="btn btn-primary me-2" @click="resumeHeldBooking" :disabled="isProcessingAction">
+      <!-- <button class="btn btn-primary me-2" @click="resumeHeldBooking" :disabled="isProcessingAction">
         <i class="bi bi-arrow-right-circle-fill me-1"></i> Continue with Held Booking
       </button>
       <button class="btn btn-outline-secondary me-2" @click="goToMyBookingsPage" :disabled="isProcessingAction">
@@ -27,7 +27,18 @@
       </button>
           <button class="btn btn-outline-info" @click="waitForHoldToExpire" :disabled="isProcessingAction">
           <i class="bi bi-hourglass-split me-1"></i> I'll Wait for Current Hold to Expire
-        </button>
+        </button> -->
+        <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+          <button class="btn btn-primary" @click="resumeHeldBooking" :disabled="isProcessingAction">
+            <i class="bi bi-arrow-right-circle-fill me-1"></i> Continue with Held Booking
+          </button>
+          <button class="btn btn-outline-secondary" @click="goToMyBookingsPage" :disabled="isProcessingAction" v-if="authStore.isAuthenticated">
+            <i class="bi bi-list-check me-1"></i> View My Bookings
+          </button>
+          <button class="btn btn-outline-info" @click="waitForHoldToExpire" :disabled="isProcessingAction">
+            <i class="bi bi-hourglass-split me-1"></i> I'll Wait for Current Hold to Expire
+          </button>
+        </div>
 
     </div>
 
@@ -84,9 +95,13 @@ import { format, formatDistanceToNowStrict } from 'date-fns';
 import VueCard1 from '../../vueCard1.vue';
 import { useBookingStore } from '@/store/bookingStore';
 import { useRouter } from 'vue-router';
+import { useNotificationStore } from '@/store/notificationStore';
+import { useAuthStore } from '@/store/authStore';
 
 const holdExpiryTimerInterval = ref(null); // Interval cho timer hiển thị
 const timeUntilExpiryDisplay = ref(''); // Chuỗi hiển thị thời gian còn lại
+const notificationStore = useNotificationStore();
+const authStore = useAuthStore();
 
 const formatTimeUntilExpiry = (expiryTimestamp) => {
   if (!expiryTimestamp) return '';
@@ -260,19 +275,20 @@ async function resumeHeldBooking() {
 }
 
 function goToMyBookingsPage() {
-    alert("Navigating to 'My Bookings' page (functionality to be implemented).");
+    router.push({ name: 'BookingHistory' });
+    notificationStore.show('Redirecting to your bookings page...', 'info', 2000);
 }
 
 function waitForHoldToExpire() {
-  isProcessingAction.value = true; // Chỉ để disable nút tạm thời
+  isProcessingAction.value = true; 
   console.log("Step2: User chose to wait for the current hold to expire.");
-  // Không làm gì cả ở phía client để thay đổi state giữ phòng.
-  // Thông báo lỗi "Bạn đã có một đơn đặt phòng..." vẫn sẽ hiển thị.
-  // Người dùng sẽ cần tự làm mới hoặc thử lại sau.
-  // Có thể hiển thị một toast nhẹ nhàng:
-  // notificationToast.value.show("Okay, please try selecting a room again after your current hold expires (approx. X minutes).", "info");
-  alert("Okay, please try selecting a room again after your current hold expires (check the timer). If the timer is gone, the hold might have expired.");
-  // Sau đó, set isProcessingAction lại false để người dùng có thể click nút khác nếu muốn.
+ 
+  notificationStore.show(
+    "Please wait for your current hold to expire, then try again.",
+    'info',
+    5000 // Hiển thị 5 giây
+  );
+
   setTimeout(() => { isProcessingAction.value = false; }, 500);
 }
 

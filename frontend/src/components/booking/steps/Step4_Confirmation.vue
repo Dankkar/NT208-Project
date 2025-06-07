@@ -223,6 +223,8 @@ const qrCodeValue = computed(() => {
     `Check-out: ${details.stayInfo?.checkOutDateFormatted || 'N/A'}`,
     `Total Pay: ${formatDisplayPrice(details.paymentSummary?.finalPrice)}`
   ];
+
+  
   return qrTextParts.join('\n'); 
 });
 

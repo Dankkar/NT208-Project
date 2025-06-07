@@ -430,13 +430,13 @@ export const useBookingStore = defineStore('booking', {
             // this.holdError = null;
             this.createBookingError = null; 
             this.clearPreselectedBookingIntent();
-            this.maxCompletedStep = Math.min(this.maxCompletedStep, 1);
+            this.maxCompletedStep = Math.max(this.maxCompletedStep, 1);
           } else if (stepId < 4) { // Về Step 3
             console.log('[Store] Navigating back to Step 3, keeping hold and guest data');
             this.finalBookingReference = null; this.createBookingError = null;
             // Khi về Step 3, guestAndPaymentInput VẪN NÊN ĐƯỢC GIỮ NGUYÊN để người dùng sửa
             // Thông tin hold (heldBookingMaDat, selectedDetails) cũng nên được giữ.
-            this.maxCompletedStep = Math.min(this.maxCompletedStep, 2);
+            this.maxCompletedStep = Math.max(this.maxCompletedStep, 2);
           }
         } else if (stepId > this.currentStep) {
           console.log(`[Store] Navigating forward to Step ${stepId}`);
