@@ -104,7 +104,7 @@ const isProcessingAction = ref(null); // Lưu MaDat của booking đang xử lý
 
 const pagination = reactive({
   page: 1,
-  limit: 10,
+  limit: 20,
   total: 0,
   totalPages: 0
 });
