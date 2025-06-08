@@ -481,6 +481,12 @@ exports.changePassword = async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   const currentUser = req.user; // Lấy thông tin user từ middleware auth
 
+  if (!currentUser || typeof currentUser.MaKH === 'undefined') {
+    console.error('Lỗi nghiêm trọng: Thông tin người dùng (MaKH) không tồn tại trong req.user.');
+    return res.status(401).json({ success: false, message: 'Người dùng không được xác thực hoặc thông tin không hợp lệ.' });
+  }
+  console.log(`[ChangePassword] Bắt đầu đổi mật khẩu cho MaKH: ${currentUser.MaKH}`);
+
   try {
     const pool = await poolPromise;
 
