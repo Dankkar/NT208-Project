@@ -479,9 +479,17 @@ exports.cancelBooking = async (req, res) => {
 
         // Chỉ áp dụng chính sách hủy cho đơn đã xác nhận hoặc chờ thanh toán
         let TienHoanTra = 0;
+        let refundPolicy = 'Không hoàn tiền';
+        
         if (booking.TrangThaiBooking === 'Đã xác nhận' || booking.TrangThaiBooking === 'Chờ thanh toán') {
             const dayBefore = Math.floor((new Date(booking.NgayNhanPhong) - new Date()) / (1000 * 3600 * 24));
-            TienHoanTra = dayBefore >= 7 ? booking.TongTienDuKien : 0;
+            if (dayBefore >= 7) {
+                TienHoanTra = booking.TongTienDuKien;
+                refundPolicy = 'Hoàn tiền 100%';
+            } else {
+                TienHoanTra = 0;
+                refundPolicy = 'Không hoàn tiền';
+            }
         }
 
         // Cập nhật trạng thái đặt phòng
@@ -503,7 +511,7 @@ exports.cancelBooking = async (req, res) => {
         res.json({ 
             message: 'Hủy đơn thành công', 
             TienHoanTra,
-            refundPolicy: dayBefore >= 7 ? 'Hoàn tiền 100%' : 'Không hoàn tiền'
+            refundPolicy
         });
     } catch (err) {
         console.error('Lỗi hủy đơn:', err);
