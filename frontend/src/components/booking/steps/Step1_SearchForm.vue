@@ -67,11 +67,7 @@
                   type="submit"
                   :is-loading="isSubmittingLocalSearch"
                   :disabled="isSubmittingLocalSearch || (formSubmitted && !isFormValid)"
-                  textColor="#fff"
-                  colorHover="white"
-                  backgroundColor="#000"
-                  borderRadius="0px"
-                  bgHover="black"
+                  variant="confirm"
                 ></Button>
               </div>
                <!-- Hiển thị lỗi từ store nếu có -->

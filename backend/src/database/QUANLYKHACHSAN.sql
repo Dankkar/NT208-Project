@@ -437,14 +437,7 @@ select * from booking
 INSERT INTO BaiDanhGia (MaKH, MaDat, MaKS, Sao, NoiDung)
 VALUES
 (49, 6, 1, 5, N'Phòng sạch sẽ, gần biển, nhân viên thân thiện'),
-(49, 7, 2, 4, N'Không gian yên tĩnh, thích hợp nghỉ dưỡng'),
-(49, 7, 2, 4, N'Không gian yên tĩnh'),
-(49, 7, 2, 4, N'Không gian yên tĩnh, thích hợp nghỉ'),
-(49, 7, 2, 4, N'Thích hợp nghỉ dưỡng'),
-(49, 7, 2, 4, N'Không gian thích hợp nghỉ dưỡng'),
-(49, 7, 2, 4, N'Không gian yên tĩnh, nghỉ dưỡng'),
-(49, 7, 2, 4, N'Không gian'),
-(49, 7, 2, 4, N'Không thích hợp nghỉ dưỡng');
+(49, 7, 2, 4, N'Không gian yên tĩnh, thích hợp nghỉ dưỡng');
 
 delete BaiDanhGia
 
@@ -453,3 +446,5 @@ update BaiDanhGia
 ALTER TABLE BaiDanhGia
 ADD CHECK (Sao BETWEEN 1 AND 5)
 
+ALTER TABLE BaiDanhGia
+ADD CONSTRAINT UQ_BaiDanhGia_MaDat UNIQUE (MaDat);

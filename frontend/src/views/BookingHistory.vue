@@ -160,7 +160,7 @@ const preparedBookingHistoryData = computed(() => {
 
     let actions = [];
     const allowCancellation = apiBooking.TrangThaiBooking === 'Đã xác nhận' &&
-                             checkInDate && differenceInCalendarDays(checkInDate, new Date()) >= 1; // Ví dụ: chỉ hủy trước 1 ngày
+                             checkInDate && differenceInCalendarDays(checkInDate, new Date()) > 1; // Ví dụ: chỉ hủy trước 1 ngày
     if (allowCancellation) {
       actions.push({ id: 'cancel', label: 'Hủy Đặt Phòng', backgroundColor: '#dc3545', textColor: '#fff' });
     }
@@ -203,11 +203,13 @@ const preparedBookingHistoryData = computed(() => {
             price: apiBooking.TongTienDuKien, // Tổng tiền cho booking
             priceUnit: 'VNĐ', // Hoặc 'Tổng cộng'
             quantity: apiBooking.SoLuongKhach, // Hoặc nếu có số lượng phòng cụ thể
-            historyRoomDetails:
-                `Nhận phòng: ${formatFullDate(apiBooking.NgayNhanPhong)} (${apiBooking.SoPhong || 'N/A'})\n` +
-                `Trả phòng: ${formatFullDate(apiBooking.NgayTraPhong)}\n` +
-                `Số đêm: ${numberOfNights}\n` +
-                `Yêu cầu: ${apiBooking.YeuCauDacBiet || 'Không có'}`,
+            historyRoomDetails: [
+              `Nhận phòng: ${formatFullDate(apiBooking.NgayNhanPhong)} (Phòng ${apiBooking.SoPhong || 'N/A'})`,
+              `Trả phòng: ${formatFullDate(apiBooking.NgayTraPhong)}`,
+              `Số đêm: ${numberOfNights} đêm`,
+              `Yêu cầu: ${apiBooking.YeuCauDacBiet || 'Không có'}`,
+              `Trạng thái: ${apiBooking.TrangThaiBooking}`
+            ],
             services: (apiBooking.DichVuSuDung || []).map(s => ({
                 name: s.TenLoaiDV,
                 quantity: s.SoLuong,
