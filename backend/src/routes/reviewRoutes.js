@@ -7,7 +7,7 @@ const {
   adminGetHotelReviews,
   adminSetReviewApproval
 } = require('../controllers/reviewController');
-const { authenticateToken, isAdmin } = require('../middlewares/auth');
+const { authenticateToken, isAdmin, optionalAuthenticationToken } = require('../middlewares/auth');
 
 // -------- PUBLIC ROUTES --------
 
@@ -19,8 +19,8 @@ router.get('/booking/:MaDat', getBookingReviews);
 
 // -------- PRIVATE ROUTES --------
 
-// POST /reviews - Tạo đánh giá (phải đăng nhập)
-router.post('/', authenticateToken, createReview);
+// POST /reviews - Tạo đánh giá (optional auth cho guest)
+router.post('/', optionalAuthenticationToken, createReview);
 
 // GET /api/reviews/admin/hotel/:MaKS - Admin lấy tất cả review (có phân trang) của một khách sạn
 router.get('/admin/hotel/:MaKS', authenticateToken, isAdmin, adminGetHotelReviews);

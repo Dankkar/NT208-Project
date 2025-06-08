@@ -360,7 +360,7 @@ exports.getBookingById = async (req, res) => {
         const currentUser = req.user;
         const pool = await poolPromise;
 
-        // Kiểm tra quyền xem đơn đặt phòng
+        // Lấy thông tin booking với image URLs
         const bookingResult = await pool.request()
             .input('MaDat', sql.Int, MaDat)
             .query(`
@@ -368,17 +368,22 @@ exports.getBookingById = async (req, res) => {
                     b.*, 
                     p.SoPhong, 
                     ks.TenKS, 
+                    ks.DiaChi,
                     ks.MaKS,
                     ks.MaNguoiQuanLy,
                     nd.HoTen,
+                    lp.TenLoaiPhong,
                     chg.TenCauHinh as CauHinhGiuong,
                     chg.SoGiuongDoi,
-                    chg.SoGiuongDon
+                    chg.SoGiuongDon,
+                    aks.DuongDanAnh as AnhKhachSan
                 FROM Booking b 
                 JOIN Phong p ON b.MaPhong = p.MaPhong
                 JOIN KhachSan ks ON b.MaKS = ks.MaKS
                 JOIN NguoiDung nd ON b.MaKH = nd.MaKH
+                JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
                 JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
+                LEFT JOIN AnhKhachSan aks ON ks.MaKS = aks.MaKS AND aks.LoaiAnh = 'main'
                 WHERE b.MaDat = @MaDat
             `);
 
@@ -389,16 +394,38 @@ exports.getBookingById = async (req, res) => {
         const booking = bookingResult.recordset[0];
 
         // Kiểm tra quyền xem đơn đặt phòng
-        const canView = 
-            currentUser.role === 'Admin' || // Admin có thể xem mọi đơn
-            currentUser.MaKH === booking.MaKH || // Khách hàng xem đơn của mình
-            (currentUser.role === 'QuanLyKS' && currentUser.MaKH === booking.MaNguoiQuanLy); // Quản lý KS xem đơn của KS mình
+        if (currentUser) {
+            // User đã đăng nhập - kiểm tra quyền như cũ
+            const canView = 
+                currentUser.role === 'Admin' || // Admin có thể xem mọi đơn
+                currentUser.MaKH === booking.MaKH || // Khách hàng xem đơn của mình
+                (currentUser.role === 'QuanLyKS' && currentUser.MaKH === booking.MaNguoiQuanLy); // Quản lý KS xem đơn của KS mình
 
-        if (!canView) {
-            return res.status(403).json({ error: 'Bạn không có quyền xem đơn đặt phòng này' });
+            if (!canView) {
+                return res.status(403).json({ 
+                    success: false,
+                    message: 'Bạn không có quyền xem đơn đặt phòng này' 
+                });
+            }
+        } else {
+            // Guest (không đăng nhập) - chỉ cho xem booking đã hoàn thành để đánh giá
+            if (booking.TrangThaiBooking !== 'Đã trả phòng') {
+                return res.status(403).json({ 
+                    success: false,
+                    message: 'Chỉ có thể xem thông tin booking đã hoàn thành để đánh giá' 
+                });
+            }
         }
 
-        res.json(booking);
+        // Thêm thông tin bổ sung - image URLs
+        booking.AnhKhachSanUrl = booking.AnhKhachSan 
+            ? `${req.protocol}://${req.get('host')}/${booking.AnhKhachSan}`
+            : null;
+
+        res.json({
+            success: true,
+            data: booking
+        });
     }
     catch(err) {
         console.error('Lỗi getBookingById:', err);
@@ -452,9 +479,17 @@ exports.cancelBooking = async (req, res) => {
 
         // Chỉ áp dụng chính sách hủy cho đơn đã xác nhận hoặc chờ thanh toán
         let TienHoanTra = 0;
+        let refundPolicy = 'Không hoàn tiền';
+        
         if (booking.TrangThaiBooking === 'Đã xác nhận' || booking.TrangThaiBooking === 'Chờ thanh toán') {
             const dayBefore = Math.floor((new Date(booking.NgayNhanPhong) - new Date()) / (1000 * 3600 * 24));
-            TienHoanTra = dayBefore >= 7 ? booking.TongTienDuKien : 0;
+            if (dayBefore >= 7) {
+                TienHoanTra = booking.TongTienDuKien;
+                refundPolicy = 'Hoàn tiền 100%';
+            } else {
+                TienHoanTra = 0;
+                refundPolicy = 'Không hoàn tiền';
+            }
         }
 
         // Cập nhật trạng thái đặt phòng
@@ -476,7 +511,7 @@ exports.cancelBooking = async (req, res) => {
         res.json({ 
             message: 'Hủy đơn thành công', 
             TienHoanTra,
-            refundPolicy: dayBefore >= 7 ? 'Hoàn tiền 100%' : 'Không hoàn tiền'
+            refundPolicy
         });
     } catch (err) {
         console.error('Lỗi hủy đơn:', err);
@@ -589,8 +624,10 @@ exports.getBookingByUser = async (req, res) => {
 exports.getMyBookings = async (req, res) => {
     try {
         const currentUser = req.user;
+        console.log('🔍 DEBUG getMyBookings - User from session:', currentUser);
         
         if (!currentUser || !currentUser.MaKH) {
+            console.log('❌ DEBUG getMyBookings - No user in session');
             return res.status(401).json({ 
                 success: false, 
                 message: 'Không tìm thấy thông tin người dùng trong session' 
@@ -603,6 +640,7 @@ exports.getMyBookings = async (req, res) => {
 
         // Sử dụng MaKH từ session thay vì từ params
         const MaKH = currentUser.MaKH;
+        console.log('🔍 DEBUG getMyBookings - Searching for bookings with MaKH:', MaKH);
         const pool = await poolPromise;
 
         // Đếm tổng số đơn đặt phòng của user
@@ -646,12 +684,12 @@ exports.getMyBookings = async (req, res) => {
                 )
             WHERE b.MaKH = @MaKH
             ORDER BY 
+                b.NgayDat DESC,  -- Sắp xếp theo ngày đặt gần nhất trước
                 CASE 
                     WHEN b.TrangThaiBooking = N'Đã xác nhận' THEN 1
                     WHEN b.TrangThaiBooking = N'Đã nhận phòng' THEN 2
                     ELSE 3
                 END,
-                ABS(DATEDIFF(DAY, GETDATE(), b.NgayNhanPhong)) ASC,
                 b.NgayNhanPhong ASC
             OFFSET @offset ROWS
             FETCH NEXT @limit ROWS ONLY
@@ -662,6 +700,9 @@ exports.getMyBookings = async (req, res) => {
             .input('offset', sql.Int, offset)
             .input('limit', sql.Int, parseInt(limit))
             .query(query);
+            
+        console.log('🔍 DEBUG getMyBookings - Found bookings:', result.recordset.length);
+        console.log('🔍 DEBUG getMyBookings - Booking details:', result.recordset.map(b => ({MaDat: b.MaDat, MaKH: b.MaKH, TrangThaiBooking: b.TrangThaiBooking})));
 
         // Lấy thông tin dịch vụ cho từng booking
         if (result.recordset.length > 0) {

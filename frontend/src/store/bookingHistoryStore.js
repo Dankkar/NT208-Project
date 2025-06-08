@@ -9,6 +9,14 @@ export const useBookingHistoryStore = defineStore('bookingHistory', {
     bookings: [],
     isLoading: false,
     error: null,
+    pagination: {
+      total: 0,
+      page: 1,
+      limit: 10,
+      totalPages: 0,
+      hasNextPage: false,
+      hasPrevPage: false
+    },
   }),
 
   getters: {
@@ -16,24 +24,37 @@ export const useBookingHistoryStore = defineStore('bookingHistory', {
     hasBookings: (state) => state.bookings.length > 0,
     isLoadingHistory: (state) => state.isLoading,
     getHistoryError: (state) => state.error,
+    getPagination: (state) => state.pagination,
+    getCurrentPage: (state) => state.pagination.page,
+    getTotalPages: (state) => state.pagination.totalPages,
+    getHasNextPage: (state) => state.pagination.hasNextPage,
+    getHasPrevPage: (state) => state.pagination.hasPrevPage,
   },
 
   actions: {
-    async fetchBookingHistory() {
+    async fetchBookingHistory(page = null, limit = null) {
       console.log('Attempting to fetch booking history...');
+      const currentPage = page || this.pagination.page;
+      const currentLimit = limit || this.pagination.limit;
+      
       this.isLoading = true;
       this.error = null;
 
       try {
         const response = await axios.get(`${API_BASE_URL}/api/bookings/my-bookings`, {
+          params: {
+            page: currentPage,
+            limit: currentLimit
+          },
           withCredentials: true,
         });
 
         if (response.data && response.data.success) {
           // API đã trả về AnhKhachSanUrl và AnhLoaiPhongUrl là URL đầy đủ
           this.bookings = response.data.data || [];
-          console.log(`Successfully fetched ${this.bookings.length} bookings.`);
-          console.log("Response data:", response.data.data)
+          this.pagination = response.data.pagination || this.pagination;
+          console.log(`Successfully fetched ${this.bookings.length} bookings for page ${currentPage}.`);
+          console.log("Pagination info:", response.data.pagination);
         } else {
           this.error = response.data.message || 'Không thể tải lịch sử đặt phòng.';
           this.bookings = [];
@@ -111,6 +132,30 @@ export const useBookingHistoryStore = defineStore('bookingHistory', {
 
     clearHistoryError() {
       this.error = null;
+    },
+
+    // Pagination actions
+    async goToPage(page) {
+      if (page >= 1 && page <= this.pagination.totalPages) {
+        await this.fetchBookingHistory(page);
+      }
+    },
+
+    async nextPage() {
+      if (this.pagination.hasNextPage) {
+        await this.fetchBookingHistory(this.pagination.page + 1);
+      }
+    },
+
+    async prevPage() {
+      if (this.pagination.hasPrevPage) {
+        await this.fetchBookingHistory(this.pagination.page - 1);
+      }
+    },
+
+    async changeLimit(newLimit) {
+      this.pagination.limit = newLimit;
+      await this.fetchBookingHistory(1, newLimit); // Reset về trang 1 khi thay đổi limit
     },
   },
 });

@@ -36,6 +36,7 @@ import FindReviewPage from '../views/admin/reviews/FindReviewPage.vue'
 import ManagePromotionsPage from '../views/admin/promotions/ManagePromotionsPage.vue'
 import AddPromotionPage from '../views/admin/promotions/AddPromotionPage.vue'
 import EditPromotionPage from '../views/admin/promotions/EditPromotionPage.vue'
+import ReviewFormPage from '../views/ReviewFormPage.vue'
 
 
 
@@ -56,6 +57,7 @@ const routes = [
   { path: '/BookingHistory', name: 'BookingHistory', component: BookingHistory, meta: {navbarBehavior: 'stickyWithHideOnScroll'}}, 
   { path: '/TransactionHistory', name: 'TransactionHistory', component: TransactionHistory, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
   { path: '/hotels/:id', name: 'HotelDetails', component: HotelDetails, meta: {navbarBehavior: 'stickyWithHideOnScroll'}, props: true},
+  { path: '/review/:bookingId', name: 'ReviewForm', component: ReviewFormPage, meta: {navbarBehavior: 'stickyWithHideOnScroll'}, props: true},
   { path: '/complete-profile', name: 'CompleteProfilePage', component: CompleteProfilePage },
   {
     path: '/admin',

@@ -64,9 +64,9 @@ router.post('/', optionalAuthenticationToken, createBooking);
 /**
  * @route   GET /api/bookings/:MaDat
  * @desc    Lấy chi tiết một đơn đặt phòng
- * @access  Private
+ * @access  Public (optional auth for security check)
  */
-router.get('/:MaDat', authenticateToken, getBookingById);
+router.get('/:MaDat', optionalAuthenticationToken, getBookingById);
 
 /**
  * @route   PUT /api/bookings/:MaDat

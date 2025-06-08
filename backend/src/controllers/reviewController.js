@@ -4,8 +4,8 @@ const { containsBadWords } = require('../utils/badWords');
 // Create a new review
 exports.createReview = async (req, res) => {
     try {
-        const { MaKS, MaDat, NoiDung, Sao } = req.body;
-        const MaKH = req.user.MaKH;
+        const { MaDat, NoiDung, Sao } = req.body;
+        const currentUser = req.user;
         const pool = await poolPromise;
 
         // Kiểm tra từ cấm
@@ -20,15 +20,28 @@ exports.createReview = async (req, res) => {
             });
         }
 
-        // Kiểm tra xem khách hàng đã từng đặt phòng và đã check-out chưa
-        const bookingCheck = await pool.request()
-            .input('MaDat', sql.Int, MaDat)
-            .input('MaKH', sql.Int, MaKH)
-            .query(`
-                SELECT TrangThaiBooking
-                FROM Booking
-                WHERE MaDat = @MaDat AND MaKH = @MaKH
-            `);
+        // Kiểm tra booking tồn tại và đã check-out
+        let bookingCheck;
+        if (currentUser) {
+            // User đã đăng nhập - kiểm tra ownership
+            bookingCheck = await pool.request()
+                .input('MaDat', sql.Int, MaDat)
+                .input('MaKH', sql.Int, currentUser.MaKH)
+                .query(`
+                    SELECT TrangThaiBooking, MaKH, MaKS
+                    FROM Booking
+                    WHERE MaDat = @MaDat AND MaKH = @MaKH
+                `);
+        } else {
+            // Guest - chỉ kiểm tra booking đã trả phòng
+            bookingCheck = await pool.request()
+                .input('MaDat', sql.Int, MaDat)
+                .query(`
+                    SELECT TrangThaiBooking, MaKH, MaKS
+                    FROM Booking
+                    WHERE MaDat = @MaDat
+                `);
+        }
 
         if (bookingCheck.recordset.length === 0) {
             return res.status(403).json({ error: "Bạn không có quyền đánh giá đơn đặt phòng này" });
@@ -48,13 +61,15 @@ exports.createReview = async (req, res) => {
             `);
 
         if (existingReview.recordset.length > 0) {
-            return res.status(400).json({ error: "Bạn đã đánh giá đơn đặt phòng này" });
+            return res.status(400).json({ error: "Đơn đặt phòng này đã được đánh giá" });
         }
 
-        // Tạo review mới
+        // Tạo review mới - sử dụng MaKH từ booking cho guest
+        const MaKHForReview = currentUser ? currentUser.MaKH : bookingCheck.recordset[0].MaKH;
+        
         const result = await pool.request()
-            .input('MaKH', sql.Int, MaKH)
-            .input('MaKS', sql.Int, MaKS)
+            .input('MaKH', sql.Int, MaKHForReview)
+            .input('MaKS', sql.Int, bookingCheck.recordset[0].MaKS)
             .input('MaDat', sql.Int, MaDat)
             .input('NoiDung', sql.NVarChar, NoiDung)
             .input('Sao', sql.Decimal(2, 1), Sao)

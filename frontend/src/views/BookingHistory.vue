@@ -45,9 +45,32 @@
 
       <!-- Display Bookings List -->
       <div v-else class="booking-history-list">
-        <p v-if="historyStore.bookings.length > 0" class="text-muted small mb-3">
-          Hiển thị {{ historyStore.bookings.length }} đặt phòng.
-        </p>
+        <!-- Pagination Info -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <p v-if="historyStore.bookings.length > 0" class="text-muted small mb-0">
+            Hiển thị {{ historyStore.bookings.length }} / {{ historyStore.getPagination.total }} đặt phòng 
+            (Trang {{ historyStore.getCurrentPage }} / {{ historyStore.getTotalPages }})
+          </p>
+          
+          <!-- Items per page selector -->
+          <div class="d-flex align-items-center">
+            <label class="form-label small me-2 mb-0">Hiển thị:</label>
+            <select 
+              class="form-select form-select-sm" 
+              style="width: auto;"
+              :value="historyStore.getPagination.limit"
+              @change="handleLimitChange"
+              :disabled="historyStore.isLoadingHistory"
+            >
+              <option value="5">5 / trang</option>
+              <option value="10">10 / trang</option>
+              <option value="20">20 / trang</option>
+              <option value="50">50 / trang</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Booking Cards -->
         <VueCard1
           v-for="bookingEntry in preparedBookingHistoryData"
           :key="bookingEntry.idForVForKey"
@@ -56,6 +79,15 @@
           mode="booking-history"
           @action-clicked="handleBookingAction"
           class="mb-4 vue-card-item"
+        />
+
+        <!-- Pagination Component -->
+        <Pagination 
+          v-if="historyStore.getTotalPages > 1"
+          :page="historyStore.getCurrentPage" 
+          :total="historyStore.getTotalPages"
+          @change="handlePageChange"
+          class="mt-4"
         />
       </div>
 
@@ -100,6 +132,7 @@ import { format, parseISO, differenceInCalendarDays } from 'date-fns'; // Thêm 
 
 import Layout from '@/components/Layout.vue';
 import VueCard1 from '@/components/vueCard1.vue'; // Đảm bảo đường dẫn đúng
+import Pagination from '@/components/Pagination.vue';
 
 const historyStore = useBookingHistoryStore();
 const authStore = useAuthStore();
@@ -131,6 +164,13 @@ const preparedBookingHistoryData = computed(() => {
     if (allowCancellation) {
       actions.push({ id: 'cancel', label: 'Hủy Đặt Phòng', backgroundColor: '#dc3545', textColor: '#fff' });
     }
+    
+    // Thêm nút đánh giá cho booking đã trả phòng
+    const allowReview = apiBooking.TrangThaiBooking === 'Đã trả phòng';
+    if (allowReview) {
+      actions.push({ id: 'review', label: 'Đánh Giá', backgroundColor: '#ffc107', textColor: '#000', isPrimary: true });
+    }
+    
     // actions.push({ id: 'view-receipt', label: 'Xem Hóa Đơn', backgroundColor: '#0dcaf0', textColor: '#000' });
 
 
@@ -207,6 +247,16 @@ const refreshHistory = () => {
   historyStore.fetchBookingHistory();
 };
 
+// Pagination handlers
+const handlePageChange = (newPage) => {
+  historyStore.goToPage(newPage);
+};
+
+const handleLimitChange = (event) => {
+  const newLimit = parseInt(event.target.value);
+  historyStore.changeLimit(newLimit);
+};
+
 const handleBookingAction = ({ actionId, bookingItem }) => {
   console.log(`Action '${actionId}' triggered for booking ID: ${bookingItem.MaDat}`);
   if (actionId === 'cancel') {
@@ -214,6 +264,9 @@ const handleBookingAction = ({ actionId, bookingItem }) => {
     cancelReason.value = ''; // Reset lý do
     cancelError.value = null; // Reset lỗi modal cũ
     showCancelModal.value = true;
+  } else if (actionId === 'review') {
+    // Điều hướng tới trang đánh giá
+    router.push({ name: 'ReviewForm', params: { bookingId: bookingItem.MaDat } });
   } else if (actionId === 'view-receipt') {
     // Ví dụ: điều hướng tới trang xem hóa đơn chi tiết
     // router.push({ name: 'InvoiceDetails', params: { id: bookingItem.MaHD } });
