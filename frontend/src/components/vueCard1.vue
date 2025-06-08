@@ -84,8 +84,9 @@
                 />
                  <Button
                   v-else-if="mode === 'booking-history' && processedData.actions.length > 0"
-                  :content="processedData.actions[0].label.toUpperCase()"
-                  class="cta-button cta-history"
+                  :content="getPrimaryAction.label.toUpperCase()"
+                  class="cta-button"
+                  :class="getActionButtonClass"
                   @click="handleCtaClick(roomItem.originalRoomData)"
                 />
               </div>
@@ -123,6 +124,22 @@ const defaultRoomImage = defaultRoomImagePlaceholder;
 
 const cardModeClass = computed(() => {
     return props.mode === 'search-results' ? 'mode-search-result' : 'mode-history';
+});
+
+const getPrimaryAction = computed(() => {
+  const actions = processedData.value.actions || [];
+  return actions.find(a => a.isPrimary) || actions[0] || { label: '', id: '' };
+});
+
+const getActionButtonClass = computed(() => {
+  const action = getPrimaryAction.value;
+  if (action.id === 'cancel') {
+    return 'cta-cancel';
+  } else if (action.id === 'review') {
+    return 'cta-review';
+  } else {
+    return 'cta-history';
+  }
 });
 
 const processedData = computed(() => {
@@ -191,7 +208,7 @@ const handleCtaClick = (originalRoomData) => {
   if (props.mode === 'search-results') {
     emit('room-selected', originalRoomData);
   } else if (props.mode === 'booking-history' && processedData.value.actions.length > 0) {
-    const primaryAction = processedData.value.actions.find(a => a.isPrimary) || processedData.value.actions[0];
+    const primaryAction = getPrimaryAction.value;
     emit('action-clicked', { actionId: primaryAction.id, bookingItem: processedData.value.originalItem });
   }
 };
@@ -214,6 +231,10 @@ const handleCtaClick = (originalRoomData) => {
 .cta-button:hover { background-color: #343a40; }
 .cta-button.cta-history { background-color: #dc3545; }
 .cta-button.cta-history:hover { background-color: #c82333; }
+.cta-button.cta-cancel { background-color: #dc3545; }
+.cta-button.cta-cancel:hover { background-color: #c82333; }
+.cta-button.cta-review { background-color: #ffc107; color: #000; }
+.cta-button.cta-review:hover { background-color: #e0a800; }
 .room-item-card.is-unavailable .price-box { background-color: #f1f3f5; }
 .room-item-card.is-unavailable .cta-button { background-color: #adb5bd; color: #6c757d; pointer-events: none; }
 .room-item-card.mode-search-result { border: 1px solid #e9ecef; }

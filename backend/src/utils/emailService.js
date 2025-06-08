@@ -166,7 +166,7 @@ exports.sendBookingConfirmation = async (booking) => {
                                 <tr>
                                     <td style="padding: 0 30px 25px;">
                                         <h2 style="margin: 0 0 15px; color: #1f2937; font-size: 24px; font-weight: 600;">
-                                            Xin chào ${booking.guestName}! 👋
+                                            Xin chào ${booking.guestName || 'Quý khách'}! 👋
                                         </h2>
                                         <p style="margin: 0; color: #6b7280; font-size: 16px; line-height: 1.6;">
                                             Chúng tôi rất vui mừng được phục vụ bạn. Dưới đây là thông tin chi tiết về đơn đặt phòng của bạn:
@@ -257,25 +257,7 @@ exports.sendBookingConfirmation = async (booking) => {
                                     </td>
                                 </tr>
 
-                                <!-- Action buttons -->
-                                <tr>
-                                    <td style="padding: 0 30px 40px; text-align: center;">
-                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
-                                            <tr>
-                                                <td style="padding: 0 10px;">
-                                                    <a href="#" style="display: inline-block; background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(13, 110, 253, 0.4); transition: all 0.3s ease;">
-                                                        📱 Quản lý đặt phòng
-                                                    </a>
-                                                </td>
-                                                <td style="padding: 0 10px;">
-                                                    <a href="#" style="display: inline-block; background-color: transparent; color: #0d6efd; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px; border: 2px solid #0d6efd;">
-                                                        🗺️ Xem bản đồ
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                        </table>
-                                    </td>
-                                </tr>
+
 
                                 <!-- Contact support -->
                                 <tr>
@@ -313,12 +295,7 @@ exports.sendBookingConfirmation = async (booking) => {
                                                         Cam kết mang đến trải nghiệm tuyệt vời nhất cho khách hàng
                                                     </p>
                                                     
-                                                    <!-- Social links -->
-                                                    <div style="margin-bottom: 20px;">
-                                                        <a href="#" style="display: inline-block; margin: 0 8px; color: #6c757d; text-decoration: none; font-size: 24px;">📘</a>
-                                                        <a href="#" style="display: inline-block; margin: 0 8px; color: #6c757d; text-decoration: none; font-size: 24px;">📷</a>
-                                                        <a href="#" style="display: inline-block; margin: 0 8px; color: #6c757d; text-decoration: none; font-size: 24px;">🐦</a>
-                                                    </div>
+                                                    
                                                     
                                                     <div style="border-top: 1px solid #dee2e6; padding-top: 20px; margin-top: 20px;">
                                                         <p style="margin: 0; color: #6c757d; font-size: 14px;">
@@ -410,7 +387,7 @@ exports.sendBookingNotificationToManager = async (managerInfo) => {
                                 <tr>
                                     <td style="padding: 0 30px 25px;">
                                         <h2 style="margin: 0 0 15px; color: #1f2937; font-size: 24px; font-weight: 600;">
-                                            Xin chào ${managerInfo.managerName}! 👋
+                                            Xin chào ${managerInfo.managerName || 'Quý quản lý'}! 👋
                                         </h2>
                                         <p style="margin: 0; color: #6b7280; font-size: 16px; line-height: 1.6;">
                                             Bạn có một đơn đặt phòng mới tại <strong style="color: #0d6efd;">${managerInfo.hotelName}</strong>. Vui lòng kiểm tra và chuẩn bị phòng cho khách hàng.
@@ -509,25 +486,7 @@ exports.sendBookingNotificationToManager = async (managerInfo) => {
                                     </td>
                                 </tr>
 
-                                <!-- Management action buttons -->
-                                <tr>
-                                    <td style="padding: 0 30px 40px; text-align: center;">
-                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
-                                            <tr>
-                                                <td style="padding: 0 10px;">
-                                                    <a href="#" style="display: inline-block; background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(13, 110, 253, 0.4); transition: all 0.3s ease;">
-                                                        📊 Xem Dashboard
-                                                    </a>
-                                                </td>
-                                                <td style="padding: 0 10px;">
-                                                    <a href="#" style="display: inline-block; background-color: transparent; color: #0d6efd; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px; border: 2px solid #0d6efd;">
-                                                        📋 Chi tiết booking
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                        </table>
-                                    </td>
-                                </tr>
+
 
                                 <!-- Contact support -->
                                 <tr>
@@ -565,12 +524,7 @@ exports.sendBookingNotificationToManager = async (managerInfo) => {
                                                         Hỗ trợ đối tác quản lý hiệu quả và tăng doanh thu
                                                     </p>
                                                     
-                                                    <!-- Manager resources -->
-                                                    <div style="margin-bottom: 20px;">
-                                                        <a href="#" style="display: inline-block; margin: 0 8px; color: #6c757d; text-decoration: none; font-size: 24px;">📱</a>
-                                                        <a href="#" style="display: inline-block; margin: 0 8px; color: #6c757d; text-decoration: none; font-size: 24px;">💻</a>
-                                                        <a href="#" style="display: inline-block; margin: 0 8px; color: #6c757d; text-decoration: none; font-size: 24px;">📊</a>
-                                                    </div>
+                                                    
                                                     
                                                     <div style="border-top: 1px solid #dee2e6; padding-top: 20px; margin-top: 20px;">
                                                         <p style="margin: 0; color: #6c757d; font-size: 14px;">
@@ -664,14 +618,7 @@ exports.sendNewBookingToManager = async (managerEmail, hotelName, maDat) => {
                                     </td>
                                 </tr>
 
-                                <!-- Action button -->
-                                <tr>
-                                    <td style="padding: 0 30px 30px; text-align: center;">
-                                        <a href="#" style="display: inline-block; background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%); color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);">
-                                            📊 Truy cập Dashboard
-                                        </a>
-                                    </td>
-                                </tr>
+
 
                                 <!-- Footer -->
                                 <tr>
@@ -695,5 +642,210 @@ exports.sendNewBookingToManager = async (managerEmail, hotelName, maDat) => {
         console.log(`Đã gửi thông báo cho quản lý khách sạn: ${managerEmail}`);
     } catch (error) {
         console.error('Lỗi khi gửi email cho quản lý:', error);
+    }
+};
+
+exports.sendReviewRequestEmail = async (guestEmail, reviewInfo) => {
+    const mailOptions = {
+        from: `"Hotel Booking System" <${process.env.SMTP_USER}>`,
+        to: guestEmail,
+        subject: '⭐ Chia sẻ trải nghiệm của bạn - Hotel Booking System',
+        html: `
+            <!DOCTYPE html>
+            <html lang="vi">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Đánh giá trải nghiệm</title>
+            </head>
+            <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333333; background-color: #f8f9fa;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f8f9fa;">
+                    <tr>
+                        <td style="padding: 40px 20px;">
+                            <!-- Main container -->
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); overflow: hidden;">
+                                
+                                <!-- Header with star gradient -->
+                                <tr>
+                                    <td style="background: linear-gradient(135deg, #ffd700 0%, #ffb347 100%); padding: 40px 30px; text-align: center;">
+                                        <table align="center" role="presentation" style="margin: 0 auto;">
+                                            <tr>
+                                                <td align="center" style="font-size: 36px; line-height: 1;">
+                                                ⭐
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+                                            Cảm ơn bạn đã lưu trú!
+                                        </h1>
+                                        <p style="margin: 10px 0 0; color: rgba(255, 255, 255, 0.9); font-size: 16px;">
+                                            Chia sẻ trải nghiệm để giúp chúng tôi phục vụ tốt hơn
+                                        </p>
+                                    </td>
+                                </tr>
+
+                                <!-- Review request badge -->
+                                <tr>
+                                    <td style="padding: 0 30px; position: relative;">
+                                        <div style="background-color: #28a745; color: white; padding: 12px 24px; border-radius: 25px; text-align: center; font-weight: 600; margin: -20px auto 30px; width: fit-content; box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);">
+                                            🏁 Check-out thành công
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <!-- Guest greeting -->
+                                <tr>
+                                    <td style="padding: 0 30px 25px;">
+                                        <h2 style="margin: 0 0 15px; color: #1f2937; font-size: 24px; font-weight: 600;">
+                                            Xin chào ${reviewInfo.guestName || 'Quý khách'}! 👋
+                                        </h2>
+                                        <p style="margin: 0; color: #6b7280; font-size: 16px; line-height: 1.6;">
+                                            Cảm ơn bạn đã lưu trú tại <strong style="color: #0d6efd;">${reviewInfo.hotelName}</strong>. 
+                                            Chúng tôi rất mong nhận được phản hồi từ bạn để cải thiện chất lượng dịch vụ.
+                                        </p>
+                                    </td>
+                                </tr>
+
+                                <!-- Booking reference card -->
+                                <tr>
+                                    <td style="padding: 0 30px 30px;">
+                                        <div style="background-color: #f8f9fa; border-radius: 12px; padding: 25px; border-left: 5px solid #ffd700;">
+                                            <h3 style="margin: 0 0 20px; color: #1e293b; font-size: 20px; font-weight: 600; display: flex; align-items: center;">
+                                                📋 Thông tin lưu trú của bạn
+                                            </h3>
+                                            
+                                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                                <tr>
+                                                    <td style="padding: 12px 0; border-bottom: 1px solid #dee2e6;">
+                                                        <strong style="color: #374151; font-weight: 600;">🆔 Mã đặt phòng:</strong>
+                                                    </td>
+                                                    <td style="padding: 12px 0; border-bottom: 1px solid #dee2e6; text-align: right;">
+                                                        <span style="background-color: #0d6efd; color: white; padding: 4px 12px; border-radius: 20px; font-weight: 600; font-size: 14px;">
+                                                            #${reviewInfo.bookingId}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="padding: 12px 0; border-bottom: 1px solid #dee2e6;">
+                                                        <strong style="color: #374151; font-weight: 600;">🏨 Khách sạn:</strong>
+                                                    </td>
+                                                    <td style="padding: 12px 0; border-bottom: 1px solid #dee2e6; text-align: right; color: #1f2937; font-weight: 500;">
+                                                        ${reviewInfo.hotelName}
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="padding: 15px 0 0;">
+                                                        <strong style="color: #374151; font-weight: 600; font-size: 18px;">✅ Trạng thái:</strong>
+                                                    </td>
+                                                    <td style="padding: 15px 0 0; text-align: right;">
+                                                        <span style="color: #28a745; font-size: 16px; font-weight: 700;">
+                                                            Đã check-out thành công
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <!-- Review invitation -->
+                                <tr>
+                                    <td style="padding: 0 30px 30px;">
+                                        <div style="background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 12px; padding: 20px;">
+                                            <h3 style="margin: 0 0 15px; color: #664d03; font-size: 18px; font-weight: 600; display: flex; align-items: center;">
+                                                ⭐ Chia sẻ trải nghiệm của bạn
+                                            </h3>
+                                            <p style="margin: 0 0 15px; color: #664d03; line-height: 1.6;">
+                                                Đánh giá của bạn sẽ giúp các khách hàng khác có những lựa chọn tốt hơn 
+                                                và giúp chúng tôi nâng cao chất lượng dịch vụ.
+                                            </p>
+                                            <ul style="margin: 0; padding-left: 20px; color: #664d03; line-height: 1.6;">
+                                                <li style="margin-bottom: 8px;">Chất lượng phòng và tiện nghi</li>
+                                                <li style="margin-bottom: 8px;">Thái độ phục vụ của nhân viên</li>
+                                                <li style="margin-bottom: 8px;">Vị trí và môi trường xung quanh</li>
+                                                <li>Trải nghiệm tổng thể của bạn</li>
+                                            </ul>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <!-- Review button -->
+                                <tr>
+                                    <td style="padding: 0 30px 30px;">
+                                        <div style="text-align: center; margin: 30px 0;">
+                                            <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/review/${reviewInfo.bookingId}" 
+                                               style="display: inline-block; background: linear-gradient(135deg, #ffc107 0%, #ffb347 100%); 
+                                                      color: #212529; text-decoration: none; padding: 16px 32px; border-radius: 8px; 
+                                                      font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3); 
+                                                      transition: all 0.3s ease; text-shadow: none;">
+                                                ⭐ Đánh giá trải nghiệm của bạn
+                                            </a>
+                                        </div>
+                                        <p style="margin: 0 0 15px; color: #6b7280; font-size: 14px; text-align: center; line-height: 1.6;">
+                                            Hoặc truy cập: <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/review/${reviewInfo.bookingId}" 
+                                            style="color: #0d6efd; word-break: break-all;">${process.env.FRONTEND_URL || 'http://localhost:3000'}/review/${reviewInfo.bookingId}</a>
+                                        </p>
+                                    </td>
+                                </tr>
+
+                                <!-- Thank you message -->
+                                <tr>
+                                    <td style="padding: 0 30px 30px;">
+                                        <div style="background-color: #e8f5e8; border: 1px solid #28a745; border-radius: 12px; padding: 20px; text-align: center;">
+                                            <h3 style="margin: 0 0 15px; color: #155724; font-size: 18px; font-weight: 600;">
+                                                💝 Cảm ơn bạn đã tin tưởng lựa chọn dịch vụ của chúng tôi
+                                            </h3>
+                                            <p style="margin: 0; color: #155724; line-height: 1.6;">
+                                                Chúng tôi hy vọng bạn đã có những trải nghiệm tuyệt vời. 
+                                                Rất mong được đón tiếp bạn trong những chuyến đi tiếp theo!
+                                            </p>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <!-- Footer -->
+                                <tr>
+                                    <td style="background-color: #f8f9fa; padding: 30px; text-align: center; border-radius: 0 0 12px 12px;">
+                                        <div style="border-top: 1px solid #dee2e6; padding-top: 20px; margin-top: 0;">
+                                            <h3 style="margin: 0 0 15px; color: #0d6efd; font-size: 20px; font-weight: 600;">
+                                                Hotel Booking System
+                                            </h3>
+                                            <p style="margin: 0 0 20px; color: #6b7280; line-height: 1.6;">
+                                                Cảm ơn bạn đã lựa chọn dịch vụ của chúng tôi<br>
+                                                Chúng tôi luôn nỗ lực để mang đến trải nghiệm tốt nhất
+                                            </p>
+                                            
+                                            <div style="border-top: 1px solid #dee2e6; padding-top: 20px; margin-top: 20px;">
+                                                <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                                                    © ${new Date().getFullYear()} Hotel Booking System. Tất cả quyền được bảo lưu.<br>
+                                                    <span style="color: #adb5bd;">Thời gian gửi: ${moment().format('DD/MM/YYYY HH:mm:ss')}</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <!-- Responsive note -->
+                            <div style="max-width: 600px; margin: 20px auto 0; text-align: center;">
+                                <p style="margin: 0; color: #adb5bd; font-size: 12px;">
+                                    Email này được tối ưu hóa cho tất cả thiết bị. Cảm ơn bạn đã dành thời gian đọc email.
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </body>
+            </html>
+        `
+    };
+
+    try {
+        const info = await transporter.sendMail(mailOptions);
+        console.log(`Đã gửi email yêu cầu đánh giá cho ${guestEmail}`);
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        console.error('Lỗi khi gửi email yêu cầu đánh giá:', error);
+        throw new Error(`Lỗi khi gửi email: ${error.message}`);
     }
 };
