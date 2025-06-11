@@ -123,15 +123,6 @@
               </div>
             </div>
           </div>
-          
-          <!-- Debug info -->
-          <div v-if="mainImageIndex !== null" class="mt-3 alert alert-info">
-            <small>
-              Debug: Main image index = {{ mainImageIndex }}, 
-              Image type = {{ previewImages[mainImageIndex]?.isNew ? 'new' : 'existing' }},
-              {{ previewImages[mainImageIndex]?.MaAnh ? 'Image ID = ' + previewImages[mainImageIndex].MaAnh : 'New file' }}
-            </small>
-          </div>
         </div>
       </div>
 

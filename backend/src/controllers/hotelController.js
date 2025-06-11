@@ -406,13 +406,9 @@ exports.updateHotel = async (req, res) => {
         const uploadedImages = [];
         let newMainImageId = null;
         
-        // Log thông tin nhận được từ frontend
-        console.log('Main image data received:', { mainImageType, mainImageIndex, mainImageId });
-        
         // Xử lý ảnh main từ ảnh cũ nếu có
         if (mainImageType === 'existing' && mainImageId) {
             const existingImageId = parseInt(mainImageId);
-            console.log('Processing existing main image with ID:', existingImageId);
             if (!isNaN(existingImageId)) {
                 // Kiểm tra ảnh có tồn tại và thuộc hotel này không
                 const imageCheck = await pool.request()
@@ -425,9 +421,6 @@ exports.updateHotel = async (req, res) => {
                     
                 if (imageCheck.recordset.length > 0) {
                     newMainImageId = existingImageId;
-                    console.log('Set existing image as main:', existingImageId);
-                } else {
-                    console.log('Existing image not found or not belongs to this hotel');
                 }
             }
         }
@@ -472,10 +465,8 @@ exports.updateHotel = async (req, res) => {
                     // Kiểm tra nếu ảnh mới này được chọn làm main
                     if (mainImageType === 'new' && mainImageIndex !== undefined && mainImageIndex !== null) {
                         const selectedIndex = parseInt(mainImageIndex);
-                        console.log(`Checking new image ${i}, selectedIndex: ${selectedIndex}`);
                         if (!isNaN(selectedIndex) && selectedIndex === i) {
                             newMainImageId = newImageId;
-                            console.log('Set new uploaded image as main:', newImageId);
                         }
                     }
 
@@ -500,17 +491,14 @@ exports.updateHotel = async (req, res) => {
         
         // Cập nhật ảnh main nếu có chỉ định
         if (newMainImageId) {
-            console.log('Updating main image to:', newMainImageId);
-            
             // Đặt tất cả ảnh về gallery
-            const galleryUpdateResult = await pool.request()
+            await pool.request()
                 .input('MaKS', sql.Int, parseInt(MaKS))
                 .query(`
                     UPDATE AnhKhachSan
                     SET LoaiAnh = 'gallery'
                     WHERE MaKS = @MaKS AND IsActive = 1
                 `);
-            console.log('Gallery update affected rows:', galleryUpdateResult.rowsAffected[0]);
             
             // Đặt ảnh được chọn làm main
             const mainUpdateResult = await pool.request()
@@ -520,13 +508,9 @@ exports.updateHotel = async (req, res) => {
                     SET LoaiAnh = 'main'
                     WHERE MaAnh = @MaAnh AND IsActive = 1
                 `);
-            console.log('Main update affected rows:', mainUpdateResult.rowsAffected[0]);
             
             if (mainUpdateResult.rowsAffected[0] > 0) {
                 imageActions.push('Đã cập nhật ảnh chính');
-                console.log('Successfully updated main image');
-            } else {
-                console.log('Failed to update main image - no rows affected');
             }
             
             // Cập nhật uploadedImages để reflect việc thay đổi main
