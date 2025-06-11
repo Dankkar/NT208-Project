@@ -42,7 +42,7 @@
         class="list-group-item"
       >
         <!-- Bố cục thẻ con, có class động để điều khiển giao diện theo mode -->
-        <div class="room-item-card" :class="[cardModeClass, { 'is-unavailable': roomItem.availability <= 0 && roomItem.alternative.length <= 0 }]">
+        <div class="room-item-card" :class="[cardModeClass, { 'is-unavailable': roomItem.availability <= 0 && (!roomItem.alternative || roomItem.alternative.length <= 0) }]">
           <div class="row g-0 align-items-center">
             
             <!-- Cột trái: Hình ảnh & Thông tin phòng -->

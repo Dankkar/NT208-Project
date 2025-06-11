@@ -51,7 +51,7 @@ router.get('/my-bookings', authenticateToken, getMyBookings);
  * @desc    Đặt phòng và giữ chỗ
  * @access  Public
  */
-router.post('/hold', holdBooking);
+router.post('/hold', optionalAuthenticationToken, holdBooking);
 
 /**
  * @route   POST /api/bookings
