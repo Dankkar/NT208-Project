@@ -103,7 +103,7 @@ async function fetchHotelDetails() {
   if (!hotelId.value) return;
   
   try {
-    const response = await axios.get(`http://localhost:5000/api/hotels/${hotelId.value}`, { withCredentials: true });
+    const response = await axios.get(`/api/hotels/${hotelId.value}`, { withCredentials: true });
     if (response.data && response.data.success) {
       selectedHotel.value = response.data.data;
     } else {
@@ -118,7 +118,7 @@ async function fetchRoomTypeDetails() {
   if (!roomTypeId.value) return;
   
   try {
-    const response = await axios.get(`http://localhost:5000/api/roomTypes/${roomTypeId.value}`, { withCredentials: true });
+    const response = await axios.get(`/api/roomTypes/${roomTypeId.value}`, { withCredentials: true });
     if (response.data && response.data.success) {
       selectedRoomType.value = response.data.data;
     } else {
@@ -132,7 +132,7 @@ async function fetchRoomTypeDetails() {
 async function fetchBedConfigurations() {
   loadingBedConfigs.value = true;
   try {
-    const response = await axios.get('http://localhost:5000/api/bed-configs', { withCredentials: true });
+    const response = await axios.get('/api/bed-configs', { withCredentials: true });
     if (response.data && response.data.success) {
       bedConfigs.value = response.data.data || [];
     } else {
@@ -160,7 +160,7 @@ async function submitAddRoom() {
   successMessage.value = '';
 
   try {
-    const response = await axios.post('http://localhost:5000/api/rooms', roomData, {
+    const response = await axios.post('/api/rooms', roomData, {
       withCredentials: true
     });
     if (response.status === 201 && response.data?.message) {

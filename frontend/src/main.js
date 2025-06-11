@@ -14,7 +14,10 @@ import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 import './assets/styles/variables.css'
 
 // Configure axios defaults
-axios.defaults.baseURL = 'http://localhost:5000'
+// Import API configuration
+import { API_BASE_URL } from './config/api.js'
+
+axios.defaults.baseURL = API_BASE_URL
 axios.defaults.withCredentials = true // Important for session handling
 
 // Initialize session only when needed (moved to authentication flow)

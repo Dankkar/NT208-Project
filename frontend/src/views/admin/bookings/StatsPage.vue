@@ -217,7 +217,7 @@ async function fetchRevenueOverview() {
   loading.overview = true;
   errors.overview = '';
   try {
-    const response = await axios.get('http://localhost:5000/api/admin/revenue/overview', { withCredentials: true });
+    const response = await axios.get('/api/admin/revenue/overview', { withCredentials: true });
     if (response.data && response.data.success) {
       overviewData.value = response.data.data;
     } else {
@@ -236,7 +236,7 @@ async function fetchRevenueByHotel() {
   errors.byHotel = '';
   revenueByHotel.value = []; // Xóa dữ liệu cũ trước khi fetch
   try {
-    const response = await axios.get('http://localhost:5000/api/admin/revenue/hotels', {
+    const response = await axios.get('/api/admin/revenue/hotels', {
         params: { startDate: filters.startDate, endDate: filters.endDate },
         withCredentials: true
     });
@@ -258,7 +258,7 @@ async function fetchRevenueByPeriod() {
   errors.byPeriod = '';
   revenueByPeriod.value = []; // Xóa dữ liệu cũ
   try {
-    const response = await axios.get('http://localhost:5000/api/admin/revenue/period', {
+    const response = await axios.get('/api/admin/revenue/period', {
       params: {
         startDate: filters.startDate,
         endDate: filters.endDate,

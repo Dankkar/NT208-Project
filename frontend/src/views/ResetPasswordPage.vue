@@ -153,7 +153,7 @@ async function resetPassword() {
   
   isLoading.value = true
   try {
-    await axios.put('http://localhost:5000/api/auth/reset-password', {
+    await axios.put('/api/auth/reset-password', {
       token: resetToken.value,
       newPassword: password.value
     })
