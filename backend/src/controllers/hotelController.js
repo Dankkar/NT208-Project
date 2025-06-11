@@ -1,16 +1,33 @@
 const {poolPromise, sql} = require('../database/db');
 
+/**
+ * Tạo khách sạn mới với hình ảnh
+ * @param {Object} req - Request object
+ * @param {Object} req.body - Thông tin khách sạn
+ * @param {string} req.body.TenKS - Tên khách sạn
+ * @param {string} req.body.DiaChi - Địa chỉ khách sạn
+ * @param {number} req.body.HangSao - Hạng sao (1.0 - 5.0)
+ * @param {string} req.body.LoaiHinh - Loại hình kinh doanh
+ * @param {string} req.body.MoTaCoSoVatChat - Mô tả cơ sở vật chất
+ * @param {string} req.body.QuyDinh - Quy định của khách sạn
+ * @param {string} req.body.MotaChung - Mô tả chung
+ * @param {number} req.body.MaNguoiQuanLy - ID người quản lý (optional, default: user hiện tại)
+ * @param {number} req.body.mainImageIndex - Index ảnh chính trong danh sách files
+ * @param {Array} req.files - Danh sách file ảnh upload
+ * @param {Object} res - Response object
+ * @returns {Object} Thông tin khách sạn mới tạo với ảnh đã upload
+ */
 exports.createHotel = async (req, res) => {
     const {
-        TenKS,
-        DiaChi,
-        HangSao,
-        LoaiHinh,
-        MoTaCoSoVatChat,
-        QuyDinh,
-        MotaChung,
-        MaNguoiQuanLy, // Cho phép admin chỉ định người quản lý khác
-        mainImageIndex // Index của ảnh sẽ làm main trong danh sách files
+        TenKS,                    // Tên khách sạn
+        DiaChi,                   // Địa chỉ đầy đủ
+        HangSao,                  // Hạng sao: 1.0 - 5.0
+        LoaiHinh,                 // Loại hình: Khách sạn, Resort, Homestay...
+        MoTaCoSoVatChat,          // Mô tả cơ sở vật chất
+        QuyDinh,                  // Quy định của khách sạn
+        MotaChung,                // Mô tả tổng quan
+        MaNguoiQuanLy,            // ID người quản lý (admin có thể chỉ định)
+        mainImageIndex            // Index ảnh chính trong files upload
     } = req.body;
     
     try {
@@ -18,10 +35,10 @@ exports.createHotel = async (req, res) => {
         const fs = require('fs');
         const path = require('path');
         
-        // Xác định MaNguoiQuanLy - ưu tiên từ body, nếu không có thì dùng user hiện tại
+        // Xác định người quản lý: ưu tiên từ body, fallback user hiện tại
         let finalMaNguoiQuanLy = MaNguoiQuanLy || req.user.MaKH 
         
-        // Validate role của người được chỉ định làm quản lý
+        // Validate quyền của người được chỉ định làm quản lý
         const managerValidation = await pool.request()
             .input('MaKH', sql.Int, finalMaNguoiQuanLy)
             .query(`

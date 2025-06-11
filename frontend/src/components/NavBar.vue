@@ -71,39 +71,43 @@
 </template>
 
 <script setup>
-// Toàn bộ phần script của bạn được giữ nguyên
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import Button from './Button.vue'
-import MenuButton from './MenuButton.vue'
-import Logo from './Logo.vue'
-import logouitwhite from '../assets/Logo_UIT_white.jpg'
-import logouitblue from '../assets/Logo_UIT_blue.jpg'
-import { useAuthStore } from '../store/authStore'
-import { useBookingStore } from '../store/bookingStore'
+// Import các modules và components cần thiết
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue' // Vue 3 Composition API
+import { useRoute, useRouter } from 'vue-router'  // Router để điều hướng
+import Button from './Button.vue'          // Component nút bấm tùy chỉnh
+import MenuButton from './MenuButton.vue'  // Component menu hamburger cho mobile
+import Logo from './Logo.vue'              // Component logo
+import logouitwhite from '../assets/Logo_UIT_white.jpg'  // Logo trắng
+import logouitblue from '../assets/Logo_UIT_blue.jpg'    // Logo xanh
+import { useAuthStore } from '../store/authStore'         // Store quản lý xác thực
+import { useBookingStore } from '../store/bookingStore'   // Store quản lý đặt phòng
 
-const route = useRoute();
-const router = useRouter();
-const navbarRef = ref(null);
-const authStore = useAuthStore();
-const bookingStore = useBookingStore();
+// Khởi tạo các composables
+const route = useRoute();           // Thông tin route hiện tại
+const router = useRouter();         // Router để điều hướng
+const navbarRef = ref(null);        // Reference đến DOM element navbar
+const authStore = useAuthStore();   // Store xác thực người dùng
+const bookingStore = useBookingStore(); // Store quản lý booking
 
+// Props từ component cha
 const props = defineProps({
-  bgFixed: { type: Boolean, default: false }
+  bgFixed: { type: Boolean, default: false } // Có cố định background hay không
 });
 
-// Các state về scroll và visibility
-const internalShowBg = ref(false);
-const lastScrollPosition = ref(0);
-const navbarVisible = ref(true);
-const isAtTop = ref(true);
-const scrollThreshold = 5;
-const navbarHeight = ref(60);
-const currentScrollPosition = ref(0);
+// Các state reactive để quản lý scroll và hiển thị navbar
+const internalShowBg = ref(false);         // Có hiển thị background navbar không
+const lastScrollPosition = ref(0);         // Vị trí scroll trước đó
+const navbarVisible = ref(true);           // Navbar có visible không (cho hide on scroll)
+const isAtTop = ref(true);                 // Có ở đầu trang không
+const scrollThreshold = 5;                 // Ngưỡng scroll tối thiểu để trigger
+const navbarHeight = ref(60);              // Chiều cao navbar
+const currentScrollPosition = ref(0);      // Vị trí scroll hiện tại
 
-// Behavior và classes của Navbar
+// Computed properties để xác định behavior và style của navbar
+// Lấy behavior của navbar từ route meta (homepage, sticky, fixed, etc.)
 const currentNavbarBehavior = computed(() => route.meta.navbarBehavior || 'default');
 
+// Xác định class position cho navbar (absolute, fixed)
 const navbarPositionClass = computed(() => {
   if (currentNavbarBehavior.value === 'stickyWithHideOnScroll' || currentNavbarBehavior.value === 'simpleFixed') {
     return 'position-fixed top-0 start-0';
@@ -111,21 +115,27 @@ const navbarPositionClass = computed(() => {
   return 'position-absolute';
 });
 
+// Xác định có hiển thị background hay không dựa trên props và behavior
 const actualShowBg = computed(() => {
-  if (props.bgFixed) return true;
+  if (props.bgFixed) return true; // Nếu prop bgFixed = true thì luôn hiển thị bg
+  
   if (currentNavbarBehavior.value === 'homepage') {
-    return internalShowBg.value;
+    return internalShowBg.value; // Trang chủ: hiển thị bg khi scroll xuống
   }
+  
   if (currentNavbarBehavior.value === 'stickyWithHideOnScroll' || currentNavbarBehavior.value === 'simpleFixed') {
-    return currentScrollPosition.value > 10 || !isAtTop.value;
+    return currentScrollPosition.value > 10 || !isAtTop.value; // Fixed: hiển thị bg khi scroll > 10px
   }
+  
   return internalShowBg.value;
 });
 
+// Xác định theme class (light/dark) dựa trên background
 const navbarThemeClass = computed(() => {
   return actualShowBg.value ? 'bg-white shadow-sm navbar-light' : 'bg-transparent navbar-dark';
 });
 
+// Xác định có ẩn navbar không (chỉ áp dụng cho stickyWithHideOnScroll)
 const shouldHideNavbar = computed(() => {
   if (currentNavbarBehavior.value === 'stickyWithHideOnScroll') {
     return !navbarVisible.value && !isAtTop.value;
@@ -133,23 +143,24 @@ const shouldHideNavbar = computed(() => {
   return false;
 });
 
-// === LOGIC TỐI GIẢN CHO BUTTON ===
-// Quyết định variant nào sẽ được dùng cho các nút điều hướng chung
+// Xác định variant cho các button navigation
 const navButtonVariant = computed(() => {
   return actualShowBg.value ? 'nav-dark' : 'nav-light';
 });
 
-// Style cho các thành phần khác
+// Computed properties cho styling các thành phần
 const computedMenuButtonTextColor = computed(() => actualShowBg.value ? '#212529' : '#fff');
 const logoSrc = computed(() => actualShowBg.value ? logouitblue : logouitwhite);
 
-// Menu items cho mobile
+// Tạo menu items cho mobile menu (MenuButton)
 const menuButtonNavigationItems = computed(() => {
   const baseItems = [
     { label: 'Home', path: '/homepage', icon: 'bi-house' },
     { label: 'Hotels', path: '/hotels', icon: 'bi-building' },
     { label: 'Reserve', path: '/bookingprocess', icon: 'bi-bookmark-plus' },
   ];
+  
+  // Nếu đã đăng nhập: thêm Profile, Booking History, Logout
   if(authStore.isAuthenticated) {
     baseItems.push({ type: 'divider' });
     baseItems.push({ label: 'Profile', path: '/profile', icon: 'bi-person' });
@@ -157,46 +168,64 @@ const menuButtonNavigationItems = computed(() => {
     baseItems.push({ type: 'divider' });
     baseItems.push({ label: 'Logout', action: handleLogout, icon: 'bi-box-arrow-right' });
   } else {
+    // Nếu chưa đăng nhập: thêm Login
     baseItems.push({ type: 'divider' });
     baseItems.push({ label: 'Login', path: '/login', icon: 'bi-box-arrow-in-right' });
   }
   return baseItems;
 });
 
-
-// Logic scroll
+/**
+ * Hàm xử lý scroll để điều khiển hiển thị navbar
+ * - Thay đổi background khi scroll
+ * - Ẩn/hiện navbar khi scroll (nếu có behavior tương ứng)
+ */
 const handleScroll = () => {
+  // Lấy vị trí scroll hiện tại
   currentScrollPosition.value = window.pageYOffset || document.documentElement.scrollTop;
 
+  // Logic hiển thị background dựa trên behavior
   if (currentNavbarBehavior.value === 'homepage') {
+    // Trang chủ: hiển thị bg khi scroll qua 20% chiều cao viewport
     const heroHeightPercentage = 0.2;
     const heroScrollThreshold = window.innerHeight * heroHeightPercentage;
     internalShowBg.value = currentScrollPosition.value > heroScrollThreshold;
   } else {
+    // Các trang khác: hiển thị bg khi scroll > 10px
     internalShowBg.value = currentScrollPosition.value > 10;
   }
 
+  // Logic ẩn/hiện navbar cho stickyWithHideOnScroll
   if (currentNavbarBehavior.value === 'stickyWithHideOnScroll') {
+    // Xác định có ở đầu trang không
     isAtTop.value = currentScrollPosition.value < navbarHeight.value / 3;
 
+    // Kiểm tra threshold để tránh trigger quá nhiều
     if (Math.abs(currentScrollPosition.value - lastScrollPosition.value) < scrollThreshold && !isAtTop.value) {
       return;
     }
 
-    if (isAtTop.value || currentScrollPosition.value < scrollThreshold ) {
-      navbarVisible.value = true;
+    // Logic hiển thị navbar
+    if (isAtTop.value || currentScrollPosition.value < scrollThreshold) {
+      navbarVisible.value = true; // Luôn hiển thị ở đầu trang
     } else if (currentScrollPosition.value > lastScrollPosition.value && currentScrollPosition.value > navbarHeight.value) {
-      navbarVisible.value = false;
+      navbarVisible.value = false; // Ẩn khi scroll xuống
     } else if (currentScrollPosition.value < lastScrollPosition.value) {
-      navbarVisible.value = true;
+      navbarVisible.value = true; // Hiển thị khi scroll lên
     }
   } else {
-    navbarVisible.value = true;
+    navbarVisible.value = true; // Các behavior khác luôn hiển thị
   }
+  
+  // Lưu vị trí scroll để so sánh lần sau
   lastScrollPosition.value = currentScrollPosition.value <= 0 ? 0 : currentScrollPosition.value;
 };
 
-// Logout
+/**
+ * Hàm xử lý đăng xuất
+ * - Gọi action logout từ store
+ * - Chuyển hướng về trang login
+ */
 async function handleLogout() {
   await authStore.logout();
   router.push('/login');
@@ -204,25 +233,39 @@ async function handleLogout() {
 
 // Lifecycle Hooks
 onMounted(() => {
+  // Lấy chiều cao navbar thực tế
   if (navbarRef.value) {
     navbarHeight.value = navbarRef.value.offsetHeight;
   }
+  
+  // Khởi tạo authentication store
   authStore.initializeAuth();
+  
+  // Thêm scroll listener với passive để tối ưu performance
   window.addEventListener('scroll', handleScroll, { passive: true });
+  
+  // Gọi handleScroll lần đầu để set initial state
   handleScroll();
 
+  // Watch route changes để reset navbar state
   watch(() => route.fullPath, () => {
+      // Reset tất cả state khi chuyển trang
       lastScrollPosition.value = 0;
       currentScrollPosition.value = 0;
       internalShowBg.value = false;
       isAtTop.value = true;
+      
+      // Chỉ reset navbarVisible nếu không phải stickyWithHideOnScroll
       if (currentNavbarBehavior.value !== 'stickyWithHideOnScroll') {
           navbarVisible.value = true;
       }
+      
+      // Gọi lại handleScroll để cập nhật state
       handleScroll();
   }, { immediate: true });
 });
 
+// Cleanup scroll listener khi component unmount
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll);
 });
