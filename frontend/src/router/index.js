@@ -9,7 +9,7 @@ import Profile from '../views/Profile.vue'
 import Hotels from '../views/Hotels.vue'
 import Dashboard from '../views/Dashboard.vue'
 import HotelDetails from '../views/HotelDetails.vue'
-import Reserve from '../views/Reserve.vue'
+// import Reserve from '../views/Reserve.vue'
 import BookingProcess from '../views/BookingProcess.vue'
 // import vueCard1 from '../components/vueCard1.vue'
 // import vueCard from '../components/vueCard.vue'
@@ -51,7 +51,7 @@ const routes = [
   { path: '/Menu', name: "Menu", component: MenuButton},
   { path: '/profile', name: 'Profile', component:Profile, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
   { path: '/hotels', name: 'Hotels', component:Hotels, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
-  { path: '/reserve', name: 'Reserve', component: Reserve, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
+  // { path: '/reserve', name: 'Reserve', component: Reserve, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
   { path: '/bookingprocess', name: 'BookingProcess', component: BookingProcess, meta: {navbarBehavior: 'stickyWithHideOnScroll'}},
   { path: '/BookingProcess', redirect: '/bookingprocess' }, // Redirect for backward compatibility
   { path: '/BookingHistory', name: 'BookingHistory', component: BookingHistory, meta: {navbarBehavior: 'stickyWithHideOnScroll'}}, 
