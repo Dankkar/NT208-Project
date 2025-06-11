@@ -1444,6 +1444,7 @@ exports.searchAvailableRooms = async (req, res) => {
                     lp.GiaCoSo,
                     lp.DienTich,
                     lp.TienNghi,
+                    lp.DuongDanAnh as RoomImagePath,
                     chg.TenCauHinh as CauHinhGiuong,
                     chg.SoGiuongDoi,
                     chg.SoGiuongDon
@@ -1549,6 +1550,9 @@ exports.searchAvailableRooms = async (req, res) => {
                 GiaCoSo: record.GiaCoSo,
                 DienTich: record.DienTich,
                 TienNghi: record.TienNghi,
+                RoomImagePath: record.RoomImagePath
+                    ? `${req.protocol}://${req.get('host')}/${record.RoomImagePath}`
+                    : null,
                 CauHinhGiuong: record.CauHinhGiuong, // Keep first bed config for compatibility
                 SoGiuongDoi: record.SoGiuongDoi,
                 SoGiuongDon: record.SoGiuongDon,
