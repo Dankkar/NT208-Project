@@ -186,7 +186,7 @@ async function handleModalSave({ section, data }) {
   // ... (code xử lý lưu thông tin user đã có) ...
    const tempLoading = ref(true); 
   try {
-    await axios.put('http://localhost:5000/api/users/me', data, {
+    await axios.put('/api/users/me', data, {
       withCredentials: true,
     });
     await authStore.fetchCurrentUser();

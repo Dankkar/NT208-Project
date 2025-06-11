@@ -263,7 +263,7 @@ async function fetchHotelDetails(id) {
   pageLoading.value = true;
   pageError.value = '';
   try {
-    const response = await axios.get(`http://localhost:5000/api/hotels/${id}`, {
+    const response = await axios.get(`/api/hotels/${id}`, {
       withCredentials: true,
     });
 
@@ -374,7 +374,7 @@ async function submitUpdateHotel() {
   }
 
   try {
-    const response = await axios.put(`http://localhost:5000/api/hotels/${hotelId.value}`, formData, {
+    const response = await axios.put(`/api/hotels/${hotelId.value}`, formData, {
       withCredentials: true,
       headers: {
         'Content-Type': 'multipart/form-data'

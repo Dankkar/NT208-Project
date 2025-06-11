@@ -1,57 +1,69 @@
-import { createApp } from 'vue'
-import { createPinia } from 'pinia'
-import App from './App.vue'
-import router from './router'
-import 'flatpickr/dist/flatpickr.css';
-import Datepicker from '@vuepic/vue-datepicker';
-import '@vuepic/vue-datepicker/dist/main.css';
-import 'bootstrap/dist/css/bootstrap.min.css'
-import 'bootstrap/dist/js/bootstrap.bundle.min.js'
-import 'bootstrap-icons/font/bootstrap-icons.css'
-import vue3GoogleLogin from 'vue3-google-login'
-import axios from 'axios'
-import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
-import './assets/styles/variables.css'
+// File khởi tạo chính của ứng dụng Vue
+import { createApp } from 'vue'           // Vue 3 core
+import { createPinia } from 'pinia'       // State management
+import App from './App.vue'               // Root component
+import router from './router'             // Vue Router để điều hướng
+import 'flatpickr/dist/flatpickr.css';    // CSS cho date picker
+import Datepicker from '@vuepic/vue-datepicker'; // Component date picker
+import '@vuepic/vue-datepicker/dist/main.css';   // CSS cho Vue datepicker
+import 'bootstrap/dist/css/bootstrap.min.css'    // Bootstrap CSS
+import 'bootstrap/dist/js/bootstrap.bundle.min.js' // Bootstrap JavaScript
+import 'bootstrap-icons/font/bootstrap-icons.css' // Bootstrap Icons
+import vue3GoogleLogin from 'vue3-google-login'   // Plugin đăng nhập Google
+import axios from 'axios'                          // HTTP client
+import piniaPluginPersistedstate from 'pinia-plugin-persistedstate' // Plugin lưu trữ state
+import './assets/styles/variables.css'             // CSS variables tùy chỉnh
 
 // Configure axios defaults
-axios.defaults.baseURL = 'http://localhost:5000'
+// Import API configuration
+import { API_BASE_URL } from './config/api.js'
+
+axios.defaults.baseURL = API_BASE_URL
 axios.defaults.withCredentials = true // Important for session handling
 
-// Initialize session only when needed (moved to authentication flow)
+/**
+ * Khởi tạo session khi cần thiết (chỉ gọi khi user thực hiện hành động cần session)
+ * Hàm này sẽ gọi API để tạo session cho guest user
+ * @returns {Promise<Object|null>} - Thông tin session hoặc null nếu lỗi
+ */
 const initializeSessionIfNeeded = async () => {
     try {
+        // Gọi API khởi tạo session guest
         const response = await axios.get('/api/auth/init-session')
-        console.log('Session initialized:', response.data)
+        console.log('Session đã được khởi tạo:', response.data)
         return response.data
     } catch (error) {
-        console.error('Error initializing session:', error)
+        console.error('Lỗi khi khởi tạo session:', error)
         return null
     }
 }
 
-// Make session initialization available globally
+// Đặt hàm vào window object để có thể gọi từ bất kỳ đâu trong ứng dụng
 window.initializeSessionIfNeeded = initializeSessionIfNeeded
 
-// Create app instance
+// Tạo instance ứng dụng Vue
 const app = createApp(App)
 
-// Configure Pinia with persistence
+// Cấu hình Pinia với tính năng lưu trữ persistent (localStorage/sessionStorage)
 const pinia = createPinia()
-pinia.use(piniaPluginPersistedstate)
+pinia.use(piniaPluginPersistedstate) // Plugin để lưu state khi reload trang
 app.use(pinia)
 
-// Configure router
+// Đăng ký Vue Router để điều hướng giữa các trang
 app.use(router)
 
-// Configure Vue Datepicker
+// Đăng ký component Datepicker toàn cục để sử dụng trong mọi component
 app.component('Datepicker', Datepicker)
 
-// Configure Google Login
+// Cấu hình plugin đăng nhập Google
 app.use(vue3GoogleLogin, {
-    clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+    clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID, // Client ID từ Google Console
 })
-app.use(pinia)
 
-// Mount app directly - no need to initialize session on startup
+// Lưu ý: app.use(pinia) đã được gọi ở trên, không cần gọi lại
+// app.use(pinia) // Đã comment để tránh duplicate
+
+// Mount ứng dụng vào DOM element có id="app"
+// Không cần khởi tạo session ngay lập tức, chỉ khi user thực hiện hành động
 app.mount('#app')
 

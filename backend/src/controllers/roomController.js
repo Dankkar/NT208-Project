@@ -1,16 +1,29 @@
 const { poolPromise, sql } = require('../database/db');
 
+/**
+ * Tạo phòng mới trong khách sạn
+ * @param {Object} req - Request object
+ * @param {Object} req.body - Thông tin phòng
+ * @param {number} req.body.MaKS - Mã khách sạn
+ * @param {number} req.body.MaLoaiPhong - Mã loại phòng
+ * @param {number} req.body.MaCauHinhGiuong - Mã cấu hình giường
+ * @param {string} req.body.SoPhong - Số phòng (unique trong khách sạn)
+ * @param {number} req.body.Tang - Số tầng
+ * @param {string} req.body.TrangThaiPhong - Trạng thái phòng (default: "Sẵn sàng")
+ * @param {Object} res - Response object
+ * @returns {Object} Thông tin phòng mới tạo
+ */
 exports.createRoom = async (req, res) => {
     const {
-        MaKS,
-        MaLoaiPhong,
-        MaCauHinhGiuong,
-        SoPhong,
-        Tang,
-        TrangThaiPhong = 'Sẵn sàng'
+        MaKS,                           // Mã khách sạn
+        MaLoaiPhong,                    // Mã loại phòng (phải thuộc khách sạn này)
+        MaCauHinhGiuong,                // Mã cấu hình giường (1 giường đôi, 2 giường đơn...)
+        SoPhong,                        // Số phòng (101, 201, A1...)
+        Tang,                           // Số tầng
+        TrangThaiPhong = 'Sẵn sàng'     // Trạng thái: Sẵn sàng, Đang ở, Bảo trì
     } = req.body;
 
-    // Validate input
+    // Validate các trường bắt buộc
     if (!MaKS || !MaLoaiPhong || !MaCauHinhGiuong || !SoPhong) {
         return res.status(400).json({
             success: false,
@@ -21,7 +34,7 @@ exports.createRoom = async (req, res) => {
     try {
         const pool = await poolPromise;
         
-        // Kiểm tra khách sạn có tồn tại không
+        // Kiểm tra khách sạn có tồn tại và đang hoạt động
         const hotelCheck = await pool.request()
             .input('MaKS', sql.Int, MaKS)
             .query('SELECT MaKS FROM KhachSan WHERE MaKS = @MaKS AND IsActive = 1');
@@ -33,7 +46,7 @@ exports.createRoom = async (req, res) => {
             });
         }
 
-        // Kiểm tra loại phòng có tồn tại và thuộc khách sạn không
+        // Kiểm tra loại phòng có tồn tại và thuộc khách sạn này
         const roomTypeCheck = await pool.request()
             .input('MaLoaiPhong', sql.Int, MaLoaiPhong)
             .input('MaKS', sql.Int, MaKS)
@@ -46,7 +59,7 @@ exports.createRoom = async (req, res) => {
             });
         }
 
-        // Kiểm tra cấu hình giường có tồn tại không
+        // Kiểm tra cấu hình giường có tồn tại trong hệ thống
         const bedConfigCheck = await pool.request()
             .input('MaCauHinhGiuong', sql.Int, MaCauHinhGiuong)
             .query('SELECT MaCauHinhGiuong FROM CauHinhGiuong WHERE MaCauHinhGiuong = @MaCauHinhGiuong');
@@ -58,7 +71,7 @@ exports.createRoom = async (req, res) => {
             });
         }
 
-        // Kiểm tra số phòng đã tồn tại trong khách sạn chưa
+        // Kiểm tra số phòng đã tồn tại trong khách sạn chưa (số phòng phải unique)
         const roomNumberCheck = await pool.request()
             .input('MaKS', sql.Int, MaKS)
             .input('SoPhong', sql.NVarChar, SoPhong)
@@ -71,6 +84,7 @@ exports.createRoom = async (req, res) => {
             });
         }
 
+        // Tạo phòng mới
         const result = await pool.request()
             .input('MaKS', sql.Int, MaKS)
             .input('MaLoaiPhong', sql.Int, MaLoaiPhong)
@@ -108,9 +122,19 @@ exports.createRoom = async (req, res) => {
     }
 };
 
+/**
+ * Lấy danh sách phòng theo khách sạn với phân trang
+ * @param {Object} req - Request object
+ * @param {number} req.params.MaKS - Mã khách sạn
+ * @param {number} req.query.page - Trang hiện tại (default: 1)
+ * @param {number} req.query.limit - Số phòng mỗi trang (default: 10)
+ * @param {Object} res - Response object
+ * @returns {Object} Danh sách phòng với thông tin chi tiết, thống kê và pagination
+ */
 exports.getRoomByHotel = async (req, res) => {
     const { MaKS } = req.params;
 
+    // Validate MaKS
     if(!MaKS || isNaN(MaKS)){
         return res.status(400).json({
             success: false,
@@ -120,7 +144,7 @@ exports.getRoomByHotel = async (req, res) => {
 
     try {
         const { page = 1, limit = 10} = req.query;
-        const offset = (page - 1) * limit;
+        const offset = (page - 1) * limit;        // Tính offset cho pagination
         const pool = await poolPromise;
         
         // Kiểm tra khách sạn có tồn tại không
@@ -135,59 +159,59 @@ exports.getRoomByHotel = async (req, res) => {
             });
         }
 
-        // Đếm tổng số phòng
+        // Đếm tổng số phòng để tính pagination
         const countResult = await pool.request()
             .input('MaKS', sql.Int, MaKS)
             .query(`SELECT COUNT(*) AS total FROM Phong WHERE MaKS = @MaKS AND IsActive = 1`);
         
-        // Lấy danh sách phòng với thông tin chi tiết
+        // Lấy danh sách phòng với thông tin chi tiết (JOIN với LoaiPhong và CauHinhGiuong)
         const result = await pool.request()
             .input('MaKS', sql.Int, MaKS)
             .input('offset', sql.Int, offset)
             .input('limit', sql.Int, limit)
             .query(`SELECT
-                p.MaPhong,
-                p.MaKS,
-                p.MaLoaiPhong,
-                p.MaCauHinhGiuong,
-                p.SoPhong,
-                p.Tang,
-                p.TrangThaiPhong,
-                p.IsActive,
-                lp.TenLoaiPhong,
-                lp.SoGiuong,
-                lp.TienNghi,
-                lp.DienTich,
-                lp.GiaCoSo,
-                lp.MoTa,
-                chg.TenCauHinh,
-                chg.SoGiuongDoi,
-                chg.SoGiuongDon
+                p.MaPhong,                  -- ID phòng
+                p.MaKS,                     -- ID khách sạn
+                p.MaLoaiPhong,              -- ID loại phòng
+                p.MaCauHinhGiuong,          -- ID cấu hình giường
+                p.SoPhong,                  -- Số phòng
+                p.Tang,                     -- Số tầng
+                p.TrangThaiPhong,           -- Trạng thái phòng
+                p.IsActive,                 -- Có hoạt động không
+                lp.TenLoaiPhong,            -- Tên loại phòng
+                lp.SoGiuong,                -- Số giường
+                lp.TienNghi,                -- Tiện nghi
+                lp.DienTich,                -- Diện tích m²
+                lp.GiaCoSo,                 -- Giá cơ sở
+                lp.MoTa,                    -- Mô tả loại phòng
+                chg.TenCauHinh,             -- Tên cấu hình giường
+                chg.SoGiuongDoi,            -- Số giường đôi
+                chg.SoGiuongDon             -- Số giường đơn
                 FROM Phong p
                 JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
                 JOIN CauHinhGiuong chg ON p.MaCauHinhGiuong = chg.MaCauHinhGiuong
                 WHERE p.MaKS = @MaKS AND p.IsActive = 1
-                ORDER BY p.Tang, p.SoPhong
+                ORDER BY p.Tang, p.SoPhong  -- Sắp xếp theo tầng và số phòng
                 OFFSET @offset ROWS
                 FETCH NEXT @limit ROWS ONLY`
             );
 
-        // Tính thống kê phòng
+        // Tính thống kê phòng theo trạng thái
         const statsResult = await pool.request()
             .input('MaKS', sql.Int, MaKS)
             .query(`SELECT
-                COUNT(*) AS TongSoPhong,
-                SUM(CASE WHEN TrangThaiPhong = N'Sẵn sàng' THEN 1 ELSE 0 END) AS SoPhongTrong,
-                SUM(CASE WHEN TrangThaiPhong = N'Đang ở' THEN 1 ELSE 0 END) AS SoPhongDangO,
-                SUM(CASE WHEN TrangThaiPhong = N'Bảo trì' THEN 1 ELSE 0 END) AS SoPhongBaoTri
+                COUNT(*) AS TongSoPhong,                                                                -- Tổng số phòng
+                SUM(CASE WHEN TrangThaiPhong = N'Sẵn sàng' THEN 1 ELSE 0 END) AS SoPhongTrong,         -- Số phòng trống
+                SUM(CASE WHEN TrangThaiPhong = N'Đang ở' THEN 1 ELSE 0 END) AS SoPhongDangO,           -- Số phòng đang có khách
+                SUM(CASE WHEN TrangThaiPhong = N'Bảo trì' THEN 1 ELSE 0 END) AS SoPhongBaoTri          -- Số phòng bảo trì
                 FROM Phong 
                 WHERE MaKS = @MaKS AND IsActive = 1`);
         
         res.json({
             success: true,
-            data: result.recordset,
-            stats: statsResult.recordset[0],
-            pagination: {
+            data: result.recordset,                 // Danh sách phòng
+            stats: statsResult.recordset[0],        // Thống kê
+            pagination: {                           // Thông tin phân trang
                 total: countResult.recordset[0].total,
                 page: parseInt(page),
                 limit: parseInt(limit),

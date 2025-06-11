@@ -135,7 +135,7 @@ async function fetchAvailableHotels() {
   loadingHotels.value = true;
   hotelLoadError.value = '';
   try {
-    const response = await axios.get('http://localhost:5000/api/hotels/list-basic', { withCredentials: true });
+    const response = await axios.get('/api/hotels/list-basic', { withCredentials: true });
     if (response.data && response.data.success) {
       availableHotels.value = response.data.data || [];
     } else {
@@ -166,7 +166,7 @@ async function fetchReviewsForSelectedHotel(page = 1) {
   try {
     // API không cần filter status nữa
     const response = await axios.get(
-      `http://localhost:5000/api/reviews/admin/hotel/${selectedHotelId.value}`,
+      `/api/reviews/admin/hotel/${selectedHotelId.value}`,
       {
         params: {
             page: paginationData.value.page,
@@ -211,7 +211,7 @@ async function setApprovalStatus(reviewId, newStatus) {
 
     try {
         await axios.put(
-            `http://localhost:5000/api/reviews/admin/${reviewId}/approval`,
+            `/api/reviews/admin/${reviewId}/approval`,
             { newApprovalState: newStatus },
             { withCredentials: true }
         );

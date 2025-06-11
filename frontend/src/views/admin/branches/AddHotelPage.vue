@@ -282,7 +282,7 @@ async function submitAddHotel() {
 
   try {
     // API createHotel là POST /api/hotels (không có params trên URL)
-    const response = await axios.post('http://localhost:5000/api/hotels', formData, {
+    const response = await axios.post('/api/hotels', formData, {
       withCredentials: true,
       headers: {
         'Content-Type': 'multipart/form-data'

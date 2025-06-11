@@ -335,7 +335,7 @@ async function loadPromotion() {
   loadError.value = '';
   
   try {
-    const response = await axios.get(`http://localhost:5000/api/promotions/${promotionId.value}`, {
+    const response = await axios.get(`/api/promotions/${promotionId.value}`, {
       withCredentials: true
     });
 
@@ -429,7 +429,7 @@ async function submitForm() {
   successMessage.value = '';
 
   try {
-    const response = await axios.put(`http://localhost:5000/api/promotions/${promotionId.value}`, {
+    const response = await axios.put(`/api/promotions/${promotionId.value}`, {
       TenKM: formData.TenKM.trim(),
       MaCodeKM: formData.MaCodeKM.trim().toUpperCase(),
       PhanTramGiam: formData.PhanTramGiam,

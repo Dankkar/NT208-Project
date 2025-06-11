@@ -176,7 +176,7 @@ async function fetchRoomTypeDetails(id) {
   
   try {
     // BẠN CẦN TẠO API GET /api/room-types/:id Ở BACKEND ĐỂ LẤY CHI TIẾT 1 LOẠI PHÒNG
-    const response = await axios.get(`http://localhost:5000/api/roomTypes/${id}`, {
+    const response = await axios.get(`/api/roomTypes/${id}`, {
       withCredentials: true,
     });
     if (response.data && response.data.success) {
@@ -212,7 +212,7 @@ async function fetchRoomTypeDetails(id) {
 }
 async function fetchHotelNameForDisplay(hotelId){
     try {
-        const hotelRes = await axios.get(`http://localhost:5000/api/hotels/${hotelId}`, { withCredentials: true });
+        const hotelRes = await axios.get(`/api/hotels/${hotelId}`, { withCredentials: true });
         if(hotelRes.data && hotelRes.data.success){
             originalHotelName.value = hotelRes.data.data.TenKS;
         }
@@ -292,7 +292,7 @@ async function submitUpdateRoomType() {
 
   try {
     // Gọi API updateRoomType của bạn
-    const response = await axios.put(`http://localhost:5000/api/roomTypes/${roomTypeId.value}`, formData, {
+    const response = await axios.put(`/api/roomTypes/${roomTypeId.value}`, formData, {
       withCredentials: true,
       headers: {
         'Content-Type': 'multipart/form-data'
