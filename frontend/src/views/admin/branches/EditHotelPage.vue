@@ -95,22 +95,42 @@
           <!-- Hiển thị ảnh -->
           <div class="row g-3">
             <div v-for="(image, index) in previewImages" :key="index" class="col-md-3">
-              <div class="card h-100">
-                <img :src="image.url" class="card-img-top" style="height: 200px; object-fit: cover; cursor: pointer"
-                     @click="setMainImage(index)"
-                     :class="{'border border-primary': mainImageIndex === index}">
+              <div class="card h-100" :class="{'border-primary': mainImageIndex === index}">
+                <div class="position-relative">
+                  <img :src="image.url" class="card-img-top" style="height: 200px; object-fit: cover; cursor: pointer"
+                       @click="setMainImage(index)"
+                       :class="{'border border-primary border-3': mainImageIndex === index}">
+                  <div v-if="mainImageIndex === index" class="position-absolute top-0 end-0 bg-primary text-white px-2 py-1 small">
+                    MAIN
+                  </div>
+                  <div class="position-absolute top-0 start-0 bg-secondary text-white px-2 py-1 small">
+                    {{ image.isNew ? 'NEW' : 'EXISTING' }}
+                  </div>
+                </div>
                 <div class="card-body p-2">
                   <div class="d-flex justify-content-between align-items-center">
                     <small class="text-muted">
-                      {{ mainImageIndex === index ? 'Main Image' : 'Click to set as main' }}
+                      {{ mainImageIndex === index ? 'Ảnh chính' : 'Click để chọn làm ảnh chính' }}
                     </small>
-                    <button type="button" class="btn btn-sm btn-danger" @click="removeImage(index)">
+                    <button type="button" class="btn btn-sm btn-danger" @click="removeImage(index)" :disabled="isSubmitting">
                       <i class="bi bi-trash"></i>
                     </button>
+                  </div>
+                  <div v-if="image.MaAnh" class="mt-1">
+                    <small class="text-info">ID: {{ image.MaAnh }}</small>
                   </div>
                 </div>
               </div>
             </div>
+          </div>
+          
+          <!-- Debug info -->
+          <div v-if="mainImageIndex !== null" class="mt-3 alert alert-info">
+            <small>
+              Debug: Main image index = {{ mainImageIndex }}, 
+              Image type = {{ previewImages[mainImageIndex]?.isNew ? 'new' : 'existing' }},
+              {{ previewImages[mainImageIndex]?.MaAnh ? 'Image ID = ' + previewImages[mainImageIndex].MaAnh : 'New file' }}
+            </small>
           </div>
         </div>
       </div>
@@ -217,6 +237,7 @@ function handleImageSelect(event) {
 
 function removeImage(index) {
   const image = previewImages.value[index];
+  
   if (image.isNew) {
     // Nếu là ảnh mới, xóa khỏi cả selectedImages và previewImages
     const fileIndex = selectedImages.value.indexOf(image.file);
@@ -227,7 +248,20 @@ function removeImage(index) {
     // Nếu là ảnh cũ, thêm vào danh sách ảnh cần xóa
     deleteImageIds.value.push(image.MaAnh);
   }
+  
+  // Xóa khỏi previewImages
   previewImages.value.splice(index, 1);
+  
+  // Điều chỉnh mainImageIndex
+  if (mainImageIndex.value !== null) {
+    if (mainImageIndex.value === index) {
+      // Nếu ảnh bị xóa là ảnh main, reset về null
+      mainImageIndex.value = null;
+    } else if (mainImageIndex.value > index) {
+      // Nếu ảnh main ở sau ảnh bị xóa, giảm index đi 1
+      mainImageIndex.value = mainImageIndex.value - 1;
+    }
+  }
 }
 
 function setMainImage(index) {
@@ -296,6 +330,7 @@ async function submitUpdateHotel() {
     formError.value = "Please fill in all required fields marked with *.";
     return;
   }
+  
   isSubmitting.value = true;
   formError.value = '';
   successMessage.value = '';
@@ -314,16 +349,30 @@ async function submitUpdateHotel() {
   formData.append('MaNguoiQuanLy', editableHotel.MaNguoiQuanLy === '' ? '' : editableHotel.MaNguoiQuanLy);
   formData.append('IsActive', editableHotel.IsActive);
 
-  // Thêm thông tin về ảnh
-  if (mainImageIndex.value !== null) {
-    formData.append('mainImageIndex', mainImageIndex.value);
+  // Xử lý mainImageIndex - chỉ gửi nếu có giá trị hợp lệ
+  if (mainImageIndex.value !== null && mainImageIndex.value >= 0 && mainImageIndex.value < previewImages.value.length) {
+    const selectedImage = previewImages.value[mainImageIndex.value];
+    if (selectedImage.isNew) {
+      // Nếu là ảnh mới, gửi index trong selectedImages
+      const newImageIndex = selectedImages.value.indexOf(selectedImage.file);
+      if (newImageIndex !== -1) {
+        formData.append('mainImageType', 'new');
+        formData.append('mainImageIndex', newImageIndex);
+      }
+    } else {
+      // Nếu là ảnh cũ, gửi MaAnh
+      formData.append('mainImageType', 'existing');
+      formData.append('mainImageId', selectedImage.MaAnh);
+    }
   }
+  
+  // Thêm danh sách ảnh cần xóa
   if (deleteImageIds.value.length > 0) {
     formData.append('deleteImageIds', JSON.stringify(deleteImageIds.value));
   }
 
   // Thêm các file ảnh mới
-  selectedImages.value.forEach((file, index) => {
+  selectedImages.value.forEach((file) => {
     formData.append('images', file);
   });
 
