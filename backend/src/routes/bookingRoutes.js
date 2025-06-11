@@ -66,7 +66,7 @@ router.get('/my-bookings', authenticateToken, getMyBookings);
  * @body    {Object} Thông tin phòng, ngày, số lượng
  * @returns {Object} Thông tin booking tạm với thời gian hết hạn
  */
-router.post('/hold', holdBooking);
+router.post('/hold',optionalAuthenticationToken, holdBooking);
 
 /**
  * @route   POST /api/bookings
