@@ -42,7 +42,7 @@
         class="list-group-item"
       >
         <!-- Bố cục thẻ con, có class động để điều khiển giao diện theo mode -->
-        <div class="room-item-card" :class="[cardModeClass, { 'is-unavailable': roomItem.availability <= 0 }]">
+        <div class="room-item-card" :class="[cardModeClass, { 'is-unavailable': roomItem.availability <= 0 && roomItem.alternative.length <= 0 }]">
           <div class="row g-0 align-items-center">
             
             <!-- Cột trái: Hình ảnh & Thông tin phòng -->
@@ -87,13 +87,31 @@
 
                     <div class="cta-button-wrapper mt-auto">
                         <Button
-                          v-if="mode === 'search-results'"
-                          :content="roomItem.availability <= 0 ? 'Room is Full': 'Book this Room'"
-                          :disabled="roomItem.availability <= 0"
+                          v-if="mode === 'search-results' && roomItem.availability > 0"
+                          :content="'Book this Room'"
                           variant="confirm"
-                          :block="true"
+                          :block="true"   
                           @click="handleCtaClick(roomItem.originalRoomData)"
                         />
+                        <template v-else-if="mode === 'search-results' && roomItem.availability <= 0 && roomItem.alternative && roomItem.alternative.length > 0">
+                           <Button
+                              v-for="(altDate, idx) in roomItem.alternative"
+                              :key="idx"
+                              :content="`Book for ${formatAltDate(altDate.checkIn)} - ${formatAltDate(altDate.checkOut)}`"
+                              variant="confirm"
+                              :block="true"
+                              class="mb-2"
+                              @click="handleAlternativeClick(roomItem.originalRoomData, altDate)"
+                            />
+                        </template>
+                        <Button
+                          v-else-if="mode === 'search-results'"
+                          content="Room is Full"
+                          variant="confirm"
+                          :block="true"
+                          disabled
+                        />
+
                         <Button
                           v-else-if="mode === 'booking-history' && processedData.actions.length > 0"
                           :content="getPrimaryAction.label.toUpperCase()"
@@ -115,13 +133,29 @@
 </template>
 
 <script setup>
-// LOGIC ĐÃ ĐƯỢC PHỤC HỒI HOÀN CHỈNH
+
 import { defineProps, ref, computed, defineEmits } from 'vue';
 import Button from './Button.vue'; 
 import defaultMainImagePlaceholder from '@/assets/mountain.jpg';
 import defaultRoomImagePlaceholder from '@/assets/room-placeholder.jpg';
 
 const emit = defineEmits(['room-selected', 'action-clicked']);
+
+
+const formatAltDate = (dateStr) => {
+  // Định dạng lại ngày, ví dụ: "2025-06-12" => "12/06/2025"
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('vi-VN');
+};
+
+const handleAlternativeClick = (originalRoomData, altDate) => {
+  // Gửi event với ngày alternative
+  emit('alternative-date-selected', {
+    roomInfo: originalRoomData,
+    suggestedDates: altDate
+  });
+};
+
 
 const props = defineProps({
   hotelData: { type: Object, required: true },
@@ -177,16 +211,17 @@ const processedData = computed(() => {
         priceLabel: 'FROM',
         availability: rt.SoPhongTrong,
         beds: rt.CauHinhGiuong,
-        originalRoomData: rt
+        originalRoomData: rt,
+        alternative: rt.alternativeDates || []
       })),
       actions: [], 
     };
   }
   
-  // --- LOGIC CHO MODE: BOOKING HISTORY (ĐÃ PHỤC HỒI) ---
+  // --- LOGIC CHO MODE: BOOKING HISTORY ---
   if (props.mode === 'booking-history') {
     const booking = props.hotelData; 
-    const hasActions = booking.actions && booking.actions.length > 0;// booking là object dataForCard
+    const hasActions = booking.actions && booking.actions.length > 0;
     return {
       displayTitle: booking.title,
       displaySubtitle1: booking.subtitle1,
@@ -226,7 +261,7 @@ const handleCtaClick = (originalRoomData) => {
   } else if (props.mode === 'booking-history' && processedData.value.actions.length > 0) {
     const primaryAction = getPrimaryAction.value;
     emit('action-clicked', { actionId: primaryAction.id, bookingItem: processedData.value.originalItem });
-  }
+  }   
 };
 </script>
 

@@ -92,7 +92,7 @@
 <script setup>
 import { computed, ref, onMounted, watch, defineEmits, onBeforeUnmount } from 'vue';
 import { format, formatDistanceToNowStrict } from 'date-fns';
-import VueCard1 from '../../vueCard1.vue';
+import VueCard1 from '../../Card.vue';
 import { useBookingStore } from '@/store/bookingStore';
 import { useRouter } from 'vue-router';
 import { useNotificationStore } from '@/store/notificationStore';
