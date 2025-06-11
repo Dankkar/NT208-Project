@@ -49,11 +49,6 @@
         <div class="col-12">
           <label for="roomTypeImage" class="form-label">Room Type Image</label>
           
-          <!-- Debug info (remove in production) -->
-          <div v-if="currentImagePath" class="small text-info mb-2">
-            Debug: Image path = {{ currentImagePath }}
-          </div>
-          
           <!-- Hiển thị ảnh hiện tại nếu có -->
           <div v-if="currentImagePath && !imagePreview && !willDeleteImage" class="mb-2">
             <p class="text-muted small">Current image:</p>
