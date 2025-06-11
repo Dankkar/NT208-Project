@@ -176,7 +176,7 @@ async function checkEmailOnServer() {
   console.log('Checking email on server 2:', formData.email);
 
   try {
-    const response = await axios.post('http://localhost:5000/api/auth/check-email', { Email: formData.email });
+    const response = await axios.post('/api/auth/check-email', { Email: formData.email });
     console.log('Server response:', response.data);
     if (response.data.exists) {
       // errors.email = 'This email address is already registered.'; // Can be displayed via emailAlreadyExists flag too

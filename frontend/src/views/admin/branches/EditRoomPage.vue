@@ -118,7 +118,7 @@ const successMessage = ref('');
 async function fetchBedConfigurations() {
   loadingBedConfigs.value = true;
   try {
-    const response = await axios.get('http://localhost:5000/api/bed-configs', { withCredentials: true });
+    const response = await axios.get('/api/bed-configs', { withCredentials: true });
     if (response.data && response.data.success) {
       bedConfigs.value = response.data.data || [];
     } else {
@@ -135,7 +135,7 @@ async function fetchRoomDetails(id) {
   pageLoading.value = true;
   pageError.value = '';
   try {
-    const response = await axios.get(`http://localhost:5000/api/rooms/${id}`, {
+    const response = await axios.get(`/api/rooms/${id}`, {
       withCredentials: true,
     });
     if (response.data && response.data.success) {
@@ -183,7 +183,7 @@ async function submitUpdateRoom() {
   };
 
   try {
-    const response = await axios.put(`http://localhost:5000/api/rooms/${roomId.value}`, payload, {
+    const response = await axios.put(`/api/rooms/${roomId.value}`, payload, {
       withCredentials: true
     });
     if (response.data?.message) {

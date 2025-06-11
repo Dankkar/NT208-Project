@@ -257,7 +257,7 @@ async function fetchPromotions(page = 1) {
     if (statusFilter.value !== '') params.status = statusFilter.value;
     if (timeFilter.value) params.timeStatus = timeFilter.value;
 
-    const response = await axios.get('http://localhost:5000/api/promotions', {
+    const response = await axios.get('/api/promotions', {
       params,
       withCredentials: true
     });
@@ -303,7 +303,7 @@ function resetFilters() {
 async function togglePromotionStatus(promotion) {
   try {
     const newStatus = !promotion.TrangThai;
-    await axios.put(`http://localhost:5000/api/promotions/${promotion.MaKM}`, {
+    await axios.put(`/api/promotions/${promotion.MaKM}`, {
       ...promotion,
       TrangThai: newStatus
     }, { withCredentials: true });
@@ -330,7 +330,7 @@ async function deletePromotion() {
   
   isDeleting.value = true;
   try {
-    await axios.delete(`http://localhost:5000/api/promotions/${promotionToDelete.value.MaKM}`, {
+    await axios.delete(`/api/promotions/${promotionToDelete.value.MaKM}`, {
       withCredentials: true
     });
 

@@ -98,7 +98,7 @@ async function fetchAmenityDetails(id) {
   pageError.value = '';
   try {
     // API GET /api/services/:MaDV (MaDV ở đây là amenityId)
-    const response = await axios.get(`http://localhost:5000/api/services/${id}`, {
+    const response = await axios.get(`/api/services/${id}`, {
       withCredentials: true,
     });
     // Backend getServiceById của bạn trả về trực tiếp object data, không có { success: true, data: ...}
@@ -135,7 +135,7 @@ async function fetchAmenityDetails(id) {
 async function fetchHotelNameForDisplay(hotelId){
     if (!hotelId) return;
     try {
-        const hotelRes = await axios.get(`http://localhost:5000/api/hotels/${hotelId}`, { withCredentials: true });
+        const hotelRes = await axios.get(`/api/hotels/${hotelId}`, { withCredentials: true });
         if(hotelRes.data && hotelRes.data.success){
             originalHotelName.value = hotelRes.data.data.TenKS;
         }
@@ -165,7 +165,7 @@ async function submitUpdateAmenity() {
   try {
     // Gọi API updateService của bạn: PUT /api/services/:MaDV
     // MaDV ở đây là amenityId.value (hoặc editableAmenity.MaLoaiDV)
-    const response = await axios.put(`http://localhost:5000/api/services/${amenityId.value}`, payload, {
+    const response = await axios.put(`/api/services/${amenityId.value}`, payload, {
       withCredentials: true
     });
     if (response.data?.message) {

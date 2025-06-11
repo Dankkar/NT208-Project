@@ -66,8 +66,7 @@ export const useAuthStore = defineStore('auth', {
       this.authError = null;
       
       try {
-        // Gọi API đăng nhập với credentials
-        await axios.post('http://localhost:5000/api/auth/login', {
+        await axios.post('/api/auth/login', {
           Email: credentials.Email,
           MatKhau: credentials.MatKhau
         }, { withCredentials: true }); // Quan trọng: gửi và nhận cookie
@@ -104,8 +103,7 @@ export const useAuthStore = defineStore('auth', {
       this.authError = null;
       
       try {
-        // Gửi Google token đến backend để xác thực
-        const backendResponse = await axios.post('http://localhost:5000/api/auth/google',
+        const backendResponse = await axios.post('/api/auth/google',
           { token: googleAuthResponse.credential },
           { withCredentials: true }
         );
@@ -145,10 +143,7 @@ export const useAuthStore = defineStore('auth', {
       this.authError = null;
       
       try {
-        // Gọi API lấy thông tin user (sử dụng cookie để xác thực)
-        const response = await axios.get('http://localhost:5000/api/users/me', { withCredentials: true });
-        
-        // Cập nhật user data vào store
+        const response = await axios.get('/api/users/me', { withCredentials: true });
         this.$patch({ user: response.data });
         return this.user;
       } catch (err) {
@@ -179,8 +174,7 @@ export const useAuthStore = defineStore('auth', {
       this.isLoading = true;
       
       try {
-        // Gọi API logout để hủy session trên server
-        await axios.post('http://localhost:5000/api/auth/logout', {}, { withCredentials: true });
+        await axios.post('/api/auth/logout', {}, { withCredentials: true });
       } catch (err) {
         console.error('Lỗi khi đăng xuất:', err);
         // Vẫn tiếp tục logout local ngay cả khi server logout thất bại
@@ -227,8 +221,8 @@ export const useAuthStore = defineStore('auth', {
       
       try {
         // Gọi API đăng ký của backend
-        const response = await axios.post('http://localhost:5000/api/auth/register', signupData, {
-          withCredentials: true // Tự động set cookie session sau khi register
+        const response = await axios.post('/api/auth/register', signupData, {
+          withCredentials: true // Set cookie session ngay sau khi register
         });
 
         if (response.data && response.data.success) {

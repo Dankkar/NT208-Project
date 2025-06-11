@@ -146,7 +146,7 @@ async function fetchAvailableHotels() {
   loadingHotels.value = true;
   hotelLoadError.value = '';
   try {
-    const response = await axios.get('http://localhost:5000/api/hotels/list-basic', { withCredentials: true });
+    const response = await axios.get('/api/hotels/list-basic', { withCredentials: true });
     if (response.data && response.data.success) {
       availableHotels.value = response.data.data || [];
     } else {
@@ -174,7 +174,7 @@ async function fetchAmenitiesForSelectedHotel(page = 1) {
   
   try {
     const response = await axios.get(
-      `http://localhost:5000/api/services/hotel/${selectedHotelId.value}`,
+      `/api/services/hotel/${selectedHotelId.value}`,
       {
         params: { page: paginationData.value.page, limit: paginationData.value.limit },
         withCredentials: true

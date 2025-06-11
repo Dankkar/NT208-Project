@@ -30,7 +30,14 @@ app.use(session({
 
 // Middleware xử lý cookies và CORS
 const cors = require('cors');
-const cookieParser = require('cookie-parser');
+const cookieParser = require('cookie-parser');  
+app.use(cors({
+    origin: process.env.CORS_ORIGIN || 'http://localhost:3000', // Dynamic CORS origin
+  credentials: true               // ✅ Cho phép gửi cookie
+}));
+app.use(express.urlencoded({ extended: true })); // ✅ Đọc URL-encoded body
+app.use(cookieParser());          // ✅ Đặt TRƯỚC các route cần đọc cookie
+app.use(express.json());          // ✅ Đọc JSON body
 
 // Cấu hình CORS để cho phép frontend truy cập
 app.use(cors({

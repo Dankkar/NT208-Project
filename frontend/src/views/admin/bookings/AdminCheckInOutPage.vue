@@ -150,7 +150,7 @@ async function fetchBookings(page = 1) {
   pagination.page = page;
   try {
     // Backend đã xử lý việc filter theo role (Admin/QuanLyKS)
-    const response = await axios.get('http://localhost:5000/api/bookings/admin', {
+    const response = await axios.get('/api/bookings/admin', {
       params: { page: pagination.page, limit: pagination.limit },
       withCredentials: true
     });
@@ -184,7 +184,7 @@ async function performCheckIn(bookingId) {
 
   try {
     // API là put /api/bookings/:MaDat/check-in
-    const response = await axios.put(`http://localhost:5000/api/bookings/${bookingId}/check-in`, {}, {
+    const response = await axios.put(`/api/bookings/${bookingId}/check-in`, {}, {
       withCredentials: true
     });
     if (response.data && response.data.message) { // Backend trả về { message: '...' }
@@ -212,7 +212,7 @@ async function performCheckOut(bookingId) {
   messageType.value = 'info';
   try {
     // API là put /api/bookings/:MaDat/check-out
-    const response = await axios.put(`http://localhost:5000/api/bookings/${bookingId}/check-out`, {}, {
+    const response = await axios.put(`/api/bookings/${bookingId}/check-out`, {}, {
       withCredentials: true
     });
      if (response.data && response.data.message) {

@@ -14,9 +14,12 @@ import axios from 'axios'                          // HTTP client
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate' // Plugin lưu trữ state
 import './assets/styles/variables.css'             // CSS variables tùy chỉnh
 
-// Cấu hình axios mặc định cho toàn bộ ứng dụng
-axios.defaults.baseURL = 'http://localhost:5000'  // URL backend API
-axios.defaults.withCredentials = true // Quan trọng: cho phép gửi cookie/session
+// Configure axios defaults
+// Import API configuration
+import { API_BASE_URL } from './config/api.js'
+
+axios.defaults.baseURL = API_BASE_URL
+axios.defaults.withCredentials = true // Important for session handling
 
 /**
  * Khởi tạo session khi cần thiết (chỉ gọi khi user thực hiện hành động cần session)

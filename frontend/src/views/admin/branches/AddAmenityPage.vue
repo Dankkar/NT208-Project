@@ -77,7 +77,7 @@ async function fetchHotelNameForDisplay() {
     pageLoading.value = true; // Đặt loading trước khi gọi API
     try {
         // API lấy tên dịch vụ theo khách sạn
-        const response = await axios.get(`http://localhost:5000/api/services/hotel/${hotelId.value}`, { withCredentials: true });
+        const response = await axios.get(`/api/services/hotel/${hotelId.value}`, { withCredentials: true });
         if (response.data && response.data.success) {
             selectedHotel.value = response.data.data;
         } else {
@@ -106,7 +106,7 @@ async function submitAddAmenity() {
 
   try {
     // Gọi API createService của bạn (POST /api/services)
-    const response = await axios.post('http://localhost:5000/api/services/${hotelId.value}', amenityData, {
+    const response = await axios.post('/api/services/${hotelId.value}', amenityData, {
       withCredentials: true
     });
     if (response.status === 201 && response.data?.message) { // API trả về 201 khi tạo thành công

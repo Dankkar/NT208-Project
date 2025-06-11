@@ -92,7 +92,7 @@ async function searchUser() {
 
   try {
     const response = await axios.get(
-      `http://localhost:5000/api/users/search?keyword=${encodeURIComponent(searchQuery.value)}`,
+      `/api/users/search?keyword=${encodeURIComponent(searchQuery.value)}`,
       { withCredentials: true }
     );
 

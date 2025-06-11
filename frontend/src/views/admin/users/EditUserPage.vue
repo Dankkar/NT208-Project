@@ -140,7 +140,7 @@ async function fetchUserDetails(id) {
   pageError.value = '';
   try {
     // Giả định bạn có API: GET /api/users/admin-view/:userId (hoặc tên khác)
-    const response = await axios.get(`http://localhost:5000/api/users/admin-view/${id}`, {
+    const response = await axios.get(`/api/users/admin-view/${id}`, {
       withCredentials: true,
     });
 
@@ -196,7 +196,7 @@ async function submitUpdateUser() {
     // API của bạn là PUT /api/users/:MaKH
     // Controller là updateUserByAdmin
     const response = await axios.put(
-      `http://localhost:5000/api/users/${userId.value}`, // userId.value là MaKH của user cần update
+      `/api/users/${userId.value}`, // userId.value là MaKH của user cần update
       payload,
       { withCredentials: true }
     );

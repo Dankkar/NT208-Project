@@ -92,7 +92,7 @@ onMounted(() => {
 onMounted(async () => {
   loading.value = true
   try {
-    const res = await axios.get('http://localhost:5000/api/users/me', {
+    const res = await axios.get('/api/users/me', {
       withCredentials: true
     })
     user.value = res.data
