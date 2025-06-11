@@ -1,60 +1,64 @@
 // backend/src/controllers/authController.js
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { poolPromise, sql } = require('../database/db');
-const { sendResetEmail } = require('../utils/emailService');
-const {OAuth2Client} = require('google-auth-library');
+// Import các thư viện cần thiết
+const bcrypt = require('bcryptjs');  // Mã hóa mật khẩu
+const jwt = require('jsonwebtoken'); // Tạo và xác thực JWT token
+const { poolPromise, sql } = require('../database/db'); // Kết nối database
+const { sendResetEmail } = require('../utils/emailService'); // Gửi email reset
+const {OAuth2Client} = require('google-auth-library'); // Đăng nhập Google
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-const schema = 'dbo';
+const schema = 'dbo'; // Schema database
 
-// In-memory set to track used reset tokens (for security)
+// Lưu trữ tạm thời các token reset đã sử dụng (bảo mật)
 const usedResetTokens = new Set();
 
-// Clean up expired tokens every hour
+// Dọn dẹp các token hết hạn mỗi giờ để tối ưu bộ nhớ
 setInterval(() => {
-  // Since tokens expire in 15 minutes, we can clear tokens older than 1 hour
-  // In a production environment, you might want to use Redis for this
-  console.log('Cleaning up used reset tokens cache...');
+  // Vì token có thời gian sống 15 phút, ta có thể xóa token cũ hơn 1 giờ
+  // Trong môi trường production, nên sử dụng Redis thay vì memory
+  console.log('Đang dọn dẹp bộ nhớ cache token reset...');
   usedResetTokens.clear();
-}, 60 * 60 * 1000); // 1 hour
+}, 60 * 60 * 1000); // 1 giờ
 
-// Initialize session for guest users
+// Khởi tạo session cho người dùng khách
 exports.initializeGuestSession = (req, res) => {
-    // Check if user is already authenticated
+    // Kiểm tra xem người dùng đã xác thực chưa
     if (req.session && req.session.user) {
         return res.status(200).json({ 
             success: true,
-            message: 'User session already exists',
+            message: 'Session người dùng đã tồn tại',
             sessionId: req.session.id,
             authenticated: true
         });
     }
 
-    // Mark as guest session without regenerating
+    // Đánh dấu là session khách mà không tạo lại session
     req.session.isGuest = true;
     
     res.status(200).json({ 
         success: true,
-        message: 'Guest session initialized',
+        message: 'Session khách đã được khởi tạo',
         sessionId: req.session.id,
         authenticated: false
     });
 };
 
-//API kiem tra email ton tai truoc khi dang ky
+// API kiểm tra email đã tồn tại trước khi đăng ký
 exports.checkEmailExists = async (req, res) => {
   const { Email } = req.body;
 
+  // Validate dữ liệu đầu vào
   if (!Email) {
-    return res.status(400).json({ success: false, message: 'Email is required.' });
+    return res.status(400).json({ success: false, message: 'Email là bắt buộc.' });
   }
 
   try {
     const pool = await poolPromise;
+    // Tìm kiếm email trong database (không phân biệt hoa thường)
     const emailExists = await pool.request()
       .input('Email', sql.NVarChar, Email.toLowerCase())
       .query(`SELECT MaKH FROM ${schema}.NguoiDung WHERE LOWER(Email) = LOWER(@Email)`);
 
+    // Trả về kết quả kiểm tra
     if (emailExists.recordset.length > 0) {
       return res.status(200).json({ success: true, exists: true, message: 'Email này đã tồn tại.' });
     } else {
@@ -62,13 +66,13 @@ exports.checkEmailExists = async (req, res) => {
     }
   } catch (err) {
     console.error('AuthController.checkEmailExists error:', err);
-    res.status(500).json({ success: false, message: 'Server error while checking email.' });
+    res.status(500).json({ success: false, message: 'Lỗi server khi kiểm tra email.' });
   }
 };
 
-// API Dang ki
+// API đăng ký tài khoản mới
 exports.register = async (req, res) => {
-  // 1. Lấy dữ liệu từ body
+  // Lấy dữ liệu từ request body
   const { 
     HoTen,
     Email,
@@ -82,7 +86,7 @@ exports.register = async (req, res) => {
   try {
     const pool = await poolPromise;
 
-    // Kiểm tra email đã tồn tại
+    // Kiểm tra email đã tồn tại trong hệ thống
     const emailExists = await pool.request()
       .input('Email', sql.NVarChar, Email.toLowerCase())
       .query(`SELECT MaKH FROM ${schema}.NguoiDung WHERE LOWER(Email) = LOWER(@Email)`);
@@ -94,10 +98,10 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Mã hóa mật khẩu
+    // Mã hóa mật khẩu với salt rounds = 10
     const hashedPassword = await bcrypt.hash(MatKhau, 10);
 
-    // Thêm người dùng mới
+    // Thêm người dùng mới vào database
     const insertResult = await pool.request()
       .input('LoaiUser', sql.NVarChar, 'KhachHang')
       .input('HoTen', sql.NVarChar, HoTen)
@@ -121,25 +125,26 @@ exports.register = async (req, res) => {
 
     const MaKH = insertResult.recordset[0].MaKH;
 
-    // Tạo JWT
+    // Tạo JWT token cho người dùng mới
     const token = jwt.sign(
       { MaKH: MaKH, Email: Email.toLowerCase(), role: 'KhachHang' },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
 
-    // Set session data
+    // Lưu thông tin user vào session
     req.session.user = {
       MaKH,
       Email: Email.toLowerCase(),
       role: 'KhachHang'
     };
 
+    // Đặt cookie chứa access token
     res.cookie('access_token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 1 * 60 * 60 * 1000 // 1 giờ
+      httpOnly: true, // Chỉ truy cập qua HTTP, không qua JavaScript
+      secure: process.env.NODE_ENV === 'production', // HTTPS trong production
+      sameSite: 'strict', // Bảo mật CSRF
+      maxAge: 1 * 60 * 60 * 1000 // Thời gian sống 1 giờ
     });
 
     return res.status(201).json({ 
@@ -153,6 +158,7 @@ exports.register = async (req, res) => {
     });
   } catch (err) {
     console.error('AuthController.register error:', err);
+    // Xử lý lỗi duplicate key (email/CCCD đã tồn tại)
     if (err.number === 2627) {
       return res.status(400).json({ 
         success: false,
@@ -166,16 +172,18 @@ exports.register = async (req, res) => {
   }
 };
 
-//APi Đang Nhap
+// API đăng nhập
 exports.login = async (req, res) => {
   try {
     const { Email, MatKhau } = req.body;
 
+    // Tìm kiếm người dùng theo email
     const pool = await poolPromise;
     const result = await pool.request()
       .input('Email', sql.NVarChar, Email)
       .query(`SELECT MaKH, Email, MatKhauHash, LoaiUser, HoTen FROM NguoiDung WHERE Email = @Email`);
 
+    // Kiểm tra tài khoản có tồn tại không
     if (result.recordset.length === 0) {
       return res.status(400).json({ 
         success: false,
@@ -185,6 +193,7 @@ exports.login = async (req, res) => {
 
     const user = result.recordset[0];
 
+    // So sánh mật khẩu với hash đã lưu
     const isPasswordValid = await bcrypt.compare(MatKhau, user.MatKhauHash);
 
     if (!isPasswordValid) {
@@ -194,13 +203,14 @@ exports.login = async (req, res) => {
       });
     }
 
+    // Tạo JWT token cho session
     const token = jwt.sign(
       { MaKH: user.MaKH, Email: user.Email, role: user.LoaiUser },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
 
-    // Set session data directly without regenerating
+    // Lưu thông tin user vào session mà không regenerate
     req.session.user = {
       MaKH: user.MaKH,
       HoTen: user.HoTen,
@@ -208,6 +218,7 @@ exports.login = async (req, res) => {
       role: user.LoaiUser
     };
 
+    // Đặt cookie access token
     res.cookie('access_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -230,15 +241,13 @@ exports.login = async (req, res) => {
   }
 };
 
-//API quen mat khau
+// API quên mật khẩu
 exports.forgotPassword = async (req, res) => {
   const {Email} = req.body;
   try{
-
-
     const pool = await poolPromise;
 
-    // Kiem tra email ton tai
+    // Kiểm tra email có tồn tại trong hệ thống không
     const userResult = await pool.request()
       .input('Email', sql.NVarChar, Email)
       .query(`SELECT MaKH FROM ${schema}.NguoiDung WHERE Email = @Email`);
@@ -246,19 +255,19 @@ exports.forgotPassword = async (req, res) => {
     if(userResult.recordset.length === 0){
       return res.status(404).json({ 
         success: false,
-        message: "Email khong ton tai"
+        message: "Email không tồn tại"
       });
     }
 
     const MaKH = userResult.recordset[0].MaKH;
 
-    // Tao token reset
+    // Tạo token reset mật khẩu có thời gian sống 15 phút
     const token = jwt.sign(
       {MaKH: MaKH}, process.env.RESET_PASSWORD_SECRET,
       {expiresIn: '15m'}
     );
 
-    // Gui email chua link reset
+    // Tạo link reset và gửi email
     const resetLink = `${process.env.CLIENT_URL}/reset-password?token=${token}`;
     await sendResetEmail(Email, resetLink);
 
@@ -276,12 +285,12 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
-// API Dat lai mat khau
+// API đặt lại mật khẩu
 exports.resetPassword = async (req, res) => {
   const { token, newPassword} = req.body;
   
   try{
-    // Check if token has already been used
+    // Kiểm tra token đã được sử dụng chưa (tránh tấn công replay)
     if (usedResetTokens.has(token)) {
       return res.status(400).json({ 
         success: false,
@@ -289,11 +298,12 @@ exports.resetPassword = async (req, res) => {
       });
     }
 
+    // Xác thực và giải mã token
     const decoded = jwt.verify(token, process.env.RESET_PASSWORD_SECRET);
 
     const pool = await poolPromise;
 
-    // Verify user exists
+    // Xác minh người dùng vẫn tồn tại
     const userResult = await pool.request()
       .input('MaKH', sql.Int, decoded.MaKH)
       .query(`SELECT MaKH FROM ${schema}.NguoiDung WHERE MaKH = @MaKH`);
@@ -301,20 +311,20 @@ exports.resetPassword = async (req, res) => {
     if(userResult.recordset.length === 0){
       return res.status(404).json({ 
         success: false,
-        message: "User khong ton tai"
+        message: "User không tồn tại"
       });
     }
 
-    // Ma hoa mat khau moi
+    // Mã hóa mật khẩu mới
     const hasedPassword = await bcrypt.hash(newPassword, 10);
 
-    // Cap nhat mat khau
+    // Cập nhật mật khẩu mới vào database
     await pool.request()
       .input('MaKH', sql.Int, decoded.MaKH)
       .input('MatKhauHash', sql.NVarChar, hasedPassword)
       .query(`UPDATE ${schema}.NguoiDung SET MatKhauHash = @MatKhauHash WHERE MaKH = @MaKH`);
     
-    // Mark token as used to prevent reuse
+    // Đánh dấu token đã sử dụng để ngăn tái sử dụng
     usedResetTokens.add(token);
     
     res.status(200).json({ 
@@ -325,6 +335,7 @@ exports.resetPassword = async (req, res) => {
   catch(err){
     console.error('AuthController.resetPassword error:', err);
     
+    // Xử lý các loại lỗi token khác nhau
     if (err.name === 'TokenExpiredError') {
       return res.status(400).json({ 
         success: false,
@@ -346,19 +357,19 @@ exports.resetPassword = async (req, res) => {
   }
 }
 
-// API Logout
+// API đăng xuất
 exports.logout = (req, res) => {
-  // Destroy session
+  // Hủy session
   req.session.destroy((err) => {
     if (err) {
-      console.error('Error destroying session:', err);
+      console.error('Lỗi khi hủy session:', err);
       return res.status(500).json({ 
         success: false,
         message: 'Lỗi đăng xuất'
       });
     }
 
-    // Clear the access token cookie
+    // Xóa cookie access token
     res.clearCookie('access_token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -372,103 +383,112 @@ exports.logout = (req, res) => {
   });
 };
 
+// API xóa người dùng
 exports.deleteUser = async (req, res) => {
   const { MaKH } = req.params;
   const currentUser = req.user;
-  if (!MaKH || isNaN(MaKH))
-  {
-    res.status(400).json({ message: 'MaKH khong hop le' });
+  
+  // Validate MaKH
+  if (!MaKH || isNaN(MaKH)) {
+    res.status(400).json({ message: 'MaKH không hợp lệ' });
   }
-  if(currentUser.role !== 'QuanLyKS' && currentUser.role !== 'Admin')
-  {
-    if(currentUser.MaKH !== MaKH)
-    {
+  
+  // Kiểm tra quyền xóa: chỉ admin/quản lý hoặc chính user đó mới có thể xóa
+  if(currentUser.role !== 'QuanLyKS' && currentUser.role !== 'Admin') {
+    if(currentUser.MaKH !== MaKH) {
       return res.status(403).json({ message: 'Bạn không có quyền xóa tài khoản của người khác' });
     }
   }
+  
+  // Thực hiện xóa user khỏi database
   const pool = await poolPromise;
-
   const result = await pool.request()
     .input('MaKH', sql.Int, MaKH)
     .query(`DELETE FROM NguoiDung WHERE MaKH = @MaKH`);
+    
   res.status(200).json({ message: 'Xóa tài khoản thành công' });
 }
 
+// API đăng nhập bằng Google
 exports.googleLogin = async (req, res) => {
   const { token } = req.body;
   console.log('GoogleLogin token:', token);
-  try 
-  {
+  
+  try {
+    // Xác thực Google ID token
     const ticket = await client.verifyIdToken({
       idToken: token,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
 
+    // Lấy thông tin user từ Google payload
     const payload = ticket.getPayload();
     const email = payload.email;
     const name = payload.name;
     
     const pool = await poolPromise;
 
-    //Kiem tra email da ton tai
+    // Kiểm tra email đã tồn tại trong hệ thống chưa
     const userResult = await pool.request()
       .input('Email', sql.NVarChar, email)
       .query(`SELECT MaKH, LoaiUser, HoTen FROM NguoiDung WHERE Email = @Email`);
 
-      let MaKH, role, HoTen;
+    let MaKH, role, HoTen;
 
-      if(userResult.recordset.length === 0)
-      {
-        const insertResult = await pool.request()
-          .input('LoaiUser', sql.NVarChar, 'KhachHang')
-          .input('HoTen', sql.NVarChar, name)
-          .input('Email', sql.NVarChar, email)
-          .input('MatKhauHash', sql.NVarChar, '')
-          .query(`
-            INSERT INTO NguoiDung (LoaiUser, HoTen, Email, MatKhauHash)
-            VALUES (@LoaiUser, @HoTen, @Email, @MatKhauHash);
-            SELECT SCOPE_IDENTITY() AS MaKH;
-          `);
+    // Nếu user chưa tồn tại, tạo tài khoản mới
+    if(userResult.recordset.length === 0) {
+      const insertResult = await pool.request()
+        .input('LoaiUser', sql.NVarChar, 'KhachHang')
+        .input('HoTen', sql.NVarChar, name)
+        .input('Email', sql.NVarChar, email)
+        .input('MatKhauHash', sql.NVarChar, '') // Google login không cần password
+        .query(`
+          INSERT INTO NguoiDung (LoaiUser, HoTen, Email, MatKhauHash)
+          VALUES (@LoaiUser, @HoTen, @Email, @MatKhauHash);
+          SELECT SCOPE_IDENTITY() AS MaKH;
+        `);
 
-          MaKH = insertResult.recordset[0].MaKH;
-          role = 'KhachHang';
-      }
-      else
-      { 
-        const user = userResult.recordset[0];
-        HoTen = user.Hoten;
-        MaKH = user.MaKH;
-        role = user.LoaiUser;
-      }
+        MaKH = insertResult.recordset[0].MaKH;
+        role = 'KhachHang';
+    }
+    else { 
+      // User đã tồn tại, lấy thông tin
+      const user = userResult.recordset[0];
+      HoTen = user.Hoten;
+      MaKH = user.MaKH;
+      role = user.LoaiUser;
+    }
 
-      req.session.user = {
-        MaKH,
-        HoTen,
-        Email: email,
-        role
-      };
-      
+    // Lưu thông tin user vào session
+    req.session.user = {
+      MaKH,
+      HoTen,
+      Email: email,
+      role
+    };
+    
+    // Tạo JWT token
+    const jwtToken = jwt.sign(
+      {MaKH, Email: email, role},
+      process.env.JWT_SECRET,
+      {expiresIn: '1h'}
+    );
 
-      const jwtToken = jwt.sign(
-        {MaKH, Email: email, role},
-        process.env.JWT_SECRET,
-        {expiresIn: '1h'}
-      );
-
-      res.cookie('access_token', jwtToken, {
-        httpOnly: true,
-        secure: false,
-        sameSite: 'strict',
-        maxAge: 1 * 60 * 60 * 1000,
-      });
-    console.log('GoogleLogin success:', email);
+    // Đặt cookie access token
+    res.cookie('access_token', jwtToken, {
+      httpOnly: true,
+      secure: false, // Trong development
+      sameSite: 'strict',
+      maxAge: 1 * 60 * 60 * 1000,
+    });
+    
+    console.log('GoogleLogin thành công:', email);
     res.status(200).json({ 
       success: true,
       message: 'Đăng nhập thành công'
     });
   }
-  catch(err)
-  {
+  catch(err) {
     console.error('GoogleLogin error:', err);
     res.status(500).json({ 
       success: false,
@@ -477,10 +497,12 @@ exports.googleLogin = async (req, res) => {
   }
 }
 
+// API đổi mật khẩu
 exports.changePassword = async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   const currentUser = req.user; // Lấy thông tin user từ middleware auth
 
+  // Kiểm tra thông tin user có hợp lệ không
   if (!currentUser || typeof currentUser.MaKH === 'undefined') {
     console.error('Lỗi nghiêm trọng: Thông tin người dùng (MaKH) không tồn tại trong req.user.');
     return res.status(401).json({ success: false, message: 'Người dùng không được xác thực hoặc thông tin không hợp lệ.' });
@@ -490,7 +512,7 @@ exports.changePassword = async (req, res) => {
   try {
     const pool = await poolPromise;
 
-    // Lấy thông tin user hiện tại
+    // Lấy mật khẩu hiện tại từ database
     const userResult = await pool.request()
       .input('MaKH', sql.Int, currentUser.MaKH)
       .query(`SELECT MatKhauHash FROM ${schema}.NguoiDung WHERE MaKH = @MaKH`);
@@ -504,7 +526,7 @@ exports.changePassword = async (req, res) => {
 
     const user = userResult.recordset[0];
 
-    // Kiểm tra mật khẩu hiện tại
+    // Xác thực mật khẩu hiện tại
     const isPasswordValid = await bcrypt.compare(currentPassword, user.MatKhauHash);
     if (!isPasswordValid) {
       return res.status(400).json({
@@ -516,7 +538,7 @@ exports.changePassword = async (req, res) => {
     // Mã hóa mật khẩu mới
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    // Cập nhật mật khẩu mới
+    // Cập nhật mật khẩu mới vào database
     await pool.request()
       .input('MaKH', sql.Int, currentUser.MaKH)
       .input('MatKhauHash', sql.NVarChar, hashedPassword)

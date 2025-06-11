@@ -1,21 +1,31 @@
-const nodemailer = require('nodemailer');
-const moment = require('moment');
+// Utility xử lý gửi email cho hệ thống
+const nodemailer = require('nodemailer'); // Thư viện gửi email
+const moment = require('moment');         // Thư viện xử lý thời gian
 
+// Cấu hình transporter cho nodemailer sử dụng SMTP
 const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT,
-    secure: false, // false nếu dùng port 587
+    host: process.env.SMTP_HOST, // SMTP server host
+    port: process.env.SMTP_PORT, // SMTP port (thường là 587 hoặc 465)
+    secure: false, // false nếu dùng port 587 (STARTTLS)
     auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
+        user: process.env.SMTP_USER, // Email account để gửi
+        pass: process.env.SMTP_PASS  // Mật khẩu hoặc app password
     }
 });
 
+/**
+ * Gửi email reset mật khẩu cho người dùng
+ * Email có thiết kế đẹp mắt với HTML template
+ * 
+ * @param {string} email - Email người nhận
+ * @param {string} resetLink - Link reset mật khẩu (có token)
+ */
 exports.sendResetEmail = async (email, resetLink) => {
+    // Cấu hình nội dung email
     const mailOptions = {
-        from: `"Hotel Booking" <${process.env.SMTP_USER}>`,
-        to: email,
-        subject: 'Đặt lại mật khẩu Hotel Booking',
+        from: `"Hotel Booking" <${process.env.SMTP_USER}>`, // Người gửi
+        to: email,                                          // Người nhận
+        subject: 'Đặt lại mật khẩu Hotel Booking',          // Tiêu đề email
         html: `
             <!DOCTYPE html>
             <html lang="vi">
@@ -28,10 +38,10 @@ exports.sendResetEmail = async (email, resetLink) => {
                 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f8f9fa;">
                     <tr>
                         <td style="padding: 40px 20px;">
-                            <!-- Main container -->
+                            <!-- Container chính -->
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); overflow: hidden;">
                                 
-                                <!-- Header with primary blue gradient -->
+                                <!-- Header với gradient xanh -->
                                 <tr>
                                     <td style="background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%); padding: 40px 30px; text-align: center;">
                                          <table align="center" role="presentation" style="margin: 0 auto;">
@@ -50,7 +60,7 @@ exports.sendResetEmail = async (email, resetLink) => {
                                     </td>
                                 </tr>
 
-                                <!-- Content -->
+                                <!-- Nội dung chính -->
                                 <tr>
                                     <td style="padding: 40px 30px;">
                                         <h2 style="margin: 0 0 20px; color: #1f2937; font-size: 24px; font-weight: 600;">
@@ -60,21 +70,21 @@ exports.sendResetEmail = async (email, resetLink) => {
                                             Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn. Vui lòng nhấn vào nút bên dưới để tạo mật khẩu mới.
                                         </p>
                                         
-                                        <!-- Reset button -->
+                                        <!-- Nút reset mật khẩu -->
                                         <div style="text-align: center; margin: 30px 0;">
                                             <a href="${resetLink}" style="display: inline-block; background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3); transition: all 0.3s ease;">
                                                 🔑 Đặt lại mật khẩu
                                             </a>
                                         </div>
                                         
-                                        <!-- Warning notice -->
+                                        <!-- Thông báo cảnh báo -->
                                         <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 16px; margin: 25px 0;">
                                             <p style="margin: 0; color: #856404; font-size: 14px; font-weight: 500;">
                                                 ⚠️ <strong>Lưu ý quan trọng:</strong> Link này sẽ hết hạn trong <strong>15 phút</strong>. Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.
                                             </p>
                                         </div>
                                         
-                                        <!-- Alternative link -->
+                                        <!-- Link dự phòng -->
                                         <p style="margin: 20px 0 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
                                             Nếu nút không hoạt động, vui lòng copy và dán link sau vào trình duyệt:<br>
                                             <a href="${resetLink}" style="color: #0d6efd; word-break: break-all;">${resetLink}</a>
@@ -110,10 +120,24 @@ exports.sendResetEmail = async (email, resetLink) => {
         `
     };
 
+    // Gửi email và log kết quả
     await transporter.sendMail(mailOptions);
     console.log(`Đã gửi email reset password cho ${email}`);
 };
 
+/**
+ * Gửi email xác nhận đặt phòng thành công
+ * Email chứa đầy đủ thông tin booking với thiết kế professional
+ * 
+ * @param {Object} booking - Thông tin đặt phòng
+ * @param {string} booking.guestEmail - Email khách hàng
+ * @param {string} booking.guestName - Tên khách hàng
+ * @param {string} booking.bookingId - Mã đặt phòng
+ * @param {string} booking.hotelName - Tên khách sạn
+ * @param {Date} booking.checkIn - Ngày nhận phòng
+ * @param {Date} booking.checkOut - Ngày trả phòng
+ * @param {number} booking.totalPrice - Tổng giá tiền
+ */
 exports.sendBookingConfirmation = async (booking) => {
     const mailOptions = {
         from: `"Hotel Booking System" <${process.env.SMTP_USER}>`,
@@ -131,13 +155,13 @@ exports.sendBookingConfirmation = async (booking) => {
                 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f8f9fa;">
                     <tr>
                         <td style="padding: 40px 20px;">
-                            <!-- Main container -->
+                            <!-- Container chính -->
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); overflow: hidden;">
                                 
-                                <!-- Header with primary blue gradient -->
+                                <!-- Header với gradient xanh -->
                                 <tr>
                                     <td style="background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%); padding: 40px 30px; text-align: center;">
-                                        < <table align="center" role="presentation" style="margin: 0 auto;">
+                                        <table align="center" role="presentation" style="margin: 0 auto;">
                                             <tr>
                                                 <td align="center" style="font-size: 36px; line-height: 1;">
                                                 🏨
@@ -153,7 +177,7 @@ exports.sendBookingConfirmation = async (booking) => {
                                     </td>
                                 </tr>
 
-                                <!-- Success badge -->
+                                <!-- Badge thành công -->
                                 <tr>
                                     <td style="padding: 0 30px; position: relative;">
                                         <div style="background-color: #198754; color: white; padding: 12px 24px; border-radius: 25px; text-align: center; font-weight: 600; margin: -20px auto 30px; width: fit-content; box-shadow: 0 4px 12px rgba(25, 135, 84, 0.3);">
@@ -162,7 +186,7 @@ exports.sendBookingConfirmation = async (booking) => {
                                     </td>
                                 </tr>
 
-                                <!-- Guest greeting -->
+                                <!-- Lời chào khách hàng -->
                                 <tr>
                                     <td style="padding: 0 30px 25px;">
                                         <h2 style="margin: 0 0 15px; color: #1f2937; font-size: 24px; font-weight: 600;">
@@ -174,7 +198,7 @@ exports.sendBookingConfirmation = async (booking) => {
                                     </td>
                                 </tr>
 
-                                <!-- Booking details card -->
+                                <!-- Card thông tin đặt phòng -->
                                 <tr>
                                     <td style="padding: 0 30px 30px;">
                                         <div style="background-color: #f8f9fa; border-radius: 12px; padding: 25px; border-left: 5px solid #0d6efd;">
@@ -256,8 +280,6 @@ exports.sendBookingConfirmation = async (booking) => {
                                         </div>
                                     </td>
                                 </tr>
-
-
 
                                 <!-- Contact support -->
                                 <tr>
@@ -486,8 +508,6 @@ exports.sendBookingNotificationToManager = async (managerInfo) => {
                                     </td>
                                 </tr>
 
-
-
                                 <!-- Contact support -->
                                 <tr>
                                     <td style="padding: 0 30px 30px;">
@@ -617,8 +637,6 @@ exports.sendNewBookingToManager = async (managerEmail, hotelName, maDat) => {
                                         </p>
                                     </td>
                                 </tr>
-
-
 
                                 <!-- Footer -->
                                 <tr>

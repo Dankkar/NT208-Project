@@ -1,32 +1,44 @@
 // backend/src/controllers/bookingController.js
-const { poolPromise, sql } = require('../database/db');
-const { sendReviewRequestEmail, sendBookingConfirmation, sendBookingNotificationToManager } = require('../utils/emailService');
-const PriceCalculationService = require('../services/priceCalculationService');
+// Controller xử lý tất cả logic liên quan đến đặt phòng
+const { poolPromise, sql } = require('../database/db'); // Kết nối database SQL Server
+const { sendReviewRequestEmail, sendBookingConfirmation, sendBookingNotificationToManager } = require('../utils/emailService'); // Email services
+const PriceCalculationService = require('../services/priceCalculationService'); // Service tính toán giá
 
-
-
-// Tao don dat phong
+/**
+ * Tạo đơn đặt phòng chính thức từ booking tạm giữ
+ * Flow: Hold booking (15 phút) -> Create booking (chính thức)
+ * @param {Object} req - Request object
+ * @param {Object} req.body - Body chứa thông tin booking
+ * @param {Array} req.body.services - Danh sách dịch vụ đã chọn
+ * @param {string} req.body.promotionCode - Mã khuyến mãi (nếu có)
+ * @param {Object} req.body.guestInfo - Thông tin khách (nếu guest user)
+ * @param {Object} req.body.paymentInfo - Thông tin thanh toán
+ * @param {Object} req.session.bookingInfo - Thông tin booking đã hold từ session
+ * @param {Object} req.user - User đã đăng nhập (nếu có)
+ * @param {Object} res - Response object
+ * @returns {Object} Kết quả tạo booking với MaDat và MaHD
+ */
 exports.createBooking = async (req, res) => {
     try {
         const {
-            services, promotionCode,
-            // Guest information (if not logged in)
-            guestInfo,
-            // Payment information
-            paymentInfo
+            services,        // Danh sách dịch vụ: [{ MaLoaiDV, quantity }]
+            promotionCode,   // Mã khuyến mãi (optional)
+            guestInfo,       // Thông tin khách guest: { HoTen, Email, SDT, CCCD, NgaySinh, GioiTinh }
+            paymentInfo      // Thông tin thanh toán: { HinhThucTT, ... }
         } = req.body;
 
         const sessionId = req.session.id;
-        const currentUser = req.user;
-        const bookingInfo = req.session.bookingInfo;
+        const currentUser = req.user;           // User đã đăng nhập (từ middleware auth)
+        const bookingInfo = req.session.bookingInfo; // Booking đã hold từ session
 
+        // Kiểm tra có thông tin booking hold không
         if (!bookingInfo) {
             return res.status(400).json({ error: "Không tìm thấy thông tin đặt phòng. Vui lòng thử lại." });
         }
 
         const pool = await poolPromise;
 
-        // Verify the held booking is still valid
+        // Verify booking hold vẫn còn hợp lệ (chưa hết 15 phút)
         const heldBookingResult = await pool.request()
             .input('MaDat', sql.Int, bookingInfo.MaDat)
             .query(`
@@ -41,20 +53,21 @@ exports.createBooking = async (req, res) => {
             return res.status(400).json({ error: "Phiên đặt phòng đã hết hạn. Vui lòng thử lại." });
         }
 
-        // Start transaction
+        // Bắt đầu transaction để đảm bảo data integrity
         const transaction = pool.transaction();
         await transaction.begin();
 
         try {
-            let MaKH = currentUser ? currentUser.MaKH : null;
-            let MaKhach = null;
+            let MaKH = currentUser ? currentUser.MaKH : null;   // ID user đã đăng nhập
+            let MaKhach = null;                                  // ID guest record
 
-            // If user is not logged in, create guest record
+            // Nếu user chưa đăng nhập (guest), tạo record trong bảng Guests
             if (!currentUser) {
                 if (!guestInfo) {
                     throw new Error("Thông tin khách hàng là bắt buộc");
                 }
 
+                // Tạo guest record với thông tin đầy đủ
                 const guestResult = await transaction.request()
                     .input('HoTen', sql.NVarChar, guestInfo.HoTen)
                     .input('Email', sql.NVarChar, guestInfo.Email)
@@ -71,7 +84,7 @@ exports.createBooking = async (req, res) => {
                 MaKhach = guestResult.recordset[0].MaKhach;
             }
 
-            // Get room price and calculate total
+            // Lấy giá cơ sở của phòng từ LoaiPhong
             const roomPriceResult = await transaction.request()
                 .input('MaPhong', sql.Int, bookingInfo.MaPhong)
                 .query(`
@@ -87,7 +100,7 @@ exports.createBooking = async (req, res) => {
 
             const basePrice = roomPriceResult.recordset[0].GiaCoSo;
 
-            // Check and get promotion info if any
+            // Kiểm tra và lấy thông tin khuyến mãi (nếu có)
             let promotion = null;
             if (promotionCode) {
                 const promotionResult = await transaction.request()
@@ -106,7 +119,7 @@ exports.createBooking = async (req, res) => {
                 }
             }
 
-            // Get service details if any
+            // Lấy chi tiết dịch vụ đã chọn (nếu có)
             let serviceDetails = [];
             if (services && services.length > 0) {
                 const serviceIds = services.map(s => s.MaLoaiDV);
@@ -118,19 +131,20 @@ exports.createBooking = async (req, res) => {
                         WHERE MaLoaiDV IN (SELECT value FROM STRING_SPLIT(@serviceIds, ','))
                     `);
 
+                // Kết hợp thông tin dịch vụ với số lượng
                 serviceDetails = serviceResult.recordset.map(service => ({
                     ...service,
                     quantity: services.find(s => s.MaLoaiDV === service.MaLoaiDV)?.quantity || 1
                 }));
             }
 
-            // Calculate total price
+            // Chuẩn bị dữ liệu để tính toán giá tổng
             const bookingDetails = {
-                basePrice,
-                checkIn: bookingInfo.NgayNhanPhong,
-                checkOut: bookingInfo.NgayTraPhong,
-                services: serviceDetails,
-                promotion: promotion ? {
+                basePrice,                                     // Giá cơ sở phòng
+                checkIn: bookingInfo.NgayNhanPhong,           // Ngày nhận phòng
+                checkOut: bookingInfo.NgayTraPhong,           // Ngày trả phòng
+                services: serviceDetails,                      // Danh sách dịch vụ
+                promotion: promotion ? {                       // Thông tin khuyến mãi (nếu có)
                     type: promotion.LoaiKM === 'Giảm %' ? 'PERCENTAGE' : 'FIXED',
                     value: promotion.GiaTriKM,
                     code: promotionCode,
@@ -139,7 +153,7 @@ exports.createBooking = async (req, res) => {
                 } : null
             };
 
-            console.log('Booking details for price calculation:', {
+            console.log('Chi tiết booking để tính giá:', {
                 basePrice,
                 checkIn: bookingInfo.NgayNhanPhong,
                 checkOut: bookingInfo.NgayTraPhong,
@@ -147,13 +161,15 @@ exports.createBooking = async (req, res) => {
                 promotion: promotion
             });
 
+            // Tính toán giá tổng bằng PriceCalculationService
             const priceDetails = PriceCalculationService.calculateTotalPrice(bookingDetails);
-            console.log('Price calculation result:', priceDetails);
+            console.log('Kết quả tính giá:', priceDetails);
             
             const TongTienDuKien = priceDetails.finalPrice;
-            console.log('TongTienDuKien:', TongTienDuKien);
+            console.log('Tổng tiền dự kiến:', TongTienDuKien);
 
-            // Create guest account representative for all guests if not exists
+            // Tạo hoặc lấy guest representative account cho guest bookings
+            // Account này đại diện cho tất cả guest users trong hệ thống
             let guestRepresentativeResult = await transaction.request()
                 .query(`
                     SELECT MaKH FROM NguoiDung 
@@ -161,7 +177,7 @@ exports.createBooking = async (req, res) => {
                 `);
 
             if (guestRepresentativeResult.recordset.length === 0) {
-                // Create guest representative account if it doesn't exist
+                // Tạo guest representative account nếu chưa có
                 guestRepresentativeResult = await transaction.request()
                     .input('LoaiUser', sql.NVarChar, 'Guest')
                     .input('HoTen', sql.NVarChar, 'Guest Representative Account')
@@ -353,11 +369,18 @@ exports.createBooking = async (req, res) => {
 };
 
 
-// Xem chi tiet don
+/**
+ * Lấy chi tiết booking theo mã đặt phòng
+ * @param {Object} req - Request object
+ * @param {number} req.params.MaDat - Mã đặt phòng cần xem
+ * @param {Object} req.user - User hiện tại (từ middleware auth, có thể null)
+ * @param {Object} res - Response object
+ * @returns {Object} Chi tiết đầy đủ booking bao gồm thông tin phòng, khách sạn, dịch vụ
+ */
 exports.getBookingById = async (req, res) => {
     try {
         const { MaDat } = req.params;
-        const currentUser = req.user;
+        const currentUser = req.user;      // User hiện tại (có thể null)
         const pool = await poolPromise;
 
         // Lấy thông tin booking với image URLs
@@ -967,19 +990,34 @@ exports.getAllBookings = async (req, res) => {
     }
 };
 
-//API Hold booking
+/**
+ * Tạo booking tạm thời để giữ chỗ phòng (15 phút)
+ * Đây là bước đầu tiên trong quy trình đặt phòng 2 bước
+ * @param {Object} req - Request object
+ * @param {Object} req.body - Thông tin đặt phòng
+ * @param {number} req.body.MaKS - Mã khách sạn
+ * @param {number} req.body.MaPhong - Mã phòng cụ thể (optional, ưu tiên MaLoaiPhong)
+ * @param {number} req.body.MaLoaiPhong - Mã loại phòng (auto-assign phòng trống)
+ * @param {date} req.body.NgayNhanPhong - Ngày check-in
+ * @param {date} req.body.NgayTraPhong - Ngày check-out
+ * @param {number} req.body.SoLuongKhach - Số lượng khách
+ * @param {string} req.body.YeuCauDacBiet - Yêu cầu đặc biệt
+ * @param {number} req.body.TongTienDuKien - Tổng tiền dự kiến
+ * @param {Object} res - Response object
+ * @returns {Object} Thông tin booking tạm giữ với MaDat và thời gian hết hạn
+ */
 exports.holdBooking = async (req, res) => {
     try {
         const {
-            MaKS, MaPhong, MaLoaiPhong, // Accept both MaPhong and MaLoaiPhong
+            MaKS, MaPhong, MaLoaiPhong,   // Chấp nhận cả MaPhong và MaLoaiPhong
             NgayNhanPhong, NgayTraPhong,
             SoLuongKhach, YeuCauDacBiet,
             TongTienDuKien
         } = req.body;
 
-        console.log('holdBooking - Received data:', { MaKS, MaPhong, MaLoaiPhong, NgayNhanPhong, NgayTraPhong, SoLuongKhach });
+        console.log('holdBooking - Dữ liệu nhận được:', { MaKS, MaPhong, MaLoaiPhong, NgayNhanPhong, NgayTraPhong, SoLuongKhach });
 
-        const currentUser = req.user; // Will be undefined for guests
+        const currentUser = req.user; // User đã đăng nhập (undefined cho guest)
 
         // Check if this session already has a held booking
         if (req.session.bookingInfo) {
