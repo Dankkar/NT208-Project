@@ -1,69 +1,95 @@
-  <!-- src/views/admin/hotels/EditHotelPage.vue -->
-  <template>
-    <div>
-      <h1 class="mb-4 fw-bold text-center">Edit Hotel</h1>
+<!-- src/views/admin/hotels/EditHotelPage.vue -->
+<template>
+  <div>
+    <h1 class="mb-4 fw-bold text-center">Edit Hotel</h1>
 
-      <div v-if="pageLoading" class="text-center my-5">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Loading hotel data...</span>
+    <div v-if="pageLoading" class="text-center my-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading hotel data...</span>
+      </div>
+    </div>
+    <div v-else-if="pageError" class="alert alert-danger mx-auto" style="max-width: 800px;">
+      <p>{{ pageError }}</p>
+      <button @click="goBackToManageHotels" class="btn btn-sm btn-secondary">Back to Manage Hotels</button>
+    </div>
+
+    <form v-else-if="editableHotel.MaKS" @submit.prevent="submitUpdateHotel" class="card p-4 shadow-sm mx-auto" style="max-width: 800px;">
+      <div v-if="formError" class="alert alert-danger">{{ formError }}</div>
+      <div v-if="successMessage" class="alert alert-success">{{ successMessage }}</div>
+
+      <p class="text-muted">Editing Hotel ID: <strong>{{ hotelId }}</strong></p>
+      <hr class="my-3">
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label for="tenKS" class="form-label">Hotel Name (TenKS) <span class="text-danger">*</span></label>
+          <input id="tenKS" v-model.trim="editableHotel.TenKS" type="text" class="form-control" required />
         </div>
-      </div>
-      <div v-else-if="pageError" class="alert alert-danger mx-auto" style="max-width: 800px;">
-        <p>{{ pageError }}</p>
-        <button @click="goBackToManageHotels" class="btn btn-sm btn-secondary">Back to Manage Hotels</button>
-      </div>
+        <div class="col-md-12">
+          <GeocodingAddressInput
+            v-model="editableHotel.DiaChi"
+            v-model:coordinates="hotelCoordinates"
+            label="Address (DiaChi)"
+            placeholder="Nhập địa chỉ khách sạn (VD: 123 Đường ABC, Quận XYZ, TP.HCM)"
+            input-id="diaChi"
+            :required="true"
+            :disabled="isSubmitting"
+            @geocoding-success="onGeocodingSuccess"
+            @geocoding-error="onGeocodingError"
+          />
+        </div>
+        <div class="col-md-6">
+          <label for="hangSao" class="form-label">Star Rating (HangSao) <span class="text-danger">*</span></label>
+           <select id="hangSao" v-model="editableHotel.HangSao" class="form-select" required>
+            <option value="" disabled>-- Select Stars --</option>
+            <option value="1 sao">1 Star</option>
+            <option value="2 sao">2 Stars</option>
+            <option value="3 sao">3 Stars</option>
+            <option value="4 sao">4 Stars</option>
+            <option value="5 sao">5 Stars</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label for="loaiHinh" class="form-label">Hotel Type (LoaiHinh) <span class="text-danger">*</span></label>
+          <input id="loaiHinh" v-model.trim="editableHotel.LoaiHinh" type="text" class="form-control" required />
+        </div>
+        <div class="col-12">
+          <label for="moTaCoSoVatChat" class="form-label">Facility Description (MoTaCoSoVatChat) <span class="text-danger">*</span></label>
+          <textarea id="moTaCoSoVatChat" v-model="editableHotel.MoTaCoSoVatChat" class="form-control" rows="4" required></textarea>
+        </div>
+        <div class="col-12">
+          <label for="quyDinh" class="form-label">Regulations (QuyDinh) <span class="text-danger">*</span></label>
+          <textarea id="quyDinh" v-model="editableHotel.QuyDinh" class="form-control" rows="4" required></textarea>
+        </div>
+         <div class="col-12">
+          <label for="motaChung" class="form-label">General Description (MotaChung)</label>
+          <textarea id="motaChung" v-model="editableHotel.MotaChung" class="form-control" rows="3"></textarea>
+        </div>
 
-      <form v-else-if="editableHotel.MaKS" @submit.prevent="submitUpdateHotel" class="card p-4 shadow-sm mx-auto" style="max-width: 800px;">
-        <div v-if="formError" class="alert alert-danger">{{ formError }}</div>
-        <div v-if="successMessage" class="alert alert-success">{{ successMessage }}</div>
+        <div class="col-md-6">
+          <label for="maNguoiQuanLyEdit" class="form-label">Assign Manager (MaNguoiQuanLy)</label>
+          <input id="maNguoiQuanLyEdit" v-model.number="editableHotel.MaNguoiQuanLy" type="number" class="form-control" placeholder="Enter User ID or leave blank"/>
+          <small class="form-text text-muted">Enter new User ID to change manager, or leave blank to keep current/remove (if backend supports).</small>
+        </div>
 
-        <p class="text-muted">Editing Hotel ID: <strong>{{ hotelId }}</strong></p>
-        <hr class="my-3">
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="isActiveSwitch" v-model="editableHotel.IsActive">
+            <label class="form-check-label" for="isActiveSwitch">Is Active</label>
+        </div>
 
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label for="tenKS" class="form-label">Hotel Name (TenKS) <span class="text-danger">*</span></label>
-            <input id="tenKS" v-model.trim="editableHotel.TenKS" type="text" class="form-control" required />
-          </div>
-          <div class="col-md-12">
-            <GeocodingAddressInput
-              v-model="editableHotel.DiaChi"
-              v-model:coordinates="hotelCoordinates"
-              label="Address (DiaChi)"
-              placeholder="Nhập địa chỉ khách sạn (VD: 123 Đường ABC, Quận XYZ, TP.HCM)"
-              input-id="diaChi"
-              :required="true"
+        <!-- Thêm phần quản lý ảnh -->
+        <div class="col-12 mt-4">
+          <label class="form-label">Hotel Images</label>
+          <div class="mb-3">
+            <input
+              type="file"
+              class="form-control"
+              accept="image/*"
+              multiple
+              @change="handleImageSelect"
               :disabled="isSubmitting"
-              @geocoding-success="onGeocodingSuccess"
-              @geocoding-error="onGeocodingError"
-            />
-          </div>
-          <div class="col-md-6">
-            <label for="hangSao" class="form-label">Star Rating (HangSao) <span class="text-danger">*</span></label>
-            <select id="hangSao" v-model="editableHotel.HangSao" class="form-select" required>
-              <option value="" disabled>-- Select Stars --</option>
-              <option value="1 sao">1 Star</option>
-              <option value="2 sao">2 Stars</option>
-              <option value="3 sao">3 Stars</option>
-              <option value="4 sao">4 Stars</option>
-              <option value="5 sao">5 Stars</option>
-            </select>
-          </div>
-          <div class="col-md-6">
-            <label for="loaiHinh" class="form-label">Hotel Type (LoaiHinh) <span class="text-danger">*</span></label>
-            <input id="loaiHinh" v-model.trim="editableHotel.LoaiHinh" type="text" class="form-control" required />
-          </div>
-          <div class="col-12">
-            <label for="moTaCoSoVatChat" class="form-label">Facility Description (MoTaCoSoVatChat) <span class="text-danger">*</span></label>
-            <textarea id="moTaCoSoVatChat" v-model="editableHotel.MoTaCoSoVatChat" class="form-control" rows="4" required></textarea>
-          </div>
-          <div class="col-12">
-            <label for="quyDinh" class="form-label">Regulations (QuyDinh) <span class="text-danger">*</span></label>
-            <textarea id="quyDinh" v-model="editableHotel.QuyDinh" class="form-control" rows="4" required></textarea>
-          </div>
-          <div class="col-12">
-            <label for="motaChung" class="form-label">General Description (MotaChung)</label>
-            <textarea id="motaChung" v-model="editableHotel.MotaChung" class="form-control" rows="3"></textarea>
+            >
+            <small class="form-text text-muted">You can select multiple images. Click on an image to set it as main image.</small>
           </div>
 
           <!-- Hiển thị ảnh -->
@@ -98,35 +124,36 @@
             </div>
           </div>
         </div>
-
-        <div class="mt-4 d-flex justify-content-end">
-          <button type="button" @click="goBackToManageHotels" class="btn btn-secondary me-2" :disabled="isSubmitting">
-            Cancel
-          </button>
-          <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
-            <span v-if="isSubmitting" class="spinner-border spinner-border-sm me-1"></span>
-            {{ isSubmitting ? 'Updating...' : 'Update Hotel' }}
-          </button>
-        </div>
-      </form>
-      <div v-else class="alert alert-warning mx-auto" style="max-width: 800px;">
-          Hotel data could not be loaded for editing.
-          <button @click="goBackToManageHotels" class="btn btn-sm btn-secondary ms-2">Back</button>
       </div>
+
+      <div class="mt-4 d-flex justify-content-end">
+        <button type="button" @click="goBackToManageHotels" class="btn btn-secondary me-2" :disabled="isSubmitting">
+          Cancel
+        </button>
+        <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
+          <span v-if="isSubmitting" class="spinner-border spinner-border-sm me-1"></span>
+          {{ isSubmitting ? 'Updating...' : 'Update Hotel' }}
+        </button>
+      </div>
+    </form>
+    <div v-else class="alert alert-warning mx-auto" style="max-width: 800px;">
+        Hotel data could not be loaded for editing.
+         <button @click="goBackToManageHotels" class="btn btn-sm btn-secondary ms-2">Back</button>
     </div>
-  </template>
+  </div>
+</template>
 
-  <script setup>
-  import { ref, reactive, onMounted, watch } from 'vue';
-  import { useRoute, useRouter } from 'vue-router';
-  import axios from 'axios';
-  import GeocodingAddressInput from '@/components/GeocodingAddressInput.vue';
+<script setup>
+import { ref, reactive, onMounted, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import axios from 'axios';
+import GeocodingAddressInput from '@/components/GeocodingAddressInput.vue';
 
-  const route = useRoute();
-  const router = useRouter();
+const route = useRoute();
+const router = useRouter();
 
-  const hotelId = ref(route.params.hotelId || null); // MaKS từ route
-  const originalHotelData = ref(null); // Dữ liệu gốc từ API
+const hotelId = ref(route.params.hotelId || null); // MaKS từ route
+const originalHotelData = ref(null); // Dữ liệu gốc từ API
 
 const editableHotel = reactive({
   MaKS: null,
@@ -340,71 +367,71 @@ async function submitUpdateHotel() {
     formData.append('images', file);
   });
 
-    // Add coordinates if available
-    if (hotelCoordinates.value && hotelCoordinates.value.latitude && hotelCoordinates.value.longitude) {
-      formData.append('Latitude', hotelCoordinates.value.latitude);
-      formData.append('Longitude', hotelCoordinates.value.longitude);
-    }
+  // Add coordinates if available
+  if (hotelCoordinates.value && hotelCoordinates.value.latitude && hotelCoordinates.value.longitude) {
+    formData.append('Latitude', hotelCoordinates.value.latitude);
+    formData.append('Longitude', hotelCoordinates.value.longitude);
+  }
 
-    try {
-      const response = await axios.put(`http://localhost:5000/api/hotels/${hotelId.value}`, formData, {
-        withCredentials: true,
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-
-      if (response.data && response.data.message) {
-        successMessage.value = response.data.message;
-        setTimeout(() => {
-          goBackToManageHotels();
-        }, 1000);
-      } else {
-        formError.value = response.data?.error || response.data?.message || "Failed to update hotel. Unexpected response.";
+  try {
+    const response = await axios.put(`http://localhost:5000/api/hotels/${hotelId.value}`, formData, {
+      withCredentials: true,
+      headers: {
+        'Content-Type': 'multipart/form-data'
       }
-    } catch (err) {
-      console.error("Error updating hotel:", err.response?.data || err.message);
-      formError.value = 'Error updating hotel: ' + (err.response?.data?.error || err.response?.data?.message || err.message);
-    } finally {
-      isSubmitting.value = false;
-    }
-  }
+    });
 
-  function goBackToManageHotels() {
-    if(editableHotel.MaKS) {
-        router.push({ name: 'AdminFindHotel', params: { hotelId: String(editableHotel.MaKS) } });
+    if (response.data && response.data.message) {
+      successMessage.value = response.data.message;
+      setTimeout(() => {
+        goBackToManageHotels();
+      }, 1000);
     } else {
-        router.push({ name: 'AdminFindHotel' }); // Hoặc một route mặc định
+      formError.value = response.data?.error || response.data?.message || "Failed to update hotel. Unexpected response.";
     }
+  } catch (err) {
+    console.error("Error updating hotel:", err.response?.data || err.message);
+    formError.value = 'Error updating hotel: ' + (err.response?.data?.error || err.response?.data?.message || err.message);
+  } finally {
+    isSubmitting.value = false;
   }
+}
 
-
-  // Theo dõi nếu hotelId từ route thay đổi (dùng cho trường hợp điều hướng trực tiếp giữa các trang edit)
-  watch(() => route.params.hotelId, (newId) => {
-    if (newId && newId !== hotelId.value) { // Chỉ fetch nếu newId khác với hotelId hiện tại của component
-      hotelId.value = newId;
-      fetchHotelDetails(newId);
-    }
-  });
-
-  // Load dữ liệu khi component được mounted
-  onMounted(() => {
-    if (hotelId.value) {
-      fetchHotelDetails(hotelId.value);
-    } else {
-      pageError.value = "Hotel ID is missing. Cannot load data for editing.";
-      pageLoading.value = false;
-    }
-  });
-
-  // Handle geocoding events
-  function onGeocodingSuccess(coordinates) {
-    console.log('Geocoding success:', coordinates);
-    // Coordinates are automatically updated via v-model:coordinates
+function goBackToManageHotels() {
+  if(editableHotel.MaKS) {
+      router.push({ name: 'AdminFindHotel', params: { hotelId: String(editableHotel.MaKS) } });
+  } else {
+      router.push({ name: 'AdminFindHotel' }); // Hoặc một route mặc định
   }
+}
 
-  function onGeocodingError(error) {
-    console.error('Geocoding error:', error);
-    formError.value = `Lỗi lấy tọa độ: ${error.message}`;
+
+// Theo dõi nếu hotelId từ route thay đổi (dùng cho trường hợp điều hướng trực tiếp giữa các trang edit)
+watch(() => route.params.hotelId, (newId) => {
+  if (newId && newId !== hotelId.value) { // Chỉ fetch nếu newId khác với hotelId hiện tại của component
+    hotelId.value = newId;
+    fetchHotelDetails(newId);
   }
-  </script>
+});
+
+// Load dữ liệu khi component được mounted
+onMounted(() => {
+  if (hotelId.value) {
+    fetchHotelDetails(hotelId.value);
+  } else {
+    pageError.value = "Hotel ID is missing. Cannot load data for editing.";
+    pageLoading.value = false;
+  }
+});
+
+// Handle geocoding events
+function onGeocodingSuccess(coordinates) {
+  console.log('Geocoding success:', coordinates);
+  // Coordinates are automatically updated via v-model:coordinates
+}
+
+function onGeocodingError(error) {
+  console.error('Geocoding error:', error);
+  formError.value = `Lỗi lấy tọa độ: ${error.message}`;
+}
+</script>

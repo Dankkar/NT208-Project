@@ -389,11 +389,5 @@ DROP TABLE KhachSan;
 -- Bảng khuyến mãi
 DROP TABLE KhuyenMai;
 
-INSERT INTO BaiDanhGia (MaKH, MaDat, MaKS, Sao, NoiDung)
-VALUES
-(49, 6, 1, 5, N'Phòng sạch sẽ, gần biển, nhân viên thân thiện'),
-(49, 7, 2, 4, N'Không gian yên tĩnh, thích hợp nghỉ dưỡng');
-
-SELECT * FROM NguoiDung
 
 
