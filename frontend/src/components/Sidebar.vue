@@ -57,12 +57,12 @@ const route = useRoute();
 
 // Define the sidebar sections and their corresponding routes
 const sections = [
-  {
-    title: 'Dashboard',
-    children: [
-      { name: 'Reservations', route: '/admin/reservations' },
-    ],
-  },
+  // {
+  //   title: 'Dashboard',
+  //   children: [
+  //     { name: 'Reservations', route: '/admin/reservations' },
+  //   ],
+  // },
   {
     title: 'Branches',
     children: [

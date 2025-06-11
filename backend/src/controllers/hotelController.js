@@ -1011,7 +1011,7 @@ exports.getHotelById = async (req, res) => {
         const roomTypesResult = await pool.request()
             .input('MaKS', sql.Int, MaKS)
             .query(`
-                SELECT lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo, lp.SoGiuong,
+                SELECT DISTINCT lp.MaLoaiPhong, lp.TenLoaiPhong, lp.GiaCoSo, lp.SoGiuong,
                        lp.DienTich, lp.MoTa, lp.TienNghi, lp.DuongDanAnh,
                        chg.TenCauHinh as CauHinhGiuong,
                        chg.SoGiuongDoi,
