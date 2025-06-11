@@ -37,7 +37,7 @@ export const useAuthStore = defineStore('auth', {
       this.isLoading = true;
       this.authError = null;
       try {
-        await axios.post('http://localhost:5000/api/auth/login', {
+        await axios.post('/api/auth/login', {
           Email: credentials.Email,
           MatKhau: credentials.MatKhau
         }, { withCredentials: true });
@@ -61,7 +61,7 @@ export const useAuthStore = defineStore('auth', {
       this.isLoading = true;
       this.authError = null;
       try {
-        const backendResponse = await axios.post('http://localhost:5000/api/auth/google',
+        const backendResponse = await axios.post('/api/auth/google',
           { token: googleAuthResponse.credential },
           { withCredentials: true }
         );
@@ -88,7 +88,7 @@ export const useAuthStore = defineStore('auth', {
       this.isLoading = true;
       this.authError = null;
       try {
-        const response = await axios.get('http://localhost:5000/api/users/me', { withCredentials: true });
+        const response = await axios.get('/api/users/me', { withCredentials: true });
         this.$patch({ user: response.data });
         return this.user;
       } catch (err) {
@@ -111,7 +111,7 @@ export const useAuthStore = defineStore('auth', {
       console.log("Logging out...");
       this.isLoading = true;
       try {
-        await axios.post('http://localhost:5000/api/auth/logout', {}, { withCredentials: true });
+        await axios.post('/api/auth/logout', {}, { withCredentials: true });
       } catch (err) {
         console.error('Logout error:', err);
         // Continue with local logout even if server logout fails
@@ -137,7 +137,7 @@ export const useAuthStore = defineStore('auth', {
       this.authError = null;
       try {
         // Gọi API đăng ký của backend
-        const response = await axios.post('http://localhost:5000/api/auth/register', signupData, {
+        const response = await axios.post('/api/auth/register', signupData, {
           withCredentials: true // Set cookie session ngay sau khi register
         });
 

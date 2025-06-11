@@ -2,7 +2,7 @@
 import { defineStore } from 'pinia';
 import axios from 'axios'; // Import axios trực tiếp
 
-const API_BASE_URL = 'http://localhost:5000'; // URL gốc của backend của bạn
+import { API_BASE_URL } from '../config/api.js'
 
 export const useBookingHistoryStore = defineStore('bookingHistory', {
   state: () => ({

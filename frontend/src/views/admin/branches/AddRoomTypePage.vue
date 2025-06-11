@@ -142,7 +142,7 @@ async function fetchSelectedHotelDetails() {
     }
     pageLoading.value = true;
     try {
-        const response = await axios.get(`http://localhost:5000/api/roomTypes/hotel/${hotelId.value}`, { withCredentials: true });
+        const response = await axios.get(`/api/roomTypes/hotel/${hotelId.value}`, { withCredentials: true });
         if (response.data && response.data.success) {
             selectedHotel.value = response.data.data;
         } else {
@@ -187,7 +187,7 @@ async function submitAddRoomType() {
     }
 
     // Gọi API createRoomType của bạn
-    const response = await axios.post(`http://localhost:5000/api/roomTypes/`, formData, {
+    const response = await axios.post(`/api/roomTypes/`, formData, {
       withCredentials: true,
       headers: {
         'Content-Type': 'multipart/form-data'

@@ -98,7 +98,7 @@ async function fetchHotels(page = 1) {
   pagination.page = page;
   try {
     // API của bạn cho getAllHotels là GET /api/hotels (có admin check bên trong)
-    const response = await axios.get('http://localhost:5000/api/hotels', {
+    const response = await axios.get('/api/hotels', {
       params: { page: pagination.page, limit: pagination.limit },
       withCredentials: true // Quan trọng để backend biết role của user
     });

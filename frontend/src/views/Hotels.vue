@@ -121,7 +121,7 @@ async function fetchHotels(page = 1, sort = sortKey.value) {
         sortOrder = 'desc';
     }
     
-    const response = await axios.get(`http://localhost:5000/api/hotels`, {
+    const response = await axios.get(`/api/hotels`, {
       params: {
         page,
         limit: itemsPerPage.value,

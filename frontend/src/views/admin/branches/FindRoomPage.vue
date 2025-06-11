@@ -213,7 +213,7 @@ async function fetchAvailableHotels() {
   loadingHotels.value = true;
   hotelLoadError.value = '';
   try {
-    const response = await axios.get('http://localhost:5000/api/hotels/list-basic', { withCredentials: true });
+    const response = await axios.get('/api/hotels/list-basic', { withCredentials: true });
     if (response.data && response.data.success) {
       availableHotels.value = response.data.data || [];
     } else {
@@ -239,7 +239,7 @@ async function fetchRoomTypesForSelectedHotel() {
   roomTypeLoadError.value = '';
   try {
     const response = await axios.get(
-      `http://localhost:5000/api/roomTypes/hotel/${selectedHotelId.value}`,
+      `/api/roomTypes/hotel/${selectedHotelId.value}`,
       { withCredentials: true }
     );
     if (response.data && response.data.success) {
@@ -271,7 +271,7 @@ async function fetchRoomsForSelectedRoomType(page = 1) {
 
   try {
     const response = await axios.get(
-      `http://localhost:5000/api/rooms/roomtype/${selectedRoomTypeId.value}`,
+      `/api/rooms/roomtype/${selectedRoomTypeId.value}`,
       { withCredentials: true }
     );
 
@@ -310,7 +310,7 @@ async function updateRoomStatus() {
   isUpdatingStatus.value = true;
   try {
     const response = await axios.patch(
-      `http://localhost:5000/api/rooms/${currentRoom.value.MaPhong}/status`,
+      `/api/rooms/${currentRoom.value.MaPhong}/status`,
       { TrangThaiPhong: newStatus.value },
       { withCredentials: true }
     );

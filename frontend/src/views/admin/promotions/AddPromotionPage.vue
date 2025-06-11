@@ -318,7 +318,7 @@ async function submitForm() {
   successMessage.value = '';
 
   try {
-    const response = await axios.post('http://localhost:5000/api/promotions', {
+    const response = await axios.post('/api/promotions', {
       TenKM: formData.TenKM.trim(),
       MaCodeKM: formData.MaCodeKM.trim().toUpperCase(),
       PhanTramGiam: formData.PhanTramGiam,

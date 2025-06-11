@@ -10,9 +10,23 @@ export default defineConfig({
       '@': path.resolve(__dirname, 'src')
     }
   },
+  define: {
+    // Make sure environment variables are available
+    __VUE_OPTIONS_API__: true,
+    __VUE_PROD_DEVTOOLS__: false,
+  },
   server: {
     port: 3000,
-    open: '/homepage',
+    host: true,
+    proxy: {
+      '/api': {
+        target: process.env.VITE_API_BASE_URL || 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false
+      }
+    }
   },
+  // Load environment variables
+  envPrefix: 'VITE_'
 })
 

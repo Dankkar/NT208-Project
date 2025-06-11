@@ -85,7 +85,7 @@ async function submitChangePassword() {
   successMessage.value = '';
 
   try {
-    const response = await axios.put('http://localhost:5000/api/auth/change-password', {
+    const response = await axios.put('/api/auth/change-password', {
       currentPassword: passwords.currentPassword,
       newPassword: passwords.newPassword,
       confirmNewPassword: passwords.confirmNewPassword,

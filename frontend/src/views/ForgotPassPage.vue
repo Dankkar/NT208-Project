@@ -102,7 +102,7 @@ async function sendResetLink() {
   
   isLoading.value = true
   try {
-    await axios.post('http://localhost:5000/api/auth/forgot-password',
+    await axios.post('/api/auth/forgot-password',
       { Email: email.value }
     )
     showAlert('If that email exists, you\'ll receive a reset link shortly.', 'success')
