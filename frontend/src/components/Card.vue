@@ -206,7 +206,7 @@ const processedData = computed(() => {
         name: rt.TenLoaiPhong,
         guests: rt.SoNguoiToiDa,
         parsedAmenities: (rt.TienNghi ? rt.TienNghi.split(',').map(s => s.trim()) : [`~${rt.DienTich} m²`, rt.CauHinhGiuong]),
-        imageUrl: rt.HinhAnhPhong || defaultRoomImage,
+        imageUrl: rt.RoomImagePath || defaultRoomImage,
         price: rt.GiaCoSo,
         priceLabel: 'FROM',
         availability: rt.SoPhongTrong,
