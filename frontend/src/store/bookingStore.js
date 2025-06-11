@@ -150,8 +150,8 @@ export const useBookingStore = defineStore('booking', {
           phone: guestInput.phone, email: guestInput.email
         },
         contactSupport: {
-          phone: hotel.SoDienThoaiKS || '+84 DEMO-PHONE',
-          email: hotel.EmailKS || 'support@example.com'
+          phone: hotel.SoDienThoaiKS || '09069391759',
+          email: hotel.EmailKS || 'ChillCHill@gmail.com'
         }
       };
     },

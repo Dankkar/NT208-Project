@@ -131,7 +131,7 @@ import { useRouter } from 'vue-router';
 import { format, parseISO, differenceInCalendarDays } from 'date-fns'; // Thêm differenceInCalendarDays
 
 import Layout from '@/components/Layout.vue';
-import VueCard1 from '@/components/vueCard1.vue'; // Đảm bảo đường dẫn đúng
+import VueCard1 from '@/components/Card.vue'; // Đảm bảo đường dẫn đúng
 import Pagination from '@/components/Pagination.vue';
 
 const historyStore = useBookingHistoryStore();
