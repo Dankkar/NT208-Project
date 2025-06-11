@@ -77,8 +77,8 @@
             <div v-if="hotel.roomTypes && hotel.roomTypes.length" class="row g-4">
               <div v-for="roomType in hotel.roomTypes" :key="roomType.MaLoaiPhong" class="col-md-6">
                 <div class="card room-type-card h-100 shadow-sm">
-                  <!-- API getHotelById hiện chưa trả về ảnh cho LoaiPhong, sẽ dùng placeholder -->
-                  <img :src="roomType.HinhAnh || defaultPlaceholderImage" @error="onImageError" class="card-img-top room-type-image" :alt="roomType.TenLoaiPhong">
+                  <!-- Sử dụng RoomImagePath từ API -->
+                  <img :src="roomType.RoomImagePath || defaultPlaceholderImage" @error="onImageError" class="card-img-top room-type-image" :alt="roomType.TenLoaiPhong">
                   <div class="card-body d-flex flex-column">
                     <h5 class="card-title room-type-name">{{ roomType.TenLoaiPhong }}</h5>
                     <p class="card-text room-type-description text-muted small mb-2" v-if="roomType.MoTa">{{ roomType.MoTa }}</p>
