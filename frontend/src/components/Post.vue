@@ -1,13 +1,17 @@
 <template>
   <div class="row align-items-center mb-5 mx-5">
-    <div :class="['col-md-6', reverse ? 'order-md-2' : '']">
+    <div :class="['col-md-7', reverse ? 'order-md-2' : '']">
       <div class="text-block p-4">
         <slot name="title"></slot>
         <p v-for="(content, idx) in contents" :key="idx" class="mb-3">{{ content }}</p>
-        <Button v-if="buttonText" :content="buttonText" />
+        <Button
+          v-if="buttonText"
+          :content="buttonText"
+          @click="onAction"
+        />
       </div>
     </div>
-    <div :class="['col-md-6', reverse ? 'order-md-1' : '']">
+    <div :class="['col-md-5', reverse ? 'order-md-1' : '']">
       <img :src="imgSrc" alt="Scenic" class="img-fluid rounded" />
     </div>
   </div>
@@ -15,12 +19,19 @@
 
 <script setup>
 import Button from './Button.vue'
+
 defineProps({
-  contents: { type: Array, default: () => [] }, // nhận mảng content động
+  contents: { type: Array, default: () => [] },
   buttonText: String,
   imgSrc: String,
   reverse: { type: Boolean, default: false }
 })
+
+const emit = defineEmits(['action'])
+
+function onAction() {
+  emit('action')
+}
 </script>
 
 <style scoped>
