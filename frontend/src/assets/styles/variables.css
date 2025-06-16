@@ -1,0 +1,46 @@
+/* src/assets/styles/variables.css */
+:root {
+  /* ========================================================
+     === BẢNG MÀU ĐƯỢC CẬP NHẬT DỰA TRÊN THIẾT KẾ MỚI ===
+     ======================================================== */
+
+  /* --- 1. Nhóm màu NỀN --- */
+
+  --bg-dark: #212529;            /* SỬA ĐỔI: Nền chính của trang, màu than chì đậm */
+  --bg-light: #ffffff;           /* SỬA ĐỔI: Nền cho card, form (trước đây là --background-color và --light-gray) */
+  --bg-subtle: #E9ECEF;         /* MỚI: Nền cho các yếu tố phụ, như nút "Sign in with Google" */
+  
+  
+  /* --- 2. Nhóm màu CHỮ --- */
+
+  --text-primary: #212529;       /* SỬA ĐỔI: Chữ chính, tiêu đề (trước đây là --primary-color) */
+  --text-secondary: #6c757d;     /* GIỮ NGUYÊN: Chữ phụ, ghi chú */
+  --text-on-dark: #ffffff;       /* GIỮ NGUYÊN: Chữ trên nền tối (từ --white-color) */
+
+
+  /* --- 3. Nhóm màu NHẤN & KÊU GỌI HÀNH ĐỘNG (CTA) --- */
+
+  --accent-color: #0d6efd;      /* GIỮ NGUYÊN: Màu xanh dương cho viền card, link... */
+  --accent-color-dark: #0b5ed7; /* GIỮ NGUYÊN: Màu xanh đậm hơn cho hover */
+  --accent-color-rgb: 13, 110, 253; /* GIỮ NGUYÊN: Phiên bản RGB cho hiệu ứng focus */
+
+  --cta-bg: #212529;            /* MỚI: Nền cho nút CTA chính như "Login", "Sign up" */
+  --cta-text: #ffffff;          /* MỚI: Chữ trên nút CTA chính */
+  
+  
+  /* --- 4. Nhóm màu VIỀN & PHÂN TÁCH --- */
+  
+  --border-subtle: #CED4DA;      /* MỚI: Màu viền cho các ô input, đường kẻ */
+
+
+  /* --- 5. Các biến cũ được giữ lại để tương thích hoặc tham chiếu --- */
+  
+  --white-color: #ffffff;       /* GIỮ NGUYÊN */
+  --light-gray: #f8f9fa;        /* GIỮ NGUYÊN */
+  
+  /* Chuyển --primary-color cũ của bạn thành một tên có ngữ nghĩa hơn, nếu bạn vẫn cần dùng */
+  /* --dark-blue-legacy: #0d2039; */
+  
+  /* --- Font (Không đổi) --- */
+  --font-family-base: 'Poppins', 'Helvetica', 'Arial', sans-serif;
+}
