@@ -38,7 +38,7 @@
           <h5 class="fw-semibold mb-3">Quick Links</h5>
           <ul class="list-unstyled">
             <li class="mb-2">
-              <router-link to="/" class="text-decoration-none text-dark">
+              <router-link to="/Homepage" class="text-decoration-none text-dark">
                 Trang chủ
               </router-link>
             </li>
@@ -65,7 +65,7 @@
             <a href="https://instagram.com" target="_blank" class="me-3 text-dark fs-4">
               <i class="bi bi-instagram"></i>
             </a>
-            <a href="https://twitter.com" target="_blank" class="text-dark fs-4">
+            <a href="https://x.com" target="_blank" class="text-dark fs-4">
               <i class="bi bi-twitter"></i>
             </a>
           </div>
