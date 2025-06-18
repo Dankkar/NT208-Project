@@ -19,7 +19,7 @@
 
 <script setup>
 import { format } from 'date-fns';
-import defaultImage from '../assets/mountain1.jpg';
+import defaultImage from '../assets/deals.png';
 
 const props = defineProps({
   promotion: {
@@ -35,8 +35,8 @@ function formatDate(d) {
 
 <style scoped>
 .promo-card img {
-  object-fit: cover;
-  height: 160px;
+  object-fit: contain;      /* Hiển thị toàn bộ ảnh */
+  height: 280px;
 }
 .promo-card .card-body {
   padding: 1rem;

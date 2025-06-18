@@ -144,6 +144,18 @@
 
     <PromotionsSection />
 
+    <!-- Mời đăng ký thành viên -->
+    <Post
+      :contents="memberBenefits"
+      buttonText="Đăng ký ngay"
+      :imgSrc="membershipImage"
+      @action="goToRegisterPage"
+    >
+      <template #title>
+        <h2 class="fw-bold">Trở thành thành viên Chill Chill</h2>
+      </template>
+    </Post>
+
     <!-- === Post: Mách bạn cách xếp vali gọn nhẹ === -->
     <Post
       :contents="packingTips"
@@ -188,12 +200,21 @@ import '@vuepic/vue-datepicker/dist/main.css'
 import hotelService from '../services/hotelService'
 import defaultHeroImage from '../assets/mountain2.jpg'
 import packingImage from '../assets/packing-tip.jpg'
+import membershipImage from '../assets/membership.png'
 
 const router = useRouter()
 const bookingStore = useBookingStore()
 const notificationToast = ref(null)
 
 const heroImageUrl = ref(defaultHeroImage)
+
+// Member benefits data
+const memberBenefits = [
+  'Ưu đãi giảm giá độc quyền đến 20%',
+  'Nhận thông báo khuyến mãi sớm nhất',
+  'Quản lý đặt phòng & lịch sử dễ dàng',
+  'Quà tặng sinh nhật dành riêng cho thành viên'
+]
 
 // Packing tips data
 const packingTips = [
@@ -368,6 +389,10 @@ async function loadFeaturedHotels() {
 
 function goToBookingPage() {
   router.push('/BookingProcess')
+}
+
+function goToRegisterPage() {
+  router.push('/SignUp')
 }
 
 onMounted(() => {
