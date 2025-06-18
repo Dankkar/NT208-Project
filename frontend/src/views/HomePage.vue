@@ -297,7 +297,7 @@ async function fetchLocationSuggestions() {
   try {
     const res = await hotelService.suggestLocations(locationQuery)
     // suggestLocations đã trả về thẳng mảng
-    locationSuggestions.value = res
+    locationSuggestions.value = res.data
   } catch (err) {
     console.error('Error fetching location suggestions:', err)
     locationSuggestions.value = []
@@ -497,5 +497,9 @@ onBeforeUnmount(() => {
 .featured h2 {
   text-align: center;
   font-weight: 600;
+}
+
+:deep(.custom-datepicker-input input) {
+  border: none;
 }
 </style>
