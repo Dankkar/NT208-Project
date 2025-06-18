@@ -65,7 +65,6 @@
 - **Booking management**: Xem lịch sử, hủy booking
 
 ### 💰 Quản lý thanh toán
-- **Phương thức**: Tiền mặt, chuyển khoản, thẻ tín dụng
 - **Hóa đơn**: Tự động tạo hóa đơn VAT
 - **Khuyến mãi**: Áp dụng mã giảm giá
 - **Lịch sử giao dịch**: Theo dõi các khoản thanh toán
@@ -279,19 +278,6 @@ npm test
 # Frontend tests  
 cd frontend
 npm run test
-```
-
-## 🚢 Deployment
-
-### Production Build
-```bash
-# Frontend
-cd frontend
-npm run build
-
-# Backend
-cd backend
-npm start
 ```
 
 
