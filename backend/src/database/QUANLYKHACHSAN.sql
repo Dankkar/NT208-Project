@@ -388,3 +388,4 @@ DROP TABLE KhachSan;
 
 -- Bảng khuyến mãi
 DROP TABLE KhuyenMai;
+
