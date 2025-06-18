@@ -1,3 +1,4 @@
+<!-- src/components/Carousel.vue -->
 <template>
   <div>
     <div class="row">

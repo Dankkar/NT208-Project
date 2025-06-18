@@ -706,11 +706,15 @@ function validateFormFields() {
   guestErrs.firstName = !guest.firstName ? 'First name is required.' : ''; if (guestErrs.firstName) isValid = false;
   guestErrs.lastName = !guest.lastName ? 'Last name is required.' : ''; if (guestErrs.lastName) isValid = false;
   guestErrs.nationalId = !guest.nationalId ? 'National ID/Passport is required.' : ''; if (guestErrs.nationalId) isValid = false;
-  if (!guest.phone) { guestErrs.phone = 'Phone number is required.'; isValid = false;
-  } else if (!/^\+?[0-9\s-()]{7,20}$/.test(guest.phone)) { guestErrs.phone = 'Valid phone number required (7-20 digits).'; isValid = false;
+  if (!guest.phone) {
+    guestErrs.phone = 'Phone number is required.'; isValid = false;
+  } else if (!/^\+?[0-9\s-()]{7,20}$/.test(guest.phone)) {
+    guestErrs.phone = 'Valid phone number required (7-20 digits).'; isValid = false;
   } else { guestErrs.phone = ''; }
-  if (!guest.email) { guestErrs.email = 'Email address is required.'; isValid = false;
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guest.email)) { guestErrs.email = 'Valid email address required.'; isValid = false;
+  if (!guest.email) {
+    guestErrs.email = 'Email address is required.'; isValid = false;
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guest.email)) {
+    guestErrs.email = 'Valid email address required.'; isValid = false;
   } else { guestErrs.email = ''; }
   // Optional validation for birthDate and gender
   guestErrs.birthDate = '';
@@ -722,18 +726,24 @@ function validateFormFields() {
   billingErrs.country = !billing.country ? 'Billing country is required.' : ''; if (billingErrs.country) isValid = false;
 
   paymentErrs.nameOnCard = !payment.nameOnCard ? 'Name on card is required.' : ''; if (paymentErrs.nameOnCard) isValid = false;
-  if (!payment.cardNumber) { paymentErrs.cardNumber = 'Card number is required.'; isValid = false;
-  } else if (!/^[0-9]{13,19}$/.test(payment.cardNumber.replace(/\s/g, ''))) { paymentErrs.cardNumber = 'Valid card number (13-19 digits).'; isValid = false;
+  if (!payment.cardNumber) {
+    paymentErrs.cardNumber = 'Card number is required.'; isValid = false;
+  } else if (!/^[0-9]{13,19}$/.test(payment.cardNumber.replace(/\s/g, ''))) {
+    paymentErrs.cardNumber = 'Valid card number (13-19 digits).'; isValid = false;
   } else { paymentErrs.cardNumber = ''; }
-  if (!payment.expiryDate) { paymentErrs.expiryDate = 'Expiry date (MM/YY) is required.'; isValid = false;
-  } else if (!/^(0[1-9]|1[0-2])\/?([0-9]{2})$/.test(payment.expiryDate)) { paymentErrs.expiryDate = 'Valid MM/YY format (e.g., 12/25).'; isValid = false;
+  if (!payment.expiryDate) {
+    paymentErrs.expiryDate = 'Expiry date (MM/YY) is required.'; isValid = false;
+  } else if (!/^(0[1-9]|1[0-2])\/?([0-9]{2})$/.test(payment.expiryDate)) {
+    paymentErrs.expiryDate = 'Valid MM/YY format (e.g., 12/25).'; isValid = false;
   } else { paymentErrs.expiryDate = ''; }
-  if (!payment.cvv) { paymentErrs.cvv = 'CVV/CVC is required.'; isValid = false;
-  } else if (!/^[0-9]{3,4}$/.test(payment.cvv)) { paymentErrs.cvv = 'Valid CVV (3 or 4 digits).'; isValid = false;
+  if (!payment.cvv) {
+    paymentErrs.cvv = 'CVV/CVC is required.'; isValid = false;
+  } else if (!/^[0-9]{3,4}$/.test(payment.cvv)) {
+    paymentErrs.cvv = 'Valid CVV (3 or 4 digits).'; isValid = false;
   } else { paymentErrs.cvv = ''; }
 
   errors.agreedToTerms = !formData.agreedToTerms ? 'You must agree to terms and conditions.' : ''; if (errors.agreedToTerms) isValid = false;
-  
+
   return isValid;
 }
 
