@@ -32,16 +32,41 @@
               />
             </div>
             <div
-              v-if="isLocationSuggestionsVisible && locationSuggestions.length > 0"
+              v-if="isLocationSuggestionsVisible && (locationSuggestions.length > 0 || isLoadingSuggestions || showNoResults)"
               class="suggestions-dropdown"
             >
+              <!-- Loading state -->
+              <div v-if="isLoadingSuggestions" class="suggestion-item text-center">
+                <div class="d-flex align-items-center justify-content-center">
+                  <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                  <span>Đang tìm kiếm...</span>
+                </div>
+              </div>
+              
+              <!-- No results -->
+              <div v-else-if="showNoResults && locationSuggestions.length === 0" class="suggestion-item text-center text-muted">
+                <i class="bi bi-search me-2"></i>
+                Không tìm thấy kết quả
+              </div>
+              
+              <!-- Suggestions -->
               <div
                 v-for="suggestion in locationSuggestions"
-                :key="suggestion"
+                :key="suggestion.text || suggestion"
                 class="suggestion-item"
                 @mousedown="selectSuggestedLocation(suggestion)"
               >
-                {{ suggestion }}
+                <div class="d-flex align-items-center">
+                  <i :class="getSuggestionIcon(suggestion)" class="me-2"></i>
+                  <div>
+                    <div class="suggestion-text">
+                      {{ getSuggestionDisplayText(suggestion) }}
+                    </div>
+                    <small v-if="suggestion.type === 'address'" class="text-muted">
+                      {{ suggestion.hotelCount }} khách sạn
+                    </small>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -177,6 +202,7 @@
 import { reactive, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useBookingStore } from '../store/bookingStore'
+import { useSEO } from '../composables/useSEO'
 import {
   formatISO,
   parseISO,
@@ -205,6 +231,7 @@ import membershipImage from '../assets/membership.png'
 const router = useRouter()
 const bookingStore = useBookingStore()
 const notificationToast = ref(null)
+const { applySEOPreset, updateStructuredData } = useSEO()
 
 const heroImageUrl = ref(defaultHeroImage)
 
@@ -242,6 +269,8 @@ const featuredHotelsError = ref(null)
 // Location suggestions state
 const locationSuggestions = ref([])
 const isLocationSuggestionsVisible = ref(false)
+const isLoadingSuggestions = ref(false)
+const showNoResults = ref(false)
 let locationSuggestionDebounceTimer = null
 let hideSuggestionsDelayTimer = null
 
@@ -292,28 +321,96 @@ async function fetchLocationSuggestions() {
   const locationQuery = searchForm.location.trim()
   if (locationQuery.length < 2) {
     locationSuggestions.value = []
+    showNoResults.value = false
+    isLoadingSuggestions.value = false
     return
   }
+  
   try {
+    isLoadingSuggestions.value = true
+    showNoResults.value = false
+    
+    console.log('Fetching suggestions for:', locationQuery)
     const res = await hotelService.suggestLocations(locationQuery)
-    // suggestLocations đã trả về thẳng mảng
-    locationSuggestions.value = res.data
+    console.log('Raw response:', res)
+    
+    // Backend trả về {success: true, data: [...]}
+    // hotelService.suggestLocations đã return response.data rồi
+    const suggestions = res.data || res || []
+    console.log('Processed suggestions:', suggestions)
+    
+    locationSuggestions.value = suggestions
+    
+    // Hiển thị "no results" nếu không có kết quả và đã search xong
+    if (suggestions.length === 0 && locationQuery.length >= 2) {
+      showNoResults.value = true
+      console.log('No results found')
+    }
+    
+    console.log('Final state:')
+    console.log('- locationSuggestions.value:', locationSuggestions.value)
+    console.log('- isLocationSuggestionsVisible.value:', isLocationSuggestionsVisible.value)
+    console.log('- isLoadingSuggestions.value:', isLoadingSuggestions.value)
+    console.log('- showNoResults.value:', showNoResults.value)
+    
   } catch (err) {
     console.error('Error fetching location suggestions:', err)
     locationSuggestions.value = []
+    showNoResults.value = true
+  } finally {
+    isLoadingSuggestions.value = false
   }
 }
 const debouncedFetchLocationSuggestions = debounce(fetchLocationSuggestions, DEBOUNCE_DELAY_MS)
 
 function onLocationInput() {
+  // Reset states khi user thay đổi input
+  showNoResults.value = false
+  isLoadingSuggestions.value = false
+  
+  console.log('onLocationInput triggered, current value:', searchForm.location)
+  console.log('isLocationSuggestionsVisible:', isLocationSuggestionsVisible.value)
+  
+  // Nếu input trống, ẩn suggestions
+  if (searchForm.location.trim().length === 0) {
+    locationSuggestions.value = []
+    isLocationSuggestionsVisible.value = false
+    console.log('Input empty, hiding suggestions')
+    return
+  }
+  
+  // Hiển thị dropdown ngay khi user bắt đầu nhập
+  isLocationSuggestionsVisible.value = true
+  console.log('Set isLocationSuggestionsVisible to true')
+  
   debouncedFetchLocationSuggestions()
 }
-function selectSuggestedLocation(location) {
-  searchForm.location = location
+
+function selectSuggestedLocation(suggestion) {
+  // Xử lý cả format cũ (string) và format mới (object)
+  const locationText = typeof suggestion === 'string' ? suggestion : suggestion.text
+  searchForm.location = locationText
   locationSuggestions.value = []
   isLocationSuggestionsVisible.value = false
   clearTimeout(hideSuggestionsDelayTimer)
 }
+
+function getSuggestionIcon(suggestion) {
+  if (typeof suggestion === 'string') {
+    return 'bi bi-geo-alt text-muted'
+  }
+  return suggestion.type === 'hotel' 
+    ? 'bi bi-building text-primary' 
+    : 'bi bi-geo-alt text-success'
+}
+
+function getSuggestionDisplayText(suggestion) {
+  if (typeof suggestion === 'string') {
+    return suggestion
+  }
+  return suggestion.displayText || suggestion.text
+}
+
 function hideLocationSuggestionsWithDelay() {
   hideSuggestionsDelayTimer = setTimeout(() => {
     isLocationSuggestionsVisible.value = false
@@ -396,6 +493,33 @@ function goToRegisterPage() {
 }
 
 onMounted(() => {
+  // Áp dụng SEO cho trang chủ
+  applySEOPreset('home')
+  
+  // Tạo structured data cho trang chủ với featured hotels
+  const homepageStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "ChillChill Hotel",
+    "description": "Hệ thống đặt phòng khách sạn trực tuyến hàng đầu Việt Nam",
+    "url": "https://chillchill-hotel.com",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://chillchill-hotel.com/search?q={search_term_string}",
+      "query-input": "required name=search_term_string"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "ChillChill Hotel",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://chillchill-hotel.com/images/logo.png"
+      }
+    }
+  }
+  
+  updateStructuredData(homepageStructuredData)
+  
   loadFeaturedHotels()
 })
 
@@ -434,18 +558,22 @@ onBeforeUnmount(() => {
   border: 1px solid #ced4da;
 }
 
+/* Bỏ viền xanh bootstrap khi focus */
+.search-bar-custom .form-control:focus,
+.search-bar-custom .form-select:focus {
+  border-color: #FF5A5F;
+  box-shadow: 0 0 0 0.2rem rgba(255, 90, 95, 0.25);
+  outline: none;
+}
+
 .search-bar-custom .input-group .form-control {
   border-left: none;
   border-radius: 0 0.375rem 0.375rem 0;
 }
 
-.search-bar-custom .input-group-text {
-  background-color: #fff;
-  border-right: none;
-  border-radius: 0.375rem 0 0 0.375rem;
-  padding: 0 0.9rem;
-  border: 1px solid #ced4da;
-  border-right: none;
+.search-bar-custom .input-group .form-control:focus {
+  border-left: none;
+  border-color: #FF5A5F;
 }
 
 .search-bar-custom .btn-primary {
@@ -473,25 +601,51 @@ onBeforeUnmount(() => {
   top: 100%;
   left: 0;
   right: 0;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  max-height: 200px;
+  background: white !important;
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  max-height: 240px;
   overflow-y: auto;
-  z-index: 1050;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 9999 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin-top: 2px;
+  min-height: 40px; /* Để debug */
 }
 
 .suggestion-item {
-  padding: 8px 12px;
+  padding: 12px 16px;
   cursor: pointer;
-  transition: background-color 0.2s;
-  color: black;
+  transition: all 0.2s ease;
+  color: #333 !important;
   text-align: left;
+  border-bottom: 1px solid #f8f9fa;
+  background: white;
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
 }
 
 .suggestion-item:hover {
-  background-color: #f5f5f5;
+  background-color: #f8f9fa !important;
+  transform: translateX(2px);
+}
+
+.suggestion-item .suggestion-text {
+  font-weight: 500;
+  color: #333 !important;
+  margin-bottom: 2px;
+}
+
+.suggestion-item small {
+  font-size: 0.75rem;
+  color: #6c757d !important;
+}
+
+.suggestion-item i {
+  font-size: 1.1rem;
+  width: 20px;
+  flex-shrink: 0;
 }
 
 .featured h2 {
@@ -499,7 +653,22 @@ onBeforeUnmount(() => {
   font-weight: 600;
 }
 
+<<<<<<< HEAD
 :deep(.custom-datepicker-input input) {
   border: none;
+=======
+.search-bar-custom .input-group-text {
+  background-color: #fff;
+  border-right: none;
+  border-radius: 0.375rem 0 0 0.375rem;
+  padding: 0 0.9rem;
+  border: 1px solid #ced4da;
+  border-right: none;
+}
+
+/* Focus state cho input group */
+.search-bar-custom .input-group:focus-within .input-group-text {
+  border-color: #FF5A5F;
+>>>>>>> c8f67cb64700ed8641401775d337552e451ee227
 }
 </style>

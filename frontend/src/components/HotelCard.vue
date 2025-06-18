@@ -28,18 +28,35 @@
           <i class="bi bi-geo-alt-fill me-1"></i>{{ hotel.DiaChi }}
         </p>
 
-        <!-- Footer card: giá và rating -->
+        <!-- Hotel Type và Star Rating -->
+        <div class="hotel-meta mb-2">
+          <span v-if="hotel.LoaiHinh" class="badge bg-light text-dark me-2 small">{{ hotel.LoaiHinh }}</span>
+          <div v-if="hotel.HangSao && hotel.HangSao > 0" class="star-rating d-inline-flex align-items-center">
+            <i v-for="i in Math.min(Math.floor(hotel.HangSao), 5)" :key="i" class="bi bi-star-fill text-warning me-1"></i>
+            <i v-for="i in Math.max(5 - Math.floor(hotel.HangSao), 0)" :key="`empty-${i}`" class="bi bi-star text-muted me-1"></i>
+          </div>
+        </div>
+
+        <!-- Footer card: giá và customer rating -->
         <div class="mt-auto d-flex justify-content-between align-items-center">
           <!-- Hiển thị giá thấp nhất -->
           <div class="hotel-price">
-            <strong class="text-danger">{{ formatCurrency(hotel.GiaThapNhat) }}</strong>
+            <strong class="text-primary">{{ formatCurrency(hotel.GiaThapNhat) }}</strong>
             <span class="text-muted small"> /đêm</span>
           </div>
           
-          <!-- Hiển thị rating nếu có -->
-          <div v-if="hotel.HangSao" class="hotel-rating">
-            <span class="rating-star me-1">⭐</span>
-            <span class="rating-value fw-bold">{{ hotel.HangSao.toFixed(1) }}</span>
+          <!-- Hiển thị guest rating nếu có -->
+          <div v-if="hotel.AvgRating" class="guest-rating">
+            <div class="rating-score">{{ hotel.AvgRating }}</div>
+            <div class="rating-text">
+              <span class="rating-label small">{{ getRatingLabel(hotel.AvgRating) }}</span>
+              <div class="review-count small text-muted">{{ hotel.ReviewCount || 0 }} đánh giá</div>
+            </div>
+          </div>
+          <div v-else class="guest-rating">
+            <div class="rating-text">
+              <span class="rating-label small text-muted">Chưa có đánh giá</span>
+            </div>
           </div>
         </div>
       </div>
@@ -56,6 +73,10 @@ const props = defineProps({
   hotel: {
     type: Object,     // Object chứa thông tin khách sạn
     required: true,   // Bắt buộc phải có
+    validator: (value) => {
+      // Basic validation để tránh lỗi
+      return value && typeof value === 'object' && value.MaKS;
+    }
   },
 });
 
@@ -110,6 +131,20 @@ const formatCurrency = (value) => {
     currency: 'VND', 
     minimumFractionDigits: 0 
   }).format(value);
+};
+
+/**
+ * Lấy nhãn mô tả cho điểm đánh giá
+ * @param {number} rating - Điểm đánh giá (1-5 sao)
+ * @returns {string} Nhãn mô tả
+ */
+const getRatingLabel = (rating) => {
+  if (rating >= 4.5) return 'Xuất sắc';
+  if (rating >= 4) return 'Rất tốt';
+  if (rating >= 3.5) return 'Tốt';
+  if (rating >= 3) return 'Khá';
+  if (rating >= 2) return 'Trung bình';
+  return 'Cần cải thiện';
 };
 </script>
 
@@ -181,21 +216,48 @@ const formatCurrency = (value) => {
   vertical-align: middle;
 }
 
-/* Rating display */
-.hotel-rating {
+/* Hotel meta info (type and star rating) */
+.hotel-meta .badge {
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+.star-rating {
+  font-size: 0.8rem;
+}
+
+/* Guest rating display */
+.guest-rating {
   display: flex;
   align-items: center;
-  color: #495057;
+  gap: 8px;
+}
+
+.rating-score {
+  background: linear-gradient(135deg, #007bff, #0056b3);
+  color: white;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-weight: 600;
   font-size: 0.9rem;
+  min-width: 35px;
+  text-align: center;
 }
-.hotel-rating .rating-value {
-  color: var(--text-dark, #212529);
-  font-size: 1rem;
+
+.rating-text {
+  text-align: right;
+  line-height: 1.2;
 }
-.hotel-rating .rating-star {
-  color: var(--star-color, #ffc107);
-  font-size: 1rem;
-  line-height: 1;
+
+.rating-label {
+  font-weight: 500;
+  color: #495057;
+  display: block;
+}
+
+.review-count {
+  font-size: 0.75rem !important;
+  margin-top: 1px;
 }
 
 /* Price display */

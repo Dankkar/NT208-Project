@@ -861,20 +861,125 @@ exports.setMainImage = async (req, res) => {
 
 exports.getAllHotels = async (req, res) => {
     try {
-        const { page = 1, limit = 10, sortBy = 'rating', sortOrder = 'desc' } = req.query;
+        const { 
+            page = 1, 
+            limit = 10, 
+            sortBy = 'rating', 
+            sortOrder = 'desc',
+            priceMin,
+            priceMax,
+            starRatings,
+            hotelTypes,
+            amenities,
+            location,
+            guestRating
+        } = req.query;
+
         const offset = (page - 1) * limit;
         const pool = await poolPromise;
-        const countResult = await pool.request().query(`
-            SELECT COUNT(*) as total
-            FROM KhachSan
-        `);
 
-        // Base query
+        // Build WHERE conditions
+        let whereConditions = ['ks.IsActive = 1'];
+        let queryInputs = [];
+
+
+
+        // Price filter
+        if (priceMin) {
+            whereConditions.push('lp.GiaCoSo >= @priceMin');
+            queryInputs.push({ name: 'priceMin', type: sql.Decimal(10,2), value: parseFloat(priceMin) });
+        }
+        if (priceMax) {
+            whereConditions.push('lp.GiaCoSo <= @priceMax');
+            queryInputs.push({ name: 'priceMax', type: sql.Decimal(10,2), value: parseFloat(priceMax) });
+        }
+
+        // Star rating filter
+        if (starRatings) {
+            const stars = starRatings.split(',').map(s => parseInt(s.trim())).filter(s => !isNaN(s));
+            if (stars.length > 0) {
+                const starConditions = stars.map((star, index) => {
+                    queryInputs.push({ name: `star${index}`, type: sql.Int, value: star });
+                    return `ks.HangSao >= @star${index}`;
+                });
+                whereConditions.push(`(${starConditions.join(' OR ')})`);
+            }
+        }
+
+        // Hotel type filter
+        if (hotelTypes) {
+            const types = hotelTypes.split(',').map(t => t.trim()).filter(t => t);
+            if (types.length > 0) {
+                const typeConditions = types.map((type, index) => {
+                    queryInputs.push({ name: `type${index}`, type: sql.NVarChar(100), value: type });
+                    return `ks.LoaiHinh = @type${index}`;
+                });
+                whereConditions.push(`(${typeConditions.join(' OR ')})`);
+            }
+        }
+
+        // Location filter
+        if (location) {
+            whereConditions.push('(ks.DiaChi LIKE @location OR ks.TenKS LIKE @location)');
+            queryInputs.push({ name: 'location', type: sql.NVarChar(500), value: `%${location}%` });
+        }
+
+        // Amenities filter - check if hotel has services matching amenities
+        if (amenities) {
+            const amenityList = amenities.split(',').map(a => a.trim()).filter(a => a);
+            if (amenityList.length > 0) {
+                const amenityMappings = {
+                    'wifi': ['WiFi', 'Internet', 'Mạng'],
+                    'pool': ['Hồ bơi', 'Pool', 'Bể bơi'],
+                    'gym': ['Gym', 'Phòng tập', 'Fitness'],
+                    'spa': ['Spa', 'Massage', 'Thư giãn'],
+                    'restaurant': ['Nhà hàng', 'Restaurant', 'Ăn uống'],
+                    'parking': ['Đậu xe', 'Parking', 'Bãi đậu'],
+                    'ac': ['Điều hòa', 'AC', 'Air'],
+                    'elevator': ['Thang máy', 'Elevator', 'Lift'],
+                    'bar': ['Bar', 'Quầy bar', 'Rượu'],
+                    'beach': ['Bãi biển', 'Beach', 'Biển']
+                };
+
+                let amenityConditions = [];
+                amenityList.forEach((amenity, index) => {
+                    const mappings = amenityMappings[amenity] || [amenity];
+                    const amenitySubConditions = mappings.map((mapping, subIndex) => {
+                        const paramName = `amenity${index}_${subIndex}`;
+                        queryInputs.push({ name: paramName, type: sql.NVarChar(200), value: `%${mapping}%` });
+                        return `ldv.TenLoaiDV LIKE @${paramName}`;
+                    });
+                    amenityConditions.push(`(${amenitySubConditions.join(' OR ')})`);
+                });
+
+                whereConditions.push(`EXISTS (
+                    SELECT 1 FROM LoaiDichVu ldv 
+                    WHERE ldv.MaKS = ks.MaKS AND (${amenityConditions.join(' OR ')})
+                )`);
+            }
+        }
+
+        // Build main query with filters
+        const whereClause = `WHERE ${whereConditions.join(' AND ')}`;
+
+        // Count query with filters
+        let countQuery = `
+            SELECT COUNT(DISTINCT ks.MaKS) as total
+            FROM KhachSan ks
+            LEFT JOIN Phong p ON ks.MaKS = p.MaKS
+            LEFT JOIN LoaiPhong lp ON p.MaLoaiPhong = lp.MaLoaiPhong
+            ${whereClause}
+        `;
+
+
+        // Main query
         let query = `
             SELECT ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh, ks.IsActive,
                    nd.HoTen AS NguoiQuanLy,
                    MIN(lp.GiaCoSo) as GiaThapNhat,
-                   ak.DuongDanAnh as MainImagePath
+                   ak.DuongDanAnh as MainImagePath,
+                   AVG(CAST(bdg.Sao as FLOAT)) as AvgRating,
+                   COUNT(DISTINCT bdg.MaDG) as ReviewCount
             FROM KhachSan ks
             LEFT JOIN NguoiDung nd ON ks.MaNguoiQuanLy = nd.MaKH
             LEFT JOIN Phong p ON ks.MaKS = p.MaKS
@@ -888,25 +993,29 @@ exports.getAllHotels = async (req, res) => {
                     WHERE MaKS = ks.MaKS AND IsActive = 1 AND LoaiAnh = 'main'
                     ORDER BY ThuTu ASC, NgayThem ASC
                 )
-        `;
-
-        // Add GROUP BY
-        query += `
+            LEFT JOIN BaiDanhGia bdg ON ks.MaKS = bdg.MaKS AND bdg.IsApproved = 1
+            ${whereClause}
             GROUP BY ks.MaKS, ks.TenKS, ks.DiaChi, ks.HangSao, ks.LoaiHinh, ak.DuongDanAnh, ks.IsActive, nd.HoTen
         `;
 
-        // Handle sorting based on parameters
-        let orderByClause = '';
+        // Guest rating filter (after GROUP BY)
+        if (guestRating) {
+            const ratingValue = parseFloat(guestRating.replace('+', ''));
+            if (!isNaN(ratingValue)) {
+                query += ` HAVING AVG(CAST(bdg.Sao as FLOAT)) >= ${ratingValue}`;
+            }
+        }
+
+        // Handle sorting
         const validSortFields = ['rating', 'price', 'name'];
         const validSortOrders = ['asc', 'desc'];
-        
-        // Validate parameters
         const safeSortBy = validSortFields.includes(sortBy) ? sortBy : 'rating';
         const safeSortOrder = validSortOrders.includes(sortOrder.toLowerCase()) ? sortOrder.toUpperCase() : 'DESC';
         
+        let orderByClause = '';
         switch (safeSortBy) {
             case 'rating':
-                orderByClause = `ORDER BY ks.HangSao ${safeSortOrder}`;
+                orderByClause = `ORDER BY ks.HangSao ${safeSortOrder}, AVG(CAST(bdg.Sao as FLOAT)) ${safeSortOrder}`;
                 break;
             case 'price':
                 orderByClause = `ORDER BY MIN(lp.GiaCoSo) ${safeSortOrder}`;
@@ -915,27 +1024,44 @@ exports.getAllHotels = async (req, res) => {
                 orderByClause = `ORDER BY ks.TenKS ${safeSortOrder}`;
                 break;
             default:
-                orderByClause = 'ORDER BY ks.HangSao DESC'; // Default fallback
+                orderByClause = 'ORDER BY ks.HangSao DESC';
         }
 
-        // Add ORDER BY and pagination
         query += `
             ${orderByClause}
             OFFSET @offset ROWS
             FETCH NEXT @limit ROWS ONLY
         `;
 
-        const result = await pool.request()
+        // Execute count query
+        let countRequest = pool.request();
+        queryInputs.forEach(input => {
+            countRequest = countRequest.input(input.name, input.type, input.value);
+        });
+        const countResult = await countRequest.query(countQuery);
+
+        // Execute main query
+        let mainRequest = pool.request()
             .input('offset', sql.Int, offset)
-            .input('limit', sql.Int, limit)
-            .query(query);
+            .input('limit', sql.Int, limit);
+        
+        queryInputs.forEach(input => {
+            mainRequest = mainRequest.input(input.name, input.type, input.value);
+        });
+        
+        const result = await mainRequest.query(query);
 
         const hotelsWithImages = result.recordset.map(hotel => ({
             ...hotel,
             MainImagePath: hotel.MainImagePath
                 ? `${req.protocol}://${req.get('host')}/${hotel.MainImagePath}`
-                : null
+                : null,
+            AvgRating: hotel.AvgRating ? Math.round(hotel.AvgRating * 10) / 10 : null,
+            ReviewCount: hotel.ReviewCount || 0,
+            GiaThapNhat: hotel.GiaThapNhat || 0 // Đảm bảo có giá
         }));
+
+
 
         res.json({
             success: true,
@@ -949,10 +1075,77 @@ exports.getAllHotels = async (req, res) => {
             sorting: {
                 sortBy: safeSortBy,
                 sortOrder: safeSortOrder
+            },
+            filters: {
+                applied: {
+                    priceMin: priceMin || null,
+                    priceMax: priceMax || null,
+                    starRatings: starRatings || null,
+                    hotelTypes: hotelTypes || null,
+                    amenities: amenities || null,
+                    location: location || null,
+                    guestRating: guestRating || null
+                }
             }
         });
     } catch (err) {
         console.error('Lỗi getAllHotels:', err);
+        res.status(500).json({ error: 'Lỗi hệ thống', details: err.message });
+    }
+};
+
+// Suggest locations for search
+exports.suggestLocations = async (req, res) => {
+    try {
+        const { query } = req.query;
+        
+        if (!query || query.length < 2) {
+            return res.json({ success: true, suggestions: [] });
+        }
+
+        const pool = await poolPromise;
+        
+        // Get unique locations from hotels
+        const result = await pool.request()
+            .input('query', sql.NVarChar(200), `%${query}%`)
+            .query(`
+                SELECT DISTINCT 
+                    CASE 
+                        WHEN CHARINDEX(',', DiaChi) > 0 
+                        THEN LTRIM(RTRIM(SUBSTRING(DiaChi, CHARINDEX(',', DiaChi) + 1, LEN(DiaChi))))
+                        ELSE LTRIM(RTRIM(DiaChi))
+                    END as Location
+                FROM KhachSan 
+                WHERE IsActive = 1 
+                    AND (DiaChi LIKE @query OR TenKS LIKE @query)
+                    AND DiaChi IS NOT NULL 
+                    AND DiaChi != ''
+                UNION
+                SELECT DISTINCT 
+                    CASE 
+                        WHEN CHARINDEX(',', DiaChi) > 0 
+                        THEN LTRIM(RTRIM(SUBSTRING(DiaChi, 1, CHARINDEX(',', DiaChi) - 1)))
+                        ELSE LTRIM(RTRIM(DiaChi))
+                    END as Location
+                FROM KhachSan 
+                WHERE IsActive = 1 
+                    AND (DiaChi LIKE @query OR TenKS LIKE @query)
+                    AND DiaChi IS NOT NULL 
+                    AND DiaChi != ''
+                ORDER BY Location
+            `);
+
+        const suggestions = result.recordset
+            .map(row => row.Location)
+            .filter(location => location && location.length > 0)
+            .slice(0, 8); // Limit to 8 suggestions
+
+        res.json({
+            success: true,
+            suggestions
+        });
+    } catch (err) {
+        console.error('Lỗi suggestLocations:', err);
         res.status(500).json({ error: 'Lỗi hệ thống' });
     }
 };
@@ -1192,18 +1385,53 @@ exports.getFeaturedHotels = async (req, res) => {
 exports.suggestLocations = async (req, res) => {
     try {
         const keyword = req.query.keyword; //từ khóa tìm kiếm
+        
+        if (!keyword || keyword.trim().length < 2) {
+            return res.json({
+                success: true,
+                data: []
+            });
+        }
+
         const pool = await poolPromise;
+        
+        // Tìm kiếm địa chỉ và tên khách sạn
         const result = await pool.request()
-            .input('keyword', sql.NVarChar, keyword)
+            .input('keyword', sql.NVarChar, `%${keyword.trim()}%`)
             .query(`
-                SELECT DISTINCT DiaChi
+                SELECT DISTINCT 
+                    DiaChi as location,
+                    COUNT(*) as hotelCount,
+                    'address' as type
                 FROM KhachSan
-                WHERE DiaChi  COLLATE Latin1_General_CI_AI LIKE '%' + @keyword + '%'
+                WHERE DiaChi COLLATE Latin1_General_CI_AI LIKE @keyword
+                GROUP BY DiaChi
+                
+                UNION ALL
+                
+                SELECT DISTINCT 
+                    TenKS as location,
+                    1 as hotelCount,
+                    'hotel' as type
+                FROM KhachSan
+                WHERE TenKS COLLATE Latin1_General_CI_AI LIKE @keyword
+                
+                ORDER BY hotelCount DESC, location ASC
             `);
+        
+        // Format kết quả
+        const suggestions = result.recordset.map(item => ({
+            text: item.location,
+            type: item.type,
+            hotelCount: item.hotelCount,
+            displayText: item.type === 'address' 
+                ? `${item.location} (${item.hotelCount} khách sạn)`
+                : item.location
+        }));
         
         res.json({
             success: true,
-            data: result.recordset.map(r => r.DiaChi)
+            data: suggestions.slice(0, 8) // Giới hạn 8 gợi ý
         });
     }
     catch (err)

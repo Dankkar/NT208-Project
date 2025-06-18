@@ -30,25 +30,18 @@ app.use(session({
 
 // Middleware xử lý cookies và CORS
 const cors = require('cors');
-const cookieParser = require('cookie-parser');  
-app.use(cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000', // Dynamic CORS origin
-  credentials: true               // ✅ Cho phép gửi cookie
-}));
-app.use(express.urlencoded({ extended: true })); // ✅ Đọc URL-encoded body
-app.use(cookieParser());          // ✅ Đặt TRƯỚC các route cần đọc cookie
-app.use(express.json());          // ✅ Đọc JSON body
+const cookieParser = require('cookie-parser');
 
 // Cấu hình CORS để cho phép frontend truy cập
 app.use(cors({
-  origin: 'http://localhost:3000', // URL của frontend
-  credentials: true               // Cho phép gửi cookie trong request
+    origin: 'http://localhost:3000', // URL của frontend
+    credentials: true // Cho phép gửi cookie trong request
 }));
 
 // Middleware xử lý dữ liệu request
 app.use(express.urlencoded({ extended: true })); // Đọc URL-encoded body (form data)
-app.use(cookieParser());          // Đặt TRƯỚC các route cần đọc cookie
-app.use(express.json());          // Đọc JSON body từ request
+app.use(cookieParser()); // Đặt TRƯỚC các route cần đọc cookie
+app.use(express.json()); // Đọc JSON body từ request
 
 // Cung cấp file tĩnh từ thư mục uploads
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -77,6 +70,7 @@ const reviewRoutes = require('./routes/reviewRoutes');
 const priceRoutes = require('./routes/priceRoutes');
 const serviceRoutes = require('./routes/serviceRoutes');
 const promotionRoutes = require('./routes/promotionRoutes');
+const seoRoutes = require('./routes/seoRoutes');
 
 // Đăng ký các route với prefix tương ứng
 app.use('/api/auth', authRoutes);           // Route xác thực người dùng
@@ -94,6 +88,9 @@ app.use('/api/reviews', reviewRoutes);     // Route quản lý đánh giá
 app.use('/api/prices', priceRoutes);       // Route quản lý giá
 app.use('/api/services', serviceRoutes);   // Route quản lý dịch vụ
 app.use('/api/promotions', promotionRoutes); // Route quản lý khuyến mãi
+
+// SEO routes - đặt ở root level để phù hợp với SEO standards
+app.use('/', seoRoutes);                   // Route SEO (sitemap.xml, robots.txt)
 
 // Khởi động server
 const PORT = process.env.PORT || 5000;

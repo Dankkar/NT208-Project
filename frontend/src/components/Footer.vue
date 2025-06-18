@@ -59,13 +59,13 @@
         <div class="col-md-4 text-center text-md-end">
           <h5 class="fw-semibold mb-3">Follow Us</h5>
           <div class="d-flex justify-content-center justify-content-md-end">
-            <a href="https://facebook.com" target="_blank" class="me-3 text-dark fs-4">
+            <a href="https://www.facebook.com/profile.php?id=100035151231795" target="_blank" class="me-3 text-dark fs-4">
               <i class="bi bi-facebook"></i>
             </a>
-            <a href="https://instagram.com" target="_blank" class="me-3 text-dark fs-4">
+            <a href="https://www.instagram.com/aima.bietduoc.vn/" target="_blank" class="me-3 text-dark fs-4">
               <i class="bi bi-instagram"></i>
             </a>
-            <a href="https://x.com" target="_blank" class="text-dark fs-4">
+            <a href="https://x.com/realDonaldTrump?embed=true" target="_blank" class="text-dark fs-4">
               <i class="bi bi-twitter"></i>
             </a>
           </div>

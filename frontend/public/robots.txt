@@ -1,0 +1,32 @@
+# robots.txt for ChillChill Hotel
+# Hướng dẫn cho các web crawlers
+
+User-agent: *
+Allow: /
+
+# Cho phép tất cả các trang chính
+Allow: /hotels/
+Allow: /search
+Allow: /booking
+Allow: /about
+Allow: /contact
+
+# Không cho phép crawl các trang admin và API
+Disallow: /admin/
+Disallow: /api/
+Disallow: /login
+Disallow: /signup
+Disallow: /user/
+
+# Không cho phép crawl các file tạm thời
+Disallow: /tmp/
+Disallow: /*.json$
+Disallow: /*?*utm_*
+Disallow: /*?*sessionid*
+Disallow: /*?*sid*
+
+# Tần suất crawl (tùy chọn)
+Crawl-delay: 1
+
+# Sitemap location
+Sitemap: https://chillchill-hotel.com/sitemap.xml 
