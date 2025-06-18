@@ -287,12 +287,4 @@ Dự án này được phát triển cho mục đích học tập môn NT208.
 - **Database**: SQL Server Administration
 - **Testing & QA**: System Testing
 
-## 📞 Liên hệ
-
-- **Email**: [your-email@student.uit.edu.vn]
-- **GitHub**: [repository-link]
-- **Demo**: [demo-link]
-
----
-
 ⭐ **Đừng quên star repository nếu bạn thấy dự án hữu ích!**
