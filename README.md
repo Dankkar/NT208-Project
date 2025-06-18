@@ -268,19 +268,6 @@ npm run build  # Build for production
 - Xem báo cáo tổng hợp
 - Cấu hình hệ thống
 
-## 🧪 Testing
-
-```bash
-# Backend tests
-cd backend
-npm test
-
-# Frontend tests  
-cd frontend
-npm run test
-```
-
-
 ## 🤝 Đóng góp
 
 1. Fork repository
