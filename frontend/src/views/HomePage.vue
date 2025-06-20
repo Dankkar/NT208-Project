@@ -561,9 +561,9 @@ onBeforeUnmount(() => {
 /* Bỏ viền xanh bootstrap khi focus */
 .search-bar-custom .form-control:focus,
 .search-bar-custom .form-select:focus {
-  border-color: #FF5A5F;
-  box-shadow: 0 0 0 0.2rem rgba(255, 90, 95, 0.25);
-  outline: none;
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: #ced4da !important; /* giữ border xám nhạt */
 }
 
 .search-bar-custom .input-group .form-control {
@@ -652,7 +652,6 @@ onBeforeUnmount(() => {
   text-align: center;
   font-weight: 600;
 }
-
 .search-bar-custom .input-group-text {
   background-color: #fff;
   border-right: none;
@@ -664,6 +663,13 @@ onBeforeUnmount(() => {
 
 /* Focus state cho input group */
 .search-bar-custom .input-group:focus-within .input-group-text {
-  border-color: #FF5A5F;
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: #ced4da !important;
+  background-color: #fff !important;
+}
+
+:deep(.custom-datepicker-input input) {
+  border: none;
 }
 </style>

@@ -169,7 +169,7 @@ CREATE TABLE Booking (
     CONSTRAINT FK_Booking_NguoiDung FOREIGN KEY (MaKH) REFERENCES NguoiDung(MaKH),
     CONSTRAINT FK_Booking_Guests FOREIGN KEY (MaKhach) REFERENCES Guests(MaKhach),
     CONSTRAINT FK_Booking_KhachSan FOREIGN KEY (MaKS) REFERENCES KhachSan(MaKS),
-    CONSTRAINT CK_Booking_User CHECK (MaKH IS NOT NULL OR MaKhach IS NOT NULL),
+    --CONSTRAINT CK_Booking_User CHECK (MaKH IS NOT NULL OR MaKhach IS NOT NULL),
     CONSTRAINT CK_Booking_NgayTra CHECK (NgayTraPhong > NgayNhanPhong),
     CONSTRAINT FK_Booking_Phong FOREIGN KEY (MaPhong) REFERENCES Phong(MaPhong) ON DELETE SET NULL
 );
@@ -388,3 +388,4 @@ DROP TABLE KhachSan;
 
 -- Bảng khuyến mãi
 DROP TABLE KhuyenMai;
+
