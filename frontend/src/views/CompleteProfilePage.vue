@@ -240,7 +240,8 @@ function handleBackToSignup() {
 /* Styles remain the same */
 .signup-page {
   display: flex;
-  flex-direction: column; /* Logo ở trên */
+  flex-direction: column;
+  /* Logo ở trên */
   align-items: center;
   justify-content: center;
   background: url('../assets/mountain.jpg') no-repeat center/cover;
@@ -249,35 +250,193 @@ function handleBackToSignup() {
   padding: 1.5rem;
   position: relative;
 }
-.cp-form-card { /* ... các style cho form card ... */
-  background: #fff; max-width: 430px; width: 100%; padding: 1.8rem 2.2rem; border-radius: 12px;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.08); z-index: 1;
-  margin-top: 20px; 
+
+.cp-form-card {
+  /* ... các style cho form card ... */
+  background: #fff;
+  max-width: 430px;
+  width: 100%;
+  padding: 1.8rem 2.2rem;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  z-index: 1;
+  margin-top: 20px;
 }
-.cp-form-title { margin-bottom: 0.4rem; font-size: 1.5rem; font-weight: 600; text-align: center; color: #333;}
-.form-subtitle.cp-form-subtitle { margin-bottom: 1.3rem; font-size: 0.85rem; text-align: center; color: #666;}
-.divider {display: flex; align-items: center; margin: 1.3rem 0;}
-.divider .line { flex: 1; height: 1px; background: #ccc; }
-.cp-input-group { margin-bottom: 0.9rem !important; }
-.form-label { display: block; font-weight: 500; margin-bottom: 0.25rem; font-size: 0.8rem; color: #485563; }
-.form-label .text-danger { font-weight: normal; color: #e74c3c;}
-.form-control.cp-input, .form-select.cp-input { display: block; width: 100%; padding: 0.55rem 0.7rem; font-size: 0.85rem; font-weight: 400; line-height: 1.5; color: #212529; background-color: #fff; background-clip: padding-box; border: 1px solid #ced4da; appearance: none; border-radius: 0.3rem; transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;}
-.form-control.cp-input:focus, .form-select.cp-input:focus { color: #212529; background-color: #fff; border-color: #86b7fe; outline: 0; box-shadow: 0 0 0 0.15rem rgba(13,110,253,.25);}
-.form-control.is-invalid, .form-select.is-invalid { border-color: #dc3545; padding-right: calc(1.5em + 0.75rem); background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right calc(0.375em + 0.1875rem) center; background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);}
-.form-control.is-invalid:focus, .form-select.is-invalid:focus { border-color: #dc3545; box-shadow: 0 0 0 0.15rem rgba(220,53,69,.25);}
-.form-select.cp-input { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 0.7rem center; background-size: 14px 10px;}
-.invalid-feedback.d-block { display: block; width: 100%; margin-top: .2rem; font-size: .78em; color: #dc3545;}
-.cp-btn { padding: 0.65rem 0; font-size: 0.9rem; font-weight: 500; border-radius: 6px; transition: opacity .15s ease-in-out; width: 100%;}
-.cp-btn.btn-primary { background-color: #0d6efd; color: white; border: 1px solid #0d6efd;}
-.cp-btn.btn-primary:hover:not(:disabled) { background-color: #0b5ed7; border-color: #0a58ca;}
-.cp-btn.btn-primary:disabled { opacity: 0.65; cursor: not-allowed;}
-.cp-btn.btn-secondary { background-color: #6c757d; color: white; border: 1px solid #6c757d; }
-.cp-btn.btn-secondary:hover { background-color: #5a6268; border-color: #545b62;}
-.alert { padding: 0.7rem 1rem; margin-bottom: 1.2rem; border-radius: 6px; font-size: 0.85rem;}
-.alert-success { background-color: #d1e7dd; border: 1px solid #badbcc; color: #0f5132; }
-.alert-danger { background-color: #f8d7da; border: 1px solid #f5c2c7; color: #842029; }
-.alert-info { background-color: #cfe2ff; border-color: #b6d4fe; color: #084298; }
-.card-footer { margin-top: 1rem; text-align: center; font-size: 0.9rem;}
-.card-footer a { color: #0d6efd; text-decoration: none;}
-.card-footer a:hover { text-decoration: underline;}
+
+.cp-form-title {
+  margin-bottom: 0.4rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-align: center;
+  color: #333;
+}
+
+.form-subtitle.cp-form-subtitle {
+  margin-bottom: 1.3rem;
+  font-size: 0.85rem;
+  text-align: center;
+  color: #666;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  margin: 1.3rem 0;
+}
+
+.divider .line {
+  flex: 1;
+  height: 1px;
+  background: #ccc;
+}
+
+.cp-input-group {
+  margin-bottom: 0.9rem !important;
+}
+
+.form-label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+  font-size: 0.8rem;
+  color: #485563;
+}
+
+.form-label .text-danger {
+  font-weight: normal;
+  color: #e74c3c;
+}
+
+.form-control.cp-input,
+.form-select.cp-input {
+  display: block;
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #212529;
+  background-color: #fff;
+  background-clip: padding-box;
+  border: 1px solid #ced4da;
+  appearance: none;
+  border-radius: 0.3rem;
+  transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+}
+
+.form-control.cp-input:focus,
+.form-select.cp-input:focus {
+  color: #212529;
+  background-color: #fff;
+  border-color: #86b7fe;
+  outline: 0;
+  box-shadow: 0 0 0 0.15rem rgba(13, 110, 253, .25);
+}
+
+.form-control.is-invalid,
+.form-select.is-invalid {
+  border-color: #dc3545;
+  padding-right: calc(1.5em + 0.75rem);
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right calc(0.375em + 0.1875rem) center;
+  background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+
+.form-control.is-invalid:focus,
+.form-select.is-invalid:focus {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 0.15rem rgba(220, 53, 69, .25);
+}
+
+.form-select.cp-input {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  background-size: 14px 10px;
+}
+
+.invalid-feedback.d-block {
+  display: block;
+  width: 100%;
+  margin-top: .2rem;
+  font-size: .78em;
+  color: #dc3545;
+}
+
+.cp-btn {
+  padding: 0.65rem 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: 6px;
+  transition: opacity .15s ease-in-out;
+  width: 100%;
+}
+
+.cp-btn.btn-primary {
+  background-color: #0d6efd;
+  color: white;
+  border: 1px solid #0d6efd;
+}
+
+.cp-btn.btn-primary:hover:not(:disabled) {
+  background-color: #0b5ed7;
+  border-color: #0a58ca;
+}
+
+.cp-btn.btn-primary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.cp-btn.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+  border: 1px solid #6c757d;
+}
+
+.cp-btn.btn-secondary:hover {
+  background-color: #5a6268;
+  border-color: #545b62;
+}
+
+.alert {
+  padding: 0.7rem 1rem;
+  margin-bottom: 1.2rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.alert-success {
+  background-color: #d1e7dd;
+  border: 1px solid #badbcc;
+  color: #0f5132;
+}
+
+.alert-danger {
+  background-color: #f8d7da;
+  border: 1px solid #f5c2c7;
+  color: #842029;
+}
+
+.alert-info {
+  background-color: #cfe2ff;
+  border-color: #b6d4fe;
+  color: #084298;
+}
+
+.card-footer {
+  margin-top: 1rem;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.card-footer a {
+  color: #0d6efd;
+  text-decoration: none;
+}
+
+.card-footer a:hover {
+  text-decoration: underline;
+}
 </style>
